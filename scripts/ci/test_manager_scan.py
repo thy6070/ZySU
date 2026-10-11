@@ -1,7 +1,7 @@
 """Exercise manager discovery and cache invalidation using production C functions.
 
-The VFS and signature-reader doubles record directory opens and APK reads, while
-the real tracker, directory traversal, identity checks and cache lifecycle run.
+The VFS and signature-reader doubles record directory opens, iteration state and
+APK reads, while the real tracker, traversal, identity checks and cache run.
 These host regressions do not replace a kernel build or device validation.
 """
 
@@ -38,8 +38,10 @@ typedef long long loff_t;
 #define O_RDONLY 0
 #define O_NOFOLLOW 1
 #define O_NOATIME 2
+#define O_DIRECTORY 4
 #define DT_DIR 4
 #define DT_REG 8
+#define DT_LNK 10
 #define STATX_TYPE 1
 #define STATX_INO 2
 #define STATX_SIZE 4
@@ -191,15 +193,22 @@ struct app_fixture {
     struct kstat stat;
     bool installed, metadata_error, trusted, candidate, mutate_during_read;
     bool fail_metadata_after_read;
+    bool missing_base, directory_open_error, iterate_error;
 };
 static struct app_fixture apps[4];
 static int directory_opens, package_opens, signatures, metadata_reads, file_closes;
+static int iteration_depth, open_directories, vfs_errors, bad_directory_flags;
+static int apk_io_during_iteration, apk_io_before_directory_close;
 static struct super_block app_super = { 0xf2f52010 };
 static struct inode dir_inode = { &app_super, 0 }, list_inode;
 static struct file directory_file = { &dir_inode }, packages_file = { &list_inode };
 static char packages_text[1024];
 static int list_read_short, list_open_error;
 struct path { struct app_fixture *app; };
+static void record_apk_io(void) {
+    if (iteration_depth) apk_io_during_iteration++;
+    if (open_directories) apk_io_before_directory_close++;
+}
 static struct app_fixture *apk_fixture(const char *path) {
     for (int i = 0; i < 4; i++) {
         size_t n = strlen(apps[i].directory);
@@ -209,14 +218,17 @@ static struct app_fixture *apk_fixture(const char *path) {
     return NULL;
 }
 static int kern_path(const char *name, unsigned int flags, struct path *out) {
+    record_apk_io();
     (void)flags; out->app = apk_fixture(name);
     return !out->app || out->app->metadata_error ? -1 : 0;
 }
 static int vfs_getattr(const struct path *path, struct kstat *out, u32 mask, unsigned int flags) {
+    record_apk_io();
     (void)mask; (void)flags; metadata_reads++; *out = path->app->stat; return 0;
 }
 static void path_put(struct path *path) { (void)path; }
 static bool match_apk_signature(char *path, struct apk_sign_match *match) {
+    record_apk_io();
     struct app_fixture *app = apk_fixture(path); signatures++;
     if (!app) return false;
     if (app->mutate_during_read) app->stat.mtime.tv_nsec++;
@@ -226,22 +238,40 @@ static bool match_apk_signature(char *path, struct apk_sign_match *match) {
     return app->trusted || app->candidate;
 }
 static struct file *ksu_filp_open_nonotify(const char *path, int flags) {
-    (void)flags; directory_opens++;
-    for (int i = 0; i < 4; i++)
-        if (apps[i].installed && !strcmp(path, apps[i].directory)) package_opens++;
+    directory_opens++;
+    if (!(flags & O_DIRECTORY)) bad_directory_flags++;
+    for (int i = 0; i < 4; i++) {
+        if (apps[i].installed && !strcmp(path, apps[i].directory)) {
+            package_opens++;
+            if (apps[i].directory_open_error) return NULL;
+        }
+    }
+    if (open_directories++) vfs_errors++;
     strscpy(directory_file.name, path, sizeof(directory_file.name));
     return &directory_file;
 }
 static int filp_close(struct file *file, void *owner) {
-    (void)file; (void)owner; file_closes++; return 0;
+    if (file == &directory_file && (--open_directories || iteration_depth)) vfs_errors++;
+    (void)owner; file_closes++; return 0;
 }
 static int iterate_dir(struct file *file, struct dir_context *ctx) {
+    int result = 0;
+    if (iteration_depth++ || open_directories != 1) vfs_errors++;
     size_t n = strlen(file->name);
     char previous[DATA_PATH_LEN] = "";
     for (int i = 0; i < 4; i++) {
         if (!apps[i].installed) continue;
         if (!strcmp(file->name, apps[i].directory)) {
-            ctx->actor(ctx, "base.apk", 8, 0, 1, DT_REG); return 0;
+            if (apps[i].iterate_error) { result = -1; break; }
+            if (apps[i].missing_base) {
+                /* Similar names and non-regular entries cannot be APK candidates. */
+                ctx->actor(ctx, "base.ap", 7, 0, 1, DT_REG);
+                ctx->actor(ctx, "base.apk.extra", 14, 0, 2, DT_REG);
+                ctx->actor(ctx, "base.apk", 8, 0, 3, DT_LNK);
+            } else {
+                ctx->actor(ctx, "base.apk", 8, 0, 1, DT_REG);
+            }
+            break;
         }
         if (strncmp(file->name, apps[i].directory, n) || apps[i].directory[n] != '/') continue;
         const char *child = apps[i].directory + n + 1, *slash = strchr(child, '/');
@@ -250,7 +280,8 @@ static int iterate_dir(struct file *file, struct dir_context *ctx) {
         memcpy(previous, child, length); previous[length] = 0;
         ctx->actor(ctx, child, length, 0, i + 1, DT_DIR);
     }
-    return 0;
+    iteration_depth--;
+    return result;
 }
 static struct file *filp_open(const char *name, int flags, int mode) {
     (void)flags; (void)mode;
@@ -294,6 +325,7 @@ static struct uid_data identities[4];
 static LIST_HEAD(uid_list);
 static void reset_counts(void) {
     directory_opens = package_opens = signatures = metadata_reads = file_closes = 0;
+    apk_io_during_iteration = apk_io_before_directory_close = bad_directory_flags = 0;
     granted = noted = pruned = 0;
 }
 static void init_fixture(void) {
@@ -441,6 +473,49 @@ int main(void) {
     apps[0].trusted = false; apps[0].candidate = true;
     run_scan(); CHECK(package_opens == 1 && signatures == 1 && noted == 1 && !granted);
     run_scan(); CHECK(!package_opens && !signatures && !granted && !noted);
+    clear_apk_scan_cache();
+    CHECK(!live_allocations && !allocation_errors);
+    return 0;
+}
+"""
+
+
+def deferred_scan_source():
+    return harness() + r"""
+int main(void) {
+    init_fixture();
+    apps[2].installed = apps[3].installed = true;
+    apps[0].trusted = apps[1].trusted = true;
+    apps[2].candidate = true;
+    run_scan();
+    /* Real APK metadata and signature I/O must happen after iteration and close. */
+    CHECK(!apk_io_during_iteration && !apk_io_before_directory_close);
+    CHECK(!iteration_depth && !open_directories && !vfs_errors && !bad_directory_flags);
+    CHECK(package_opens == 4 && signatures == 4 && granted == 2 && noted == 1);
+    CHECK(ksu_manager_appid == identities[1].appid && cache_entries() == 2);
+
+    /* Each directory gets a fresh candidate, even when a later directory has no
+     * regular APK or cannot enumerate. Trusted matches must not stop discovery. */
+    init_fixture();
+    apps[2].installed = apps[3].installed = true;
+    apps[0].trusted = true;
+    apps[1].missing_base = true;
+    apps[2].iterate_error = true;
+    apps[3].candidate = true;
+    run_scan();
+    CHECK(package_opens == 4 && signatures == 2 && granted == 1 && noted == 1);
+    CHECK(cache_entries() == 1);
+    CHECK(!apk_io_during_iteration && !apk_io_before_directory_close);
+    CHECK(!iteration_depth && !open_directories && !vfs_errors && !bad_directory_flags);
+
+    clear_apk_scan_cache();
+    apps[2].iterate_error = false;
+    apps[2].directory_open_error = true;
+    run_scan();
+    CHECK(package_opens == 4 && signatures == 2 && granted == 1 && noted == 1);
+    CHECK(file_closes == directory_opens - 1 && cache_entries() == 1);
+    CHECK(!apk_io_during_iteration && !apk_io_before_directory_close);
+    CHECK(!iteration_depth && !open_directories && !vfs_errors && !bad_directory_flags);
     clear_apk_scan_cache();
     CHECK(!live_allocations && !allocation_errors);
     return 0;
@@ -611,5 +686,6 @@ if __name__ == "__main__":
     compiler = shutil.which(args.cc) or str(Path(args.cc).resolve())
     run_test(compiler, "manager-directory-cache", cache_source())
     run_test(compiler, "manager-cache-failures-and-auth", failures_source())
+    run_test(compiler, "manager-scan-after-directory-iteration", deferred_scan_source())
     run_test(compiler, "manager-tracker-snapshots-and-force", tracker_source())
     run_test(compiler, "manager-observer-work-and-teardown", workqueue_source())

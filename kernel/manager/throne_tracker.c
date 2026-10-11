@@ -437,7 +437,7 @@ struct my_dir_context {
 	struct dir_context ctx;
 	struct list_head *data_path_list;
 	char *parent_dir;
-	void *private_data;
+	char candidate_path[DATA_PATH_LEN];
 	int depth;
 	int *stop;
 };
@@ -487,8 +487,10 @@ static bool my_actor(struct dir_context *ctx, const char *name, int namelen,
 		strscpy(data->dirpath, dirpath, DATA_PATH_LEN);
 		data->depth = my_ctx->depth - 1;
 		list_add_tail(&data->list, my_ctx->data_path_list);
-	} else if (namelen == 8 && !strncmp(name, "base.apk", namelen)) {
-		scan_manager_apk(dirpath, my_ctx->private_data);
+	} else if (d_type == DT_REG && namelen == 8 &&
+		   !strncmp(name, "base.apk", namelen)) {
+		/* No APK I/O while iterate_dir holds directory locks. */
+		strscpy(my_ctx->candidate_path, dirpath, DATA_PATH_LEN);
 	}
 
 	return true;
@@ -523,7 +525,6 @@ static void search_manager(const char *path, int depth,
 						     .data_path_list =
 							 &data_path_list,
 						     .parent_dir = pos->dirpath,
-						     .private_data = uid_data,
 						     .depth = pos->depth,
 						     .stop = &stop};
 			struct file *file;
@@ -533,8 +534,8 @@ static void search_manager(const char *path, int depth,
 							 uid_data))
 					goto skip_iterate;
 				file = ksu_filp_open_nonotify(
-				    pos->dirpath,
-				    O_RDONLY | O_NOFOLLOW | O_NOATIME);
+				    pos->dirpath, O_RDONLY | O_NOFOLLOW |
+						      O_NOATIME | O_DIRECTORY);
 				if (IS_ERR(file)) {
 					pr_err("Failed to open directory: %s, "
 					       "err: %ld\n",
@@ -572,6 +573,13 @@ static void search_manager(const char *path, int depth,
 
 				iterate_dir(file, &ctx.ctx);
 				filp_close(file, NULL);
+
+				/* APK lookup and signature reads may acquire
+				 * VFS locks. Defer them until directory
+				 * iteration ends. */
+				if (ctx.candidate_path[0])
+					scan_manager_apk(ctx.candidate_path,
+							 uid_data);
 			}
 		skip_iterate:
 			list_del(&pos->list);
