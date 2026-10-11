@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">سياق SELinux</string>
     <string name="profile_umount_modules">الغاء تحميل الإضافات</string>
     <string name="failed_to_update_app_profile">فشل تحديث ملف تعريف التطبيق لـ %s</string>
-    <string name="set_as_dynamic_manager">التعيين كمدير ديناميكي</string>
-    <string name="set_as_dynamic_manager_summary">احتفظ بتوقيع هذا التطبيق وثق به كمدير ديناميكي</string>
-    <string name="dynamic_manager_set_failed">فشل تعيين %s كمدير ديناميكي</string>
-    <string name="dynamic_manager_del_failed">فشل إزالة %s من المدراء الديناميكيين</string>
-    <string name="dynamic_manager_signature_unavailable">تعذّر استخراج توقيع المدير الديناميكي لـ %s</string>
     <string name="require_kernel_version">يلزم تحديث النواة. اضغط للتثبيت.</string>
     <string name="settings_umount_modules_default">الغاء تحميل الإضافات بشكل افتراضي</string>
     <string name="settings_umount_modules_default_summary">الإعداد الافتراضي العالمي لإعداد \"إلغاء تحميل الوحدات\" في App Profile. عند التمكين، تتم إزالة تعديلات الوحدة للتطبيقات التي لا تحتوي على ملف تعريف. يتم إيقاف هذا الإعداد بشكل افتراضي، لذا تحتفظ التطبيقات الجديدة أو غير المعروفة بتعديلات الوحدة.</string>

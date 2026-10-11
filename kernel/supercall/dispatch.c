@@ -31,10 +31,6 @@
 #include "runtime/ksud_boot.h"
 #include "runtime/ksud.h"
 #include "manager/manager_identity.h"
-#ifndef CONFIG_KSU_DISABLE_MANAGER
-#include "manager/dynamic_manager.h"
-#include "manager/throne_tracker.h"
-#endif // #ifndef CONFIG_KSU_DISABLE_MANAGER
 #include "infra/seccomp_cache.h"
 #include "selinux/selinux.h"
 #include "sulog/event.h"
@@ -46,9 +42,6 @@
 #ifdef CONFIG_KSU_SUPERKEY
 #include "manager/superkey.h"
 #endif // #ifdef CONFIG_KSU_SUPERKEY
-
-#define KSU_DYNAMIC_MANAGER_COMPAT_VERSION 35023
-#define KSU_DYNAMIC_MANAGER_COMPAT_FULL_VERSION "v4.0.0-zysucompat@ZySU"
 
 static int do_grant_root(void __user *arg)
 {
@@ -69,9 +62,6 @@ static int do_get_info(void __user *arg)
 {
 	struct ksu_get_info_cmd cmd = {.version = KERNEL_SU_VERSION,
 				       .flags = 0};
-
-	if (ksu_is_current_dynamic_manager())
-		cmd.version = KSU_DYNAMIC_MANAGER_COMPAT_VERSION;
 
 	cmd.flags |= KSU_GET_INFO_FLAG_LKM;
 	if (ksu_bundled)
@@ -831,101 +821,11 @@ static int list_try_umount(void __user *arg)
 	return ret;
 }
 
-static int do_set_dynamic_managers(void __user *arg)
-{
-#ifdef CONFIG_KSU_DISABLE_MANAGER
-	return -EOPNOTSUPP;
-#else
-	struct ksu_dynamic_manager_cmd cmd;
-	struct ksu_dynamic_manager_sign *signs = NULL;
-	bool need_rescan = false;
-	size_t bytes;
-	int ret;
-
-	if (copy_from_user(&cmd, arg, sizeof(cmd)))
-		return -EFAULT;
-
-	if (cmd.count > KSU_DYNAMIC_MANAGER_MAX_SIGNS)
-		return -EINVAL;
-
-	if (cmd.count) {
-		if (!cmd.signs)
-			return -EINVAL;
-
-		bytes = sizeof(*signs) * cmd.count;
-		signs = kmalloc(bytes, GFP_KERNEL);
-		if (!signs)
-			return -ENOMEM;
-
-		if (copy_from_user(signs,
-				   (const void __user *)(uintptr_t)cmd.signs,
-				   bytes)) {
-			kfree(signs);
-			return -EFAULT;
-		}
-	}
-
-	ret = ksu_dynamic_manager_set(signs, cmd.count, &need_rescan);
-	kfree(signs);
-
-	if (!ret && need_rescan)
-		ksu_request_manager_rescan();
-
-	return ret;
-#endif // #ifdef CONFIG_KSU_DISABLE_MANAGER
-}
-
-static int do_get_dynamic_managers(void __user *arg)
-{
-	struct ksu_get_dynamic_managers_cmd cmd;
-	struct ksu_dynamic_manager_app *apps = NULL;
-	u32 count = 0;
-
-	if (copy_from_user(&cmd, arg, sizeof(cmd)))
-		return -EFAULT;
-
-	if (cmd.count > KSU_DYNAMIC_MANAGER_MAX_APPS)
-		return -EINVAL;
-
-	if (cmd.count) {
-		if (!cmd.apps)
-			return -EINVAL;
-
-		apps = kcalloc(cmd.count, sizeof(*apps), GFP_KERNEL);
-		if (!apps)
-			return -ENOMEM;
-	}
-
-	cmd.total_count = 0;
-#ifndef CONFIG_KSU_DISABLE_MANAGER
-	count = ksu_dynamic_manager_get_apps(apps, cmd.count, &cmd.total_count);
-#endif // #ifndef CONFIG_KSU_DISABLE_MANAGER
-	cmd.count = count;
-
-	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
-		kfree(apps);
-		return -EFAULT;
-	}
-
-	if (cmd.count && apps &&
-	    copy_to_user((void __user *)(uintptr_t)cmd.apps, apps,
-			 sizeof(*apps) * cmd.count)) {
-		kfree(apps);
-		return -EFAULT;
-	}
-
-	kfree(apps);
-	return 0;
-}
-
 // 100. GET_FULL_VERSION - Get full version string
 static int do_get_full_version(void __user *arg)
 {
 	struct ksu_get_full_version_cmd cmd = {0};
 	const char *version_full = KSU_VERSION_FULL;
-
-	if (ksu_is_current_dynamic_manager())
-		version_full = KSU_DYNAMIC_MANAGER_COMPAT_FULL_VERSION;
 
 	strscpy(cmd.version_full, version_full, sizeof(cmd.version_full));
 
@@ -1134,14 +1034,6 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
      .name = "GET_UAPI_VERSION",
      .handler = do_get_uapi_version,
      .perm_check = always_allow},
-    {.cmd = KSU_IOCTL_SET_DYNAMIC_MANAGERS,
-     .name = "SET_DYNAMIC_MANAGERS",
-     .handler = do_set_dynamic_managers,
-     .perm_check = manager_or_root},
-    {.cmd = KSU_IOCTL_GET_DYNAMIC_MANAGERS,
-     .name = "GET_DYNAMIC_MANAGERS",
-     .handler = do_get_dynamic_managers,
-     .perm_check = manager_or_root},
     {.cmd = KSU_IOCTL_GET_SU_PATH,
      .name = "GET_SU_PATH",
      .handler = do_get_su_path,

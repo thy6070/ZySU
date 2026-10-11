@@ -8,7 +8,7 @@ ZySU は [SukiSU-Ultra](https://github.com/ShirkNeko/SukiSU-Ultra) から派生�
 
 ## 現在の機能
 
-- カーネル `su`、アプリごとの権限とプロファイル、Manager の署名検証、動的 Manager、SuperKey 認証。
+- カーネル `su`、アプリごとの権限とプロファイル、ZySU パッケージに限定した Manager の署名検証と SuperKey 認証。
 - モジュールのインストール、有効化・無効化・削除、起動スクリプト、WebUI、リポジトリ管理。
 - ksud 内蔵の SUMHP による OverlayFS、Magic Mount、SUMH、マウントなしの選択。`auto` は条件に合う OverlayFS を優先し、次に Magic Mount を試します。SUMH は明示的に選択します。外部 MetaModule のライフサイクルも扱います。
 - 起動イメージの修正・復元、LKM の直接注入、パーティション操作、AnyKernel3、ramdisk 編集。

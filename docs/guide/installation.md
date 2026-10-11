@@ -60,9 +60,9 @@ When switching methods, device-mode handling can also clean old ramdisk patches 
 
 ## Authentication and first boot
 
-Without a SuperKey, Manager recognition follows its signature configuration. Self-signed APKs need an appropriate trusted LKM configuration; see [LKM integration](how-to-integrate.md).
+Manager authentication is limited to the configured package, normally `com.zying.zysu`. Without a SuperKey, its APK must match the module's configured signing certificate. Self-signed APKs need an appropriate trusted LKM configuration; see [LKM integration](how-to-integrate.md).
 
-If configured, use the SuperKey set during patching. Signature bypass means SuperKey-only Manager authentication; it does not disable Linux module signature enforcement. “Allow shell” authorizes Android's shell UID for root, while enabling adbd is a separate option.
+If configured, use the SuperKey set during patching. Signature bypass skips the Manager's certificate check while retaining the package restriction; it does not disable Linux module signature enforcement. “Allow shell” authorizes Android's shell UID for root, while enabling adbd is a separate option.
 
 After rebooting, confirm kernel detection, authentication, UAPI compatibility, and the installed ksud version. Use the ksud card to synchronize the bundled program when needed. Grant root to applications before testing their access.
 

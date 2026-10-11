@@ -65,11 +65,6 @@
     <string name="profile_no_new_privs">禁止再次提权</string>
     <string name="profile_no_new_privs_summary">使用此配置提权的进程及其子进程将无法再通过 KernelSU 提权（如再次执行 su 或调用 GRANT_ROOT）。建议开启。</string>
     <string name="failed_to_update_app_profile">为 %s 更新 App Profile 失败</string>
-    <string name="set_as_dynamic_manager">设为动态管理器</string>
-    <string name="set_as_dynamic_manager_summary">持久化此应用签名并信任为动态管理器</string>
-    <string name="dynamic_manager_set_failed">将 %s 设为动态管理器失败</string>
-    <string name="dynamic_manager_del_failed">从动态管理器中移除 %s 失败</string>
-    <string name="dynamic_manager_signature_unavailable">无法提取 %s 的动态管理器签名</string>
     <string name="require_kernel_version">需要更新内核，点击此处安装</string>
     <string name="settings_umount_modules_default">默认卸载模块</string>
     <string name="settings_umount_modules_default_summary">对没有单独 Profile 的应用默认卸载模块。默认关闭。</string>

@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">SELinux kontextus</string>
     <string name="profile_umount_modules">Modulok leválasztása</string>
     <string name="failed_to_update_app_profile">Nem sikerült frissíteni az App Profilt ehhez: %s</string>
-    <string name="set_as_dynamic_manager">Beállítás dinamikus kezelőként</string>
-    <string name="set_as_dynamic_manager_summary">Az alkalmazás aláírásának megőrzése és megbízhatóként kezelése dinamikus kezelőként</string>
-    <string name="dynamic_manager_set_failed">Nem sikerült a(z) %s beállítása dinamikus kezelőként</string>
-    <string name="dynamic_manager_del_failed">Nem sikerült a(z) %s eltávolítása a dinamikus kezelők közül</string>
-    <string name="dynamic_manager_signature_unavailable">Nem sikerült kinyerni a dinamikus kezelő aláírását ehhez: %s</string>
     <string name="require_kernel_version">A kernel frissítése szükséges. Érintse meg a telepítéshez.</string>
     <string name="settings_umount_modules_default">Modulok leválasztása alapértelmezetten</string>
     <string name="settings_umount_modules_default_summary">Globális alapértelmezés a \"Modulok leválasztása\" beállításhoz a App Profile-ban. Ha engedélyezve van, a modul módosításai törlődnek a profil nélküli alkalmazásoknál. Ez a beállítás alapértelmezés szerint ki van kapcsolva, így az új vagy ismeretlen alkalmazások megtartják a modul módosításait.</string>

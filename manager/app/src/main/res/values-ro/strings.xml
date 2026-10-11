@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">Context SELinux</string>
     <string name="profile_umount_modules">Module u-montate</string>
     <string name="failed_to_update_app_profile">Nu s-a putut actualiza profilul aplicației pentru %s</string>
-    <string name="set_as_dynamic_manager">Setează ca administrator dinamic</string>
-    <string name="set_as_dynamic_manager_summary">Păstrează semnătura acestei aplicații și o consideră de încredere ca administrator dinamic</string>
-    <string name="dynamic_manager_set_failed">Setarea %s ca administrator dinamic a eșuat</string>
-    <string name="dynamic_manager_del_failed">Eliminarea %s din administratorii dinamici a eșuat</string>
-    <string name="dynamic_manager_signature_unavailable">Nu s-a putut extrage semnătura administratorului dinamic pentru %s</string>
     <string name="require_kernel_version">Este necesară actualizarea kernelului. Atingeți pentru instalare.</string>
     <string name="settings_umount_modules_default">U-montează modulele în mod implicit</string>
     <string name="settings_umount_modules_default_summary">Implicit global pentru setarea „Demontare module” din App Profile. Când este activată, modificările modulelor sunt eliminate pentru aplicațiile fără profil. Această setare este dezactivată în mod implicit, așa că aplicațiile noi sau necunoscute păstrează modificările modulelor.</string>

@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">Konteksto ng SELinux</string>
     <string name="profile_umount_modules">I-unmount ang mga modyul</string>
     <string name="failed_to_update_app_profile">Nabigong i-update ang App Profile para sa %s</string>
-    <string name="set_as_dynamic_manager">Itakda bilang dynamic manager</string>
-    <string name="set_as_dynamic_manager_summary">Panatilihin ang signature ng app na ito at pagkatiwalaan ito bilang dynamic manager</string>
-    <string name="dynamic_manager_set_failed">Nabigong itakda ang %s bilang dynamic manager</string>
-    <string name="dynamic_manager_del_failed">Nabigong alisin ang %s mula sa mga dynamic manager</string>
-    <string name="dynamic_manager_signature_unavailable">Hindi ma-extract ang dynamic manager signature para sa %s</string>
     <string name="require_kernel_version">Kailangang i-update ang kernel. I-tap para i-install.</string>
     <string name="settings_umount_modules_default">I-umount ang mga module bilang default</string>
     <string name="settings_umount_modules_default_summary">Global default para sa setting na \"I-unmount ang mga module\" sa App Profile. Kapag pinagana, aalisin ang mga pagbabago sa module para sa mga app na walang profile. Naka-off ang setting na ito bilang default, kaya ang mga bago o hindi kilalang app ay nagpapanatili ng mga pagbabago sa module.</string>

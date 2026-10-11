@@ -90,11 +90,7 @@ fun AppProfileScreen(
     val failToUpdateAppProfile = stringResource(R.string.failed_to_update_app_profile).format(appInfo.label)
     val failToUpdateSepolicy = stringResource(R.string.failed_to_update_sepolicy).format(appInfo.label)
     val suNotAllowed = stringResource(R.string.su_not_allowed).format(appInfo.label)
-    val failedToSetDynamicManager = stringResource(R.string.dynamic_manager_set_failed).format(appInfo.label)
-    val failedToDelDynamicManager = stringResource(R.string.dynamic_manager_del_failed).format(appInfo.label)
-    val dynamicManagerSignatureUnavailable = stringResource(R.string.dynamic_manager_signature_unavailable).format(appInfo.label)
 
-    val packageName = appInfo.packageName
     val profileKey = appInfo.profileKey
     val uidApps = SuperUserViewModel.appGroups
         .firstOrNull { it.uid == appInfo.uid }
@@ -109,35 +105,6 @@ fun AppProfileScreen(
     }
     var profile by rememberSaveable {
         mutableStateOf(initialProfile)
-    }
-    var dynamicManagerChecked by rememberSaveable(packageName, appInfo.uid) {
-        mutableStateOf(false)
-    }
-    var dynamicManagerFlags by rememberSaveable(packageName, appInfo.uid) {
-        mutableIntStateOf(0)
-    }
-    var dynamicManagerBusy by rememberSaveable(packageName, appInfo.uid) {
-        mutableStateOf(false)
-    }
-    var dynamicManagerSignature by remember(packageName, appInfo.uid) {
-        mutableStateOf<KsuCli.DynamicManagerSignature?>(null)
-    }
-
-    LaunchedEffect(packageName, appInfo.uid) {
-        val flags = KsuCli.getDynamicManagerFlagsForUid(appInfo.uid)
-        dynamicManagerFlags = flags
-        val trusted = flags and Natives.DYNAMIC_MANAGER_FLAG_TRUSTED != 0
-        dynamicManagerChecked = trusted
-        dynamicManagerSignature = if (trusted) {
-            KsuCli.getDynamicManagerSignatureForUid(appInfo.uid)
-        } else {
-            null
-        }
-    }
-
-    val showDynamicManagerSwitch = remember(dynamicManagerFlags, dynamicManagerChecked) {
-        dynamicManagerChecked ||
-            dynamicManagerFlags and Natives.DYNAMIC_MANAGER_FLAG_PRESET != 0
     }
 
     Scaffold(
@@ -170,9 +137,6 @@ fun AppProfileScreen(
                 )
             },
             profile = profile,
-            showDynamicManagerSwitch = showDynamicManagerSwitch,
-            isDynamicManager = dynamicManagerChecked,
-            dynamicManagerEnabled = !dynamicManagerBusy,
             onViewTemplate = {
                 getTemplateInfoById(it)?.let { info ->
                     navigator.navigate(TemplateEditorScreenDestination(info))
@@ -205,38 +169,6 @@ fun AppProfileScreen(
                     }
                 }
             },
-            onDynamicManagerChange = { checked ->
-                scope.launch {
-                    dynamicManagerBusy = true
-                    try {
-                        if (checked) {
-                            if (KsuCli.setDynamicManagerUid(appInfo.uid)) {
-                                dynamicManagerSignature = KsuCli.getDynamicManagerSignatureForUid(appInfo.uid)
-                                dynamicManagerChecked = true
-                                superUserViewModel.refreshAppConfigurations()
-                            } else {
-                                snackBarHost.showSnackbar(failedToSetDynamicManager)
-                            }
-                        } else {
-                            val signature = dynamicManagerSignature
-                                ?: KsuCli.getDynamicManagerSignatureForUid(appInfo.uid)
-                            if (signature == null) {
-                                snackBarHost.showSnackbar(dynamicManagerSignatureUnavailable)
-                                return@launch
-                            }
-                            if (KsuCli.deleteDynamicManager(signature)) {
-                                dynamicManagerSignature = signature
-                                dynamicManagerChecked = false
-                                superUserViewModel.refreshAppConfigurations()
-                            } else {
-                                snackBarHost.showSnackbar(failedToDelDynamicManager)
-                            }
-                        }
-                    } finally {
-                        dynamicManagerBusy = false
-                    }
-                }
-            },
         )
     }
 }
@@ -250,13 +182,9 @@ private fun AppProfileInner(
     uidApps: List<SuperUserViewModel.AppInfo>,
     appIcon: @Composable () -> Unit,
     profile: Natives.Profile,
-    showDynamicManagerSwitch: Boolean = false,
-    isDynamicManager: Boolean = false,
-    dynamicManagerEnabled: Boolean = true,
     onViewTemplate: (id: String) -> Unit = {},
     onManageTemplate: () -> Unit = {},
     onProfileChange: (Natives.Profile) -> Unit,
-    onDynamicManagerChange: (Boolean) -> Unit = {},
 ) {
     val isRootGranted = profile.allowSu
     val cardColors = getCardColors(MaterialTheme.colorScheme.surfaceContainerLow)
@@ -338,26 +266,6 @@ private fun AppProfileInner(
                     checked = isRootGranted,
                     onCheckedChange = { onProfileChange(profile.copy(allowSu = it)) },
                 )
-            }
-
-            if (showDynamicManagerSwitch) {
-                ProfileSurface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = cardColors,
-                    elevation = getCardElevation(),
-                ) {
-                    SwitchItem(
-                        icon = Icons.Filled.AdminPanelSettings,
-                        title = stringResource(id = R.string.set_as_dynamic_manager),
-                        summary = stringResource(id = R.string.set_as_dynamic_manager_summary),
-                        checked = isDynamicManager,
-                        enabled = dynamicManagerEnabled,
-                        onCheckedChange = onDynamicManagerChange,
-                    )
-                }
             }
 
             Crossfade(

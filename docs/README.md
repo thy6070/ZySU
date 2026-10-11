@@ -10,7 +10,7 @@ ZySU is an Android root solution derived from [SukiSU-Ultra](https://github.com/
 
 ## What is implemented
 
-- Kernel `su`, per-app authorization and profiles, Manager signature verification, dynamic Managers, and SuperKey authentication.
+- Kernel `su`, per-app authorization and profiles, Manager signature verification and SuperKey authentication bound to the ZySU package.
 - Module installation, enable/disable/removal, boot scripts, module WebUI, and repository management.
 - Built-in **SUMHP** mount control with OverlayFS, Magic Mount, SUMH, and no-mount modes. `auto` tries suitable OverlayFS mounting before Magic Mount; SUMH requires an explicit selection. External MetaModule lifecycle interfaces are retained.
 - SUMH path and mount-view controls, runtime status, and diagnostics. Availability depends on the running kernel and device.

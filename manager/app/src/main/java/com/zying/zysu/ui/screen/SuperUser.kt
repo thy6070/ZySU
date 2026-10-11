@@ -50,7 +50,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -106,7 +105,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 enum class AppPriority(val value: Int) {
-    DYNAMIC_MANAGER(0), SHELL(1), ROOT(2), CUSTOM(3), DEFAULT(4)
+    SHELL(0), ROOT(1), CUSTOM(2), DEFAULT(3)
 }
 
 data class BottomSheetMenuItem(
@@ -175,22 +174,20 @@ internal fun SuperUserPage(
         // 按分类筛选
         groups = when (viewModel.selectedCategory) {
             AppCategory.ALL -> groups
-            AppCategory.ROOT -> groups.filter { it.allowSu || it.isDynamicManager }
-            AppCategory.CUSTOM -> groups.filter { !it.allowSu && !it.isDynamicManager && it.hasCustomProfile }
-            AppCategory.DEFAULT -> groups.filter { !it.allowSu && !it.isDynamicManager && !it.hasCustomProfile }
+            AppCategory.ROOT -> groups.filter { it.allowSu }
+            AppCategory.CUSTOM -> groups.filter { !it.allowSu && it.hasCustomProfile }
+            AppCategory.DEFAULT -> groups.filter { !it.allowSu && !it.hasCustomProfile }
         }
 
         // 排序
         groups.sortedWith { group1, group2 ->
             val priority1 = when {
-                group1.isDynamicManager -> AppPriority.DYNAMIC_MANAGER
                 group1.uid == SuperUserViewModel.SHELL_UID -> AppPriority.SHELL
                 group1.allowSu -> AppPriority.ROOT
                 group1.hasCustomProfile -> AppPriority.CUSTOM
                 else -> AppPriority.DEFAULT
             }
             val priority2 = when {
-                group2.isDynamicManager -> AppPriority.DYNAMIC_MANAGER
                 group2.uid == SuperUserViewModel.SHELL_UID -> AppPriority.SHELL
                 group2.allowSu -> AppPriority.ROOT
                 group2.hasCustomProfile -> AppPriority.CUSTOM
@@ -220,9 +217,9 @@ internal fun SuperUserPage(
     val appCounts = remember(viewModel.appGroupList, viewModel.showSystemApps) {
         mapOf(
             AppCategory.ALL to viewModel.appGroupList.size,
-            AppCategory.ROOT to viewModel.appGroupList.count { it.allowSu || it.isDynamicManager },
-            AppCategory.CUSTOM to viewModel.appGroupList.count { !it.allowSu && !it.isDynamicManager && it.hasCustomProfile },
-            AppCategory.DEFAULT to viewModel.appGroupList.count { !it.allowSu && !it.isDynamicManager && !it.hasCustomProfile }
+            AppCategory.ROOT to viewModel.appGroupList.count { it.allowSu },
+            AppCategory.CUSTOM to viewModel.appGroupList.count { !it.allowSu && it.hasCustomProfile },
+            AppCategory.DEFAULT to viewModel.appGroupList.count { !it.allowSu && !it.hasCustomProfile }
         )
     }
 
@@ -1070,10 +1067,8 @@ private fun AppGroupItem(
     viewModel: SuperUserViewModel,
 ) {
     val mainApp = appGroup.mainApp
-    val managerContainerColor = when {
+    val containerColor = when {
         isSelected -> MaterialTheme.colorScheme.secondaryContainer
-        appGroup.isDynamicManager -> lerp(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.primaryContainer, 0.22f)
-        appGroup.isPresetManager -> lerp(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.tertiaryContainer, 0.16f)
         else -> MaterialTheme.colorScheme.surfaceContainerLow
     }
 
@@ -1096,8 +1091,8 @@ private fun AppGroupItem(
         AppGroupListItemLayout(
             onClick = onClick,
             onLongClick = onLongClick,
-            classicContainerColor = managerContainerColor,
-            expressiveContainerColor = managerContainerColor,
+            classicContainerColor = containerColor,
+            expressiveContainerColor = containerColor,
             headlineContent = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
@@ -1106,23 +1101,6 @@ private fun AppGroupItem(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (appGroup.isDynamicManager || appGroup.isPresetManager) {
-                        LabelItem(
-                            text = if (appGroup.isDynamicManager) "DYNAMIC KSU" else "KSU",
-                            style = LabelItemDefaults.style.copy(
-                                containerColor = if (appGroup.isDynamicManager) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.tertiary
-                                },
-                                contentColor = if (appGroup.isDynamicManager) {
-                                    MaterialTheme.colorScheme.onPrimary
-                                } else {
-                                    MaterialTheme.colorScheme.onTertiary
-                                },
-                            )
-                        )
-                    }
                 }
             },
             supportingContent = {
@@ -1145,15 +1123,6 @@ private fun AppGroupItem(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        if (appGroup.isDynamicManager) {
-                            LabelItem(
-                                text = "ACTIVE",
-                                style = LabelItemDefaults.style.copy(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                )
-                            )
-                        }
                         if (appGroup.allowSu) {
                             LabelItem(text = "ROOT")
                         } else {

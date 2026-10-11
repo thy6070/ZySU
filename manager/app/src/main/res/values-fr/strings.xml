@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">Contexte SELinux</string>
     <string name="profile_umount_modules">Démonter les modules</string>
     <string name="failed_to_update_app_profile">Échec de la modification du profil d\'application de %s</string>
-    <string name="set_as_dynamic_manager">Définir comme gestionnaire dynamique</string>
-    <string name="set_as_dynamic_manager_summary">Conserver la signature de cette application et lui faire confiance en tant que gestionnaire dynamique</string>
-    <string name="dynamic_manager_set_failed">Impossible de définir %s comme gestionnaire dynamique</string>
-    <string name="dynamic_manager_del_failed">Impossible de retirer %s des gestionnaires dynamiques</string>
-    <string name="dynamic_manager_signature_unavailable">Impossible d\'extraire la signature du gestionnaire dynamique pour %s</string>
     <string name="require_kernel_version">Mise à jour du noyau requise. Appuyez pour installer.</string>
     <string name="settings_umount_modules_default">Démonter les modules par défaut</string>
     <string name="settings_umount_modules_default_summary">Valeur par défaut globale pour le paramètre \"Démonter les modules\" au App Profile. Lorsqu\'elles sont activées, les modifications du module sont supprimées pour les applications sans profil. Ce paramètre est désactivé par défaut, donc les applications nouvelles ou inconnues conservent les modifications du module.</string>

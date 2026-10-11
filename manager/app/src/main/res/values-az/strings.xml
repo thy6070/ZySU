@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">SELinux konteksi</string>
     <string name="profile_umount_modules">Modulları umount et</string>
     <string name="failed_to_update_app_profile">%s görə tətbiq profillərini güncəlləmək mümkün olmadı</string>
-    <string name="set_as_dynamic_manager">Dinamik menecer olaraq təyin et</string>
-    <string name="set_as_dynamic_manager_summary">Bu tətbiqin imzasını qalıcı edin və dinamik menecer olaraq etibar edin</string>
-    <string name="dynamic_manager_set_failed">%s dinamik menecer olaraq təyin edilə bilmədi</string>
-    <string name="dynamic_manager_del_failed">%s dinamik menecerlərdən silinə bilmədi</string>
-    <string name="dynamic_manager_signature_unavailable">%s üçün dinamik menecer imzası çıxarıla bilmədi</string>
     <string name="require_kernel_version">Nüvəni yeniləmək lazımdır. Quraşdırmaq üçün toxunun.</string>
     <string name="settings_umount_modules_default">Defolt olaraq modulları umount et</string>
     <string name="settings_umount_modules_default_summary">App Profile-da \"Modulları ayırmaq\" parametri üçün qlobal standart. Aktiv edildikdə, modul dəyişiklikləri profili olmayan tətbiqlər üçün silinir. Bu parametr defolt olaraq deaktivdir, ona görə də yeni və ya naməlum proqramlar modul dəyişikliklərini saxlayır.</string>

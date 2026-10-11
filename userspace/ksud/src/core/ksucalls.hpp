@@ -28,8 +28,6 @@ using GetSulogFdCmd = ksu_get_sulog_fd_cmd;
 using ManageMarkCmd = ksu_manage_mark_cmd;
 using NukeExt4SysfsCmd = ksu_nuke_ext4_sysfs_cmd;
 using AddTryUmountCmd = ksu_add_try_umount_cmd;
-using DynamicManagerSign = ksu_dynamic_manager_sign;
-using DynamicManagerCmd = ksu_dynamic_manager_cmd;
 
 // ZySU-only: list umount ioctl (not in upstream uapi)
 struct ListTryUmountCmd {
@@ -90,7 +88,6 @@ int mark_refresh();
 
 int nuke_ext4_sysfs(const std::string& mnt);
 int set_init_pgrp();
-int set_dynamic_managers(const std::vector<DynamicManagerSign>& signs);
 
 // Umount list management
 int umount_list_wipe();

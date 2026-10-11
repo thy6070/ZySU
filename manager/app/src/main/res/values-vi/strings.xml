@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">Bối cảnh SELinux</string>
     <string name="profile_umount_modules">Tháo gắn kết module</string>
     <string name="failed_to_update_app_profile">Cập nhật Hồ sơ ứng dụng cho %s thất bại</string>
-    <string name="set_as_dynamic_manager">Đặt làm trình quản lý động</string>
-    <string name="set_as_dynamic_manager_summary">Lưu giữ chữ ký của ứng dụng này và tin cậy nó như một trình quản lý động</string>
-    <string name="dynamic_manager_set_failed">Không thể đặt %s làm trình quản lý động</string>
-    <string name="dynamic_manager_del_failed">Không thể xóa %s khỏi các trình quản lý động</string>
-    <string name="dynamic_manager_signature_unavailable">Không thể trích xuất chữ ký trình quản lý động cho %s</string>
     <string name="require_kernel_version">Cần cập nhật Kernel. Nhấn để cài đặt.</string>
     <string name="settings_umount_modules_default">Umount modules</string>
     <string name="settings_umount_modules_default_summary">Giá trị mặc định toàn cục của tùy chọn \"Ngắt kết nối mô-đun\" trong Hồ sơ ứng dụng. Khi bật, các thay đổi của mô-đun sẽ bị loại bỏ đối với ứng dụng chưa có hồ sơ. Tùy chọn này mặc định tắt, vì vậy ứng dụng mới hoặc chưa xác định vẫn giữ các thay đổi của mô-đun.</string>

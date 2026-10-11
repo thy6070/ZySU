@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">הקשר SELinux</string>
     <string name="profile_umount_modules">הסרת טעינת מודולים</string>
     <string name="failed_to_update_app_profile">נכשל עדכון פרופיל האפליקציה עבור %s</string>
-    <string name="set_as_dynamic_manager">הגדר כמנהל דינמי</string>
-    <string name="set_as_dynamic_manager_summary">שמור את חתימת האפליקציה הזו ותן בה אמון כמנהל דינמי</string>
-    <string name="dynamic_manager_set_failed">הגדרת %s כמנהל דינמי נכשלה</string>
-    <string name="dynamic_manager_del_failed">הסרת %s מהמנהלים הדינמיים נכשלה</string>
-    <string name="dynamic_manager_signature_unavailable">לא ניתן לחלץ את חתימת המנהל הדינמי עבור %s</string>
     <string name="require_kernel_version">יש לעדכן את הליבה. הקש כדי להתקין.</string>
     <string name="settings_umount_modules_default">טעינת מודולים כברירת מחדל</string>
     <string name="settings_umount_modules_default_summary">ברירת מחדל עולמית עבור ההגדרה \"ביטול מודולים\" ב-App Profile. כאשר מופעל, שינויים במודול יוסרו עבור אפליקציות ללא פרופיל. הגדרה זו כבויה כברירת מחדל, כך שאפליקציות חדשות או לא ידועות שומרות על שינויים במודול.</string>

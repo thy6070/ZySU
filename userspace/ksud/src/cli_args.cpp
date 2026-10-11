@@ -297,19 +297,6 @@ const std::vector<Command>& commands() {
         {"sumhp recovery", "Manage mount recovery state", "<COMMAND>"},
         {"sumhp recovery status", "Read recovery state", ""},
         {"sumhp recovery reset", "Reset recovery state", ""},
-        {"dynamic", "Manage dynamic manager signatures", "<COMMAND>"},
-        {"dynamic get-sign",
-         "Read the signature of an APK or UID",
-         "[APK]",
-         0,
-         1,
-         {kJson, {"--uid", "", "UID", ""}}},
-        {"dynamic set-hash", "Add a manager signature", "<SIZE> <HASH>", 2, 2},
-        {"dynamic set-apk", "Add a manager APK", "<APK>", 1, 1},
-        {"dynamic set-uid", "Add a manager by UID", "<UID>", 1, 1},
-        {"dynamic list", "List dynamic manager signatures", ""},
-        {"dynamic del", "Delete a manager signature", "<SIZE> <HASH>", 2, 2},
-        {"dynamic clear", "Clear dynamic manager signatures", ""},
     };
     return specs;
 }

@@ -38,12 +38,11 @@ static inline bool superkey_is_signature_bypassed(void)
 }
 
 void superkey_init(void);
-int superkey_authenticate(const char __user *user_key);
-void superkey_set_manager_uid(uid_t uid);
+int superkey_authenticate(const char *key);
 bool superkey_is_manager(void);
 void superkey_invalidate(void);
 uid_t superkey_get_manager_uid(void);
 void superkey_on_auth_fail(void);
-void superkey_on_auth_success(uid_t uid);
+bool superkey_on_auth_success(uid_t uid);
 
 #endif // #ifndef __KSU_SUPERKEY_H

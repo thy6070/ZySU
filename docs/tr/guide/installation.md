@@ -44,9 +44,9 @@ CLI'de `boot-patch --out` bir dizin, `boot-patch-v2 --output` ise dosya alır. A
 
 ## Kimlik doğrulama ve ilk açılış
 
-SuperKey ayarlanmadıysa Manager imza yapılandırmasına göre tanınır. Kendi imzanızla ürettiğiniz APK için uygun LKM güven yapılandırması gerekir; [entegrasyon kılavuzuna](how-to-integrate.md) bakın.
+Manager kimlik doğrulaması, derleme sırasında belirlenen tek paketle sınırlıdır; varsayılan paket `com.zying.zysu` değeridir. SuperKey ayarlanmadıysa APK sertifikası, modülde yapılandırılan sertifikayla eşleşmelidir. Kendi imzanızla ürettiğiniz APK için uygun LKM güven yapılandırması gerekir; [entegrasyon kılavuzuna](how-to-integrate.md) bakın.
 
-SuperKey ayarlandıysa kurulumda belirlenen anahtarı kullanın. İmza atlama seçeneği, Manager için yalnızca SuperKey doğrulamasını seçer; Linux modül imza denetimini kapatmaz. “Shell'e izin ver”, Android shell UID'sinin root istemesine izin verir; adbd seçeneğinden ayrıdır.
+SuperKey ayarlandıysa kurulumda belirlenen anahtarı kullanın. İmza atlama seçeneği, Manager sertifika denetimini atlar ancak paket kısıtlamasını korur; Linux modül imza denetimini kapatmaz. “Shell'e izin ver”, Android shell UID'sinin root istemesine izin verir; adbd seçeneğinden ayrıdır.
 
 Yeniden başlattıktan sonra çekirdeğin tanındığını, kimlik doğrulamayı, UAPI uyumunu ve ksud sürümünü kontrol edin. Gerekirse ksud kartından paketlenen programı eşitleyin. SUMHP yerleşiktir: `auto` uygun OverlayFS'yi, ardından Magic Mount'u seçer; SUMH açıkça seçilir. OverlayFS / Magic Mount değişiklikleri genellikle yeniden başlatma gerektirir.
 

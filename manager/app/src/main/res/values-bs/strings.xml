@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">SELinux kontekst</string>
     <string name="profile_umount_modules">Umount module</string>
     <string name="failed_to_update_app_profile">Ažuriranje Profila Aplikacije za %s nije uspjelo</string>
-    <string name="set_as_dynamic_manager">Postavi kao dinamički upravitelj</string>
-    <string name="set_as_dynamic_manager_summary">Zadrži potpis ove aplikacije i vjeruj joj kao dinamičkom upravitelju</string>
-    <string name="dynamic_manager_set_failed">Postavljanje %s kao dinamičkog upravitelja nije uspjelo</string>
-    <string name="dynamic_manager_del_failed">Uklanjanje %s iz dinamičkih upravitelja nije uspjelo</string>
-    <string name="dynamic_manager_signature_unavailable">Nije moguće izvući potpis dinamičkog upravitelja za %s</string>
     <string name="require_kernel_version">Potrebno je ažurirati kernel. Dodirnite za instaliranje.</string>
     <string name="settings_umount_modules_default">Umount module po zadanom</string>
     <string name="settings_umount_modules_default_summary">Globalno zadano za postavku \"Unmount modules\" u App Profile. Kada je omogućeno, modifikacije modula se uklanjaju za aplikacije bez profila. Ova postavka je isključena prema zadanim postavkama, tako da nove ili nepoznate aplikacije zadržavaju modifikacije modula.</string>

@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">SELinux context</string>
     <string name="profile_umount_modules">Nyahlekap modul</string>
     <string name="failed_to_update_app_profile">Gagal mengemas kini profil aplikasi untuk %s</string>
-    <string name="set_as_dynamic_manager">Tetapkan sebagai pengurus dinamik</string>
-    <string name="set_as_dynamic_manager_summary">Kekalkan tandatangan aplikasi ini dan percayai ia sebagai pengurus dinamik</string>
-    <string name="dynamic_manager_set_failed">Gagal menetapkan %s sebagai pengurus dinamik</string>
-    <string name="dynamic_manager_del_failed">Gagal mengalih keluar %s daripada pengurus dinamik</string>
-    <string name="dynamic_manager_signature_unavailable">Tidak dapat mengekstrak tandatangan pengurus dinamik untuk %s</string>
     <string name="require_kernel_version">Kernel perlu dikemas kini. Ketik untuk memasang.</string>
     <string name="settings_umount_modules_default">Nyahlekap modul secara lalai</string>
     <string name="settings_umount_modules_default_summary">Lalai global untuk tetapan \"Nyahlekap modul\" dalam App Profile. Apabila didayakan, pengubahsuaian modul dialih keluar untuk apl tanpa profil. Tetapan ini dimatikan secara lalai, jadi apl baharu atau tidak diketahui menyimpan pengubahsuaian modul.</string>

@@ -78,7 +78,7 @@ Other queries are `boot-info is-ab-device`, `boot-info slot-suffix [--ota]` and 
 | `--kmi <KMI>` | Override KMI for asset selection |
 | `--backup` | Back up the stock image |
 | `-s`, `--superkey <KEY>` | Set SuperKey |
-| `--signature-bypass` | With SuperKey, select key-only manager authentication instead of APK signature + key |
+| `--signature-bypass` | With SuperKey, skip the configured Manager's certificate check; its package restriction still applies |
 | `--allow-shell` | Allow Android shell UID to request root with the default profile |
 | `--no-custom-rc` | Skip custom init.rc injection |
 | `--enable-adbd` | Enable the adbd root setup |
@@ -102,7 +102,7 @@ ksud boot-patch-v2 --flash --ota
 
 File mode requires `--boot` (`-b`) and `--output` (`-o`, or `--out`); here the output is a **file**. Device mode uses `--flash`, optionally `--ota`, and rejects explicit input/output paths. `--ota` requires `--flash`. This path needs a supported AOSP **boot image containing a kernel** and rejects `init_boot` and `vendor_boot` as patch targets.
 
-Additional options are `--module` / `-m`, `--superkey`, `--signature-bypass`, `--allow-shell`, `--enable-adbd`, `--magiskboot`, `--force` and `--no-reuse`. `--force` permits replacing an existing output, never an input. `--no-reuse` forces full kernel analysis instead of reusing compatible injection metadata. In both patch paths, `--signature-bypass` selects SuperKey-only manager authentication; without `--superkey`, it emits a warning and is ignored. It does not bypass Linux module-signature verification.
+Additional options are `--module` / `-m`, `--superkey`, `--signature-bypass`, `--allow-shell`, `--enable-adbd`, `--magiskboot`, `--force` and `--no-reuse`. `--force` permits replacing an existing output, never an input. `--no-reuse` forces full kernel analysis instead of reusing compatible injection metadata. In both patch paths, `--signature-bypass` selects SuperKey-only authentication for the configured Manager package, normally `com.zying.zysu`; without `--superkey`, it emits a warning and is ignored. It does not bypass the package restriction or Linux module-signature verification.
 
 `boot-restore` accepts `--boot` / `-b`, `--flash` / `-f`, `--out-name` and `--magiskboot`. It uses available restore data; retain the original firmware image for recovery.
 
@@ -170,7 +170,7 @@ Legacy state migration runs before daemon startup or kernel-build restoration. M
 
 `SLOT` accepts `a`, `b`, `_a`, `_b`; omission selects the current slot. `flash image` and `flash ak3` do not require an additional `--flash` flag.
 
-Other command families are `sepolicy patch|check <POLICY>`, `sepolicy apply <FILE>`, `profile get-sepolicy|set-sepolicy|get-template|set-template|delete-template|list-templates`, `dynamic get-sign|set-hash|set-apk|set-uid|list|del|clear`, `su-path get|set|reset`, and `debug set-manager|su|version|info|mark|sulogd`. Consult subcommand help for operands. `dynamic get-sign` takes exactly one APK path or `--uid <UID>` and supports `--json`; signature hashes contain 64 hex digits. `su-path set <ABSOLUTE-PATH>` supports `--json`.
+Other command families are `sepolicy patch|check <POLICY>`, `sepolicy apply <FILE>`, `profile get-sepolicy|set-sepolicy|get-template|set-template|delete-template|list-templates`, `su-path get|set|reset`, and `debug set-manager|su|version|info|mark|sulogd`. Consult subcommand help for operands. `su-path set <ABSOLUTE-PATH>` supports `--json`.
 
 `post-fs-data`, `services`, `boot-completed`, `initrc refresh` and `sulogd` are boot/runtime integration entry points.
 

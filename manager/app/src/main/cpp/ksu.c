@@ -73,8 +73,7 @@ static inline int request_driver_fd_via_prctl() {
 
   /*
    * Ask kernel for a dedicated KSU driver fd when none is inherited.
-   * This is required for manager coexistence, where one manager process
-   * may not have an existing [ksu_driver] fd to scan from /proc/self/fd.
+   * A manager process may start without an inherited [ksu_driver] fd.
    */
   long ret = prctl(KSU_PRCTL_GET_FD, &cmd, 0, 0, 0);
   (void)ret;
@@ -191,17 +190,6 @@ bool uid_should_umount(int uid) {
     return cmd.should_umount;
   }
   return false;
-}
-
-uint32_t get_dynamic_managers(struct ksu_dynamic_manager_app *apps,
-                              uint32_t max_count) {
-  struct ksu_get_dynamic_managers_cmd cmd = {};
-  cmd.count = max_count;
-  cmd.apps = (uint64_t)(uintptr_t)apps;
-  if (ksuctl(KSU_IOCTL_GET_DYNAMIC_MANAGERS, &cmd) == 0) {
-    return cmd.count;
-  }
-  return 0;
 }
 
 bool set_app_profile(const struct app_profile *profile) {

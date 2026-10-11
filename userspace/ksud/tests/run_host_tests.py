@@ -39,6 +39,7 @@ def main():
             ("boot_copy_test", []),
             ("kernel_version_test", []),
             ("su_args_test", [src / "su_args.cpp"]),
+            ("cli_args_test", [src / "cli_args.cpp", src / "terminal.cpp"]),
             ("xperm_parser_test", [src / "sepolicy/xperm_parser.cpp"]),
             ("boot_image_btf_test", [src / "boot/boot_image_btf.cpp"]),
         ]
@@ -46,6 +47,9 @@ def main():
             binary = build / (name + (".exe" if os.name == "nt" else ""))
             extra_flags = (["-fsanitize=address,undefined", "-fno-omit-frame-pointer"]
                            if args.sanitize else [])
+            if name == "cli_args_test":
+                # The command table value-initializes omitted optional fields.
+                extra_flags.append("-Wno-missing-field-initializers")
             command = [*compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
                        *extra_flags,
                        "-I" + str(build), "-I" + str(src), str(tests / (name + ".cpp")),

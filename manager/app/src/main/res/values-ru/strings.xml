@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">Контекст SELinux</string>
     <string name="profile_umount_modules">Размонтировать модули</string>
     <string name="failed_to_update_app_profile">Не удалось обновить профиль приложения для %s</string>
-    <string name="set_as_dynamic_manager">Назначить динамическим менеджером</string>
-    <string name="set_as_dynamic_manager_summary">Сохранить подпись этого приложения и доверять ему как динамическому менеджеру</string>
-    <string name="dynamic_manager_set_failed">Не удалось назначить %s динамическим менеджером</string>
-    <string name="dynamic_manager_del_failed">Не удалось удалить %s из динамических менеджеров</string>
-    <string name="dynamic_manager_signature_unavailable">Не удалось извлечь подпись динамического менеджера для %s</string>
     <string name="require_kernel_version">Требуется обновить ядро. Нажмите, чтобы установить.</string>
     <string name="settings_umount_modules_default">Размонтировать модули по умолчанию</string>
     <string name="settings_umount_modules_default_summary">Глобальное значение по умолчанию для настройки «Отключить модули» в App Profile. Если этот параметр включен, изменения модуля удаляются для приложений без профиля. По умолчанию этот параметр отключен, поэтому новые или неизвестные приложения сохраняют изменения модуля.</string>

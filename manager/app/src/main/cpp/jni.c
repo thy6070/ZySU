@@ -349,22 +349,16 @@ NativeBridge(readAppProfile, jobject, jint uid) {
 }
 
 NativeBridgeNP(getProtectedProfileAppIds, jintArray) {
-  struct ksu_dynamic_manager_app apps[KSU_DYNAMIC_MANAGER_MAX_APPS] = {};
-  struct ksu_get_dynamic_managers_cmd cmd = {};
-  cmd.count = KSU_DYNAMIC_MANAGER_MAX_APPS;
-  cmd.apps = (uint64_t)(uintptr_t)apps;
-  if (ksu_sumh_ioctl(KSU_IOCTL_GET_DYNAMIC_MANAGERS, &cmd) != 0 ||
-      cmd.count > KSU_DYNAMIC_MANAGER_MAX_APPS ||
-      cmd.count != cmd.total_count) {
-    profile_read_error(env, "Cannot verify protected manager UIDs");
+  struct ksu_get_manager_appid_cmd cmd = {};
+  if (ksu_sumh_ioctl(KSU_IOCTL_GET_MANAGER_APPID, &cmd) != 0 ||
+      cmd.appid == 0 || cmd.appid >= 100000) {
+    profile_read_error(env, "Cannot verify protected manager UID");
     return NULL;
   }
-  jint ids[KSU_DYNAMIC_MANAGER_MAX_APPS] = {};
-  for (uint32_t i = 0; i < cmd.count; ++i)
-    ids[i] = apps[i].appid;
-  jintArray result = GetEnvironment()->NewIntArray(env, cmd.count);
+  jint appid = (jint)cmd.appid;
+  jintArray result = GetEnvironment()->NewIntArray(env, 1);
   if (result)
-    GetEnvironment()->SetIntArrayRegion(env, result, 0, cmd.count, ids);
+    GetEnvironment()->SetIntArrayRegion(env, result, 0, 1, &appid);
   return result;
 }
 
@@ -505,27 +499,6 @@ NativeBridge(setAppProfile, jboolean, jobject profile) {
 
 NativeBridge(uidShouldUmount, jboolean, jint uid) {
   return uid_should_umount(uid);
-}
-
-NativeBridgeNP(getDynamicManagers, jintArray) {
-  struct ksu_dynamic_manager_app apps[KSU_DYNAMIC_MANAGER_MAX_APPS] = {};
-  uint32_t count = get_dynamic_managers(apps, KSU_DYNAMIC_MANAGER_MAX_APPS);
-  jsize array_size = (jsize)(count * 2);
-  jintArray array = GetEnvironment()->NewIntArray(env, array_size);
-
-  if (!array || !count) {
-    return array;
-  }
-
-  jint flattened[KSU_DYNAMIC_MANAGER_MAX_APPS * 2] = {};
-  for (uint32_t i = 0; i < count; i++) {
-    const size_t offset = (size_t)i * 2;
-    flattened[offset] = (jint)apps[i].appid;
-    flattened[offset + 1] = (jint)apps[i].flags;
-  }
-
-  GetEnvironment()->SetIntArrayRegion(env, array, 0, array_size, flattened);
-  return array;
 }
 
 NativeBridgeNP(isKernelUmountEnabled, jboolean) {

@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">SELinux kontekst</string>
     <string name="profile_umount_modules">Lahtihaagitud moodulid</string>
     <string name="failed_to_update_app_profile">Rakenduseprofiili uuendamine %s jaoks ebaõnnestus</string>
-    <string name="set_as_dynamic_manager">Määra dünaamiliseks halduriks</string>
-    <string name="set_as_dynamic_manager_summary">Säilita selle rakenduse allkiri ja usalda seda dünaamilise haldurina</string>
-    <string name="dynamic_manager_set_failed">%s määramine dünaamiliseks halduriks ebaõnnestus</string>
-    <string name="dynamic_manager_del_failed">%s eemaldamine dünaamiliste haldurite hulgast ebaõnnestus</string>
-    <string name="dynamic_manager_signature_unavailable">Ei õnnestunud eraldada %s dünaamilise halduri allkirja</string>
     <string name="require_kernel_version">Kerneli värskendamine on vajalik. Puuduta installimiseks.</string>
     <string name="settings_umount_modules_default">Haagi moodulid vaikimisi lahti</string>
     <string name="settings_umount_modules_default_summary">Globaalne vaikeseade App Profile sätte \"Unmount moodulid\" jaoks. Kui see on lubatud, eemaldatakse profiilita rakenduste mooduli muudatused. See seade on vaikimisi välja lülitatud, nii et uued või tundmatud rakendused säilitavad mooduli muudatused.</string>

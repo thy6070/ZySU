@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">SELinux context</string>
     <string name="profile_umount_modules">جداکردن ماژول ها</string>
     <string name="failed_to_update_app_profile">به‌روزرسانی پروفایل برنامه برای %s انجام نشد</string>
-    <string name="set_as_dynamic_manager">تنظیم به‌عنوان مدیر پویا</string>
-    <string name="set_as_dynamic_manager_summary">امضای این برنامه را پایدار کنید و به آن به‌عنوان مدیر پویا اعتماد کنید</string>
-    <string name="dynamic_manager_set_failed">تنظیم %s به‌عنوان مدیر پویا انجام نشد</string>
-    <string name="dynamic_manager_del_failed">حذف %s از مدیران پویا انجام نشد</string>
-    <string name="dynamic_manager_signature_unavailable">استخراج امضای مدیر پویا برای %s ممکن نشد</string>
     <string name="require_kernel_version">به‌روزرسانی هسته لازم است. برای نصب ضربه بزنید.</string>
     <string name="settings_umount_modules_default">آنمانت ماژول‌ها به‌صورت پیش‌فرض</string>
     <string name="settings_umount_modules_default_summary">پیش‌فرض جهانی برای تنظیم \"Unmount modules\" در App Profile. وقتی فعال باشد، تغییرات ماژول برای برنامه‌های بدون نمایه حذف می‌شود. این تنظیم به طور پیش فرض خاموش است، بنابراین برنامه های جدید یا ناشناخته تغییرات ماژول را حفظ می کنند.</string>

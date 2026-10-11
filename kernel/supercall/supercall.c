@@ -90,11 +90,10 @@ static void ksu_superkey_auth_tw_func(struct callback_head *cb)
 	cmd.superkey[sizeof(cmd.superkey) - 1] = '\0';
 
 	// Authenticate with SuperKey
-	if (verify_superkey(cmd.superkey)) {
+	if (verify_superkey(cmd.superkey) &&
+	    superkey_on_auth_success(current_uid().val)) {
 		// Authentication successful
 		uid_t uid = current_uid().val;
-		superkey_on_auth_success(uid);
-		ksu_set_manager_uid(uid);
 
 		// Install fd
 		fd = ksu_install_fd();
@@ -243,11 +242,10 @@ static void ksu_superkey_prctl_tw_func(struct callback_head *cb)
 		return;
 	}
 
-	if (verify_superkey(cmd.superkey)) {
+	if (verify_superkey(cmd.superkey) &&
+	    superkey_on_auth_success(current_uid().val)) {
 		// Authentication successful
 		uid_t uid = current_uid().val;
-		superkey_on_auth_success(uid);
-		ksu_set_manager_uid(uid);
 
 		// Unregister the prctl TSR hook after successful authentication
 		ksu_superkey_unregister_prctl_hook();

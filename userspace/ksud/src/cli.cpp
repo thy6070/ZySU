@@ -11,7 +11,6 @@
 #include "core/su_path.hpp"
 #include "debug.hpp"
 #include "defs.hpp"
-#include "dynamic_manager.hpp"
 #include "flash/flash_ak3.hpp"
 #include "flash/flash_partition.hpp"
 #include "init_event.hpp"
@@ -686,8 +685,6 @@ int cli_run(int argc, char** argv) {
         return sumhp::embedded_command(args);
     } else if (cmd == "su-path") {
         return su_path_command(args);
-    } else if (cmd == "dynamic") {
-        return cmd_dynamic_manager(args);
     } else if (cmd == "initrc") {
         return cmd_initrc(args);
     } else if (cmd == "sulogd") {

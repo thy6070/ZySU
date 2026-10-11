@@ -42,9 +42,9 @@ CLI の `boot-patch --out` は出力ディレクトリ、`boot-patch-v2 --output
 
 ## 認証と起動確認
 
-SuperKey 未設定時は Manager の署名設定に従って認証します。独自署名の APK では対応する LKM の信頼設定が必要です。[統合ガイド](how-to-integrate.md)を参照してください。
+Manager の認証は、ビルド時に指定した単一のパッケージ（既定は `com.zying.zysu`）に限定されます。SuperKey 未設定時は APK がモジュールに設定された署名証明書と一致する必要があります。独自署名の APK では対応する LKM の信頼設定が必要です。[統合ガイド](how-to-integrate.md)を参照してください。
 
-SuperKey 設定時はそのキーを使用します。「署名バイパス」は Manager を SuperKey のみで認証する設定で、Linux モジュール署名の無効化ではありません。「shell を許可」は Android shell UID の root 利用を許可し、adbd の有効化とは別です。
+SuperKey 設定時はそのキーを使用します。「署名バイパス」は Manager の証明書検証を省略しますが、パッケージの制限は維持します。Linux モジュール署名の無効化ではありません。「shell を許可」は Android shell UID の root 利用を許可し、adbd の有効化とは別です。
 
 再起動後はカーネル認識、認証、UAPI、ksud のバージョンを確認し、必要なら ksud カードから内蔵プログラムを同期します。SUMHP は内蔵済みです。`auto` は適した OverlayFS、次に Magic Mount を選び、SUMH は明示的に選択します。OverlayFS / Magic Mount の変更は通常再起動が必要です。
 

@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">SELinux konteksts</string>
     <string name="profile_umount_modules">Atvienot moduļus</string>
     <string name="failed_to_update_app_profile">Neizdevās atjaunināt lietotnes profilu %s</string>
-    <string name="set_as_dynamic_manager">Iestatīt kā dinamisko pārvaldnieku</string>
-    <string name="set_as_dynamic_manager_summary">Saglabāt šīs lietotnes parakstu un uzticēties tai kā dinamiskajam pārvaldniekam</string>
-    <string name="dynamic_manager_set_failed">Neizdevās iestatīt %s kā dinamisko pārvaldnieku</string>
-    <string name="dynamic_manager_del_failed">Neizdevās noņemt %s no dinamiskajiem pārvaldniekiem</string>
-    <string name="dynamic_manager_signature_unavailable">Neizdevās izgūt dinamiskā pārvaldnieka parakstu priekš %s</string>
     <string name="require_kernel_version">Nepieciešams kodola atjauninājums. Pieskarieties, lai instalētu.</string>
     <string name="settings_umount_modules_default">Pēc noklusējuma atvienot moduļus</string>
     <string name="settings_umount_modules_default_summary">Globālais noklusējums iestatījumam \"Atvienot moduļus\" lietotnes profilā. Ja tas ir ieslēgts, lietotnēm bez profila tiek noņemtas visas moduļu veiktās izmaiņas. Pēc noklusējuma šis iestatījums ir izslēgts, tāpēc jaunās vai nezināmās lietotnes saglabā moduļu izmaiņas.</string>

@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">Konteks SELinux</string>
     <string name="profile_umount_modules">Umount Modul</string>
     <string name="failed_to_update_app_profile">Gagal membarui Profil pada %s</string>
-    <string name="set_as_dynamic_manager">Tetapkan sebagai pengelola dinamis</string>
-    <string name="set_as_dynamic_manager_summary">Pertahankan tanda tangan aplikasi ini dan percayai sebagai pengelola dinamis</string>
-    <string name="dynamic_manager_set_failed">Gagal menetapkan %s sebagai pengelola dinamis</string>
-    <string name="dynamic_manager_del_failed">Gagal menghapus %s dari pengelola dinamis</string>
-    <string name="dynamic_manager_signature_unavailable">Tidak dapat mengekstrak tanda tangan pengelola dinamis untuk %s</string>
     <string name="require_kernel_version">Kernel perlu diperbarui. Ketuk untuk menginstal.</string>
     <string name="settings_umount_modules_default">Melepas Modul secara bawaan</string>
     <string name="settings_umount_modules_default_summary">Default global untuk pengaturan \"Lepas modul\" di App Profile. Jika diaktifkan, modifikasi modul akan dihapus untuk aplikasi tanpa profil. Pengaturan ini dinonaktifkan secara default, sehingga aplikasi baru atau tidak dikenal tetap melakukan modifikasi modul.</string>

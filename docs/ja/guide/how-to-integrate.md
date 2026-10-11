@@ -48,4 +48,6 @@ TSR は `CONFIG_HAVE_SYSCALL_TRACEPOINTS` を使用します。モジュール�
 
 独自の APK 署名を別途ビルドしたモジュールが自動的に信頼するわけではありません。Kbuild は公開証明書の `KSU_MANAGER_CERT_SIZE` と `KSU_MANAGER_CERT_SHA256` を組で受け取ります。Actions との連携は [ビルドガイド（英語）](../../guide/workflow-build.md) を参照してください。
 
+モジュールが認証する Manager は、単一のパッケージ `com.zying.zysu` とビルド時に設定した証明書に限定されます。SuperKey の署名バイパスでもパッケージの制限は維持されます。フォークで `applicationId` を変更した場合は、モジュールのビルド時に同じ値を `KSU_MANAGER_PACKAGE` として指定してください。空の値は拒否されます。
+
 バージョンの上書きには `ZYSU_KERNEL_VERSION_NAME` と `ZYSU_KERNEL_VERSION_CODE` を使い、検証に Python 3 が必要です。上書きしない場合は Git 情報を使い、GitHub にアクセスする場合もあります。APK 全体のローカルビルド入口は [build.sh](../../../scripts/build.sh) と [build.bat](../../../scripts/build.bat) です。

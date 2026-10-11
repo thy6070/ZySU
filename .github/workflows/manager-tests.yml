@@ -4,14 +4,20 @@ on:
   push:
     branches: [main]
     paths:
+      - 'kernel/Kbuild'
       - 'kernel/manager/**'
+      - 'kernel/supercall/**'
+      - 'uapi/supercall.h'
       - 'kernel/include/util.h'
       - 'scripts/ci/test_manager_scan.py'
       - 'scripts/ci/test_sumh_vfs_helpers.py'
       - '.github/workflows/manager-tests.yml'
   pull_request:
     paths:
+      - 'kernel/Kbuild'
       - 'kernel/manager/**'
+      - 'kernel/supercall/**'
+      - 'uapi/supercall.h'
       - 'kernel/include/util.h'
       - 'scripts/ci/test_manager_scan.py'
       - 'scripts/ci/test_sumh_vfs_helpers.py'
@@ -30,5 +36,5 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - name: Manager scan cache and rescan behavior
+      - name: Pinned manager discovery and authentication
         run: python3 scripts/ci/test_manager_scan.py --cc clang

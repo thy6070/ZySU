@@ -57,11 +57,6 @@
     <string name="profile_selinux_context">SELinux</string>
     <string name="profile_umount_modules">卸載模組</string>
     <string name="failed_to_update_app_profile">為 %s 更新 App Profile 失敗</string>
-    <string name="set_as_dynamic_manager">設為動態管理器</string>
-    <string name="set_as_dynamic_manager_summary">持久化此應用簽章並信任為動態管理器</string>
-    <string name="dynamic_manager_set_failed">將 %s 設為動態管理器失敗</string>
-    <string name="dynamic_manager_del_failed">從動態管理器中移除 %s 失敗</string>
-    <string name="dynamic_manager_signature_unavailable">無法擷取 %s 的動態管理器簽章</string>
     <string name="require_kernel_version">需要更新核心，按一下安裝</string>
     <string name="settings_umount_modules_default">默認卸載模組</string>
     <string name="settings_umount_modules_default_summary">App Profile 入面「卸載模組」嘅全局預設值。開啟後，冇獨立 Profile 嘅應用會移除所有模組對系統嘅修改。呢個選項預設關閉，所以新應用或未知應用仍會保留模組修改。</string>

@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">Контекст SELinux</string>
     <string name="profile_umount_modules">Відмонтувати модулі</string>
     <string name="failed_to_update_app_profile">Не вдалося оновити профіль додатку для %s</string>
-    <string name="set_as_dynamic_manager">Призначити динамічним менеджером</string>
-    <string name="set_as_dynamic_manager_summary">Зберегти підпис цього застосунку та довіряти йому як динамічному менеджеру</string>
-    <string name="dynamic_manager_set_failed">Не вдалося призначити %s динамічним менеджером</string>
-    <string name="dynamic_manager_del_failed">Не вдалося видалити %s з динамічних менеджерів</string>
-    <string name="dynamic_manager_signature_unavailable">Не вдалося отримати підпис динамічного менеджера для %s</string>
     <string name="require_kernel_version">Потрібно оновити ядро. Натисніть, щоб установити.</string>
     <string name="settings_umount_modules_default">Відмонтовувати модулі за замовчуванням</string>
     <string name="settings_umount_modules_default_summary">Глобальне значення за замовчуванням для налаштування «Відмонтувати модулі» в App Profile. Якщо ввімкнено, модифікації модуля видаляються для програм без профілю. Цей параметр вимкнено за умовчанням, тому нові або невідомі програми зберігають модифікації модулів.</string>

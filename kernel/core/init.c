@@ -32,9 +32,6 @@
 #ifdef CONFIG_KSU_SUPERKEY
 #include "manager/superkey.h"
 #endif // #ifdef CONFIG_KSU_SUPERKEY
-#ifndef CONFIG_KSU_DISABLE_MANAGER
-#include "manager/dynamic_manager.h"
-#endif // #ifndef CONFIG_KSU_DISABLE_MANAGER
 #include "manager/throne_tracker.h"
 #include "feature/sulog.h"
 
@@ -99,7 +96,8 @@ static int __init kernelsu_init(void)
 {
 	int ret;
 
-	pr_info("KernelSU LKM initializing, version: %u\n", KSU_VERSION);
+	pr_info("KernelSU LKM initializing, version: %u, manager: %s\n",
+		KSU_VERSION, KSU_MANAGER_PACKAGE);
 	ksu_late_loaded = (current->pid != 1);
 	ksu_imgpatch_loaded = ksu_imgpatch_loaded ||
 			      ksu_boot_load_mode == KSU_LOAD_MODE_IMAGE_PATCH;
@@ -148,9 +146,6 @@ static int __init kernelsu_init(void)
 
 	ksu_supercalls_init();
 	ksu_app_profile_init();
-#ifndef CONFIG_KSU_DISABLE_MANAGER
-	ksu_dynamic_manager_init();
-#endif // #ifndef CONFIG_KSU_DISABLE_MANAGER
 
 #ifdef CONFIG_KSU_SUPERKEY
 	superkey_init();
@@ -226,9 +221,6 @@ static void kernelsu_exit(void)
 	// Phase 2: Now safe to release data structures
 	ksu_observer_exit();
 	ksu_throne_tracker_exit();
-#ifndef CONFIG_KSU_DISABLE_MANAGER
-	ksu_dynamic_manager_exit();
-#endif // #ifndef CONFIG_KSU_DISABLE_MANAGER
 	ksu_allowlist_exit();
 
 	zysu_custom_config_exit();

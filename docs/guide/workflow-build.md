@@ -38,7 +38,7 @@ Configure these repository secrets for a stable APK signing identity:
 
 The LKM workflow exports the public certificate's size and SHA-256 from this keystore. Kbuild embeds that identity, and the repack step checks the final APK certificate against it. The kernel build receives public certificate metadata, not the private key.
 
-Without a configured keystore, [the signing action](../../.github/actions/setup-manager-signing/action.yml) creates a temporary key. Different runs therefore do not provide a stable APK upgrade identity. The module retains its default trusted certificate; a temporary-signed Manager needs SuperKey authentication configured during image patching, or separately configured dynamic Manager trust. Updating only the APK does not replace a kernel module's trusted certificate.
+Without a configured keystore, [the signing action](../../.github/actions/setup-manager-signing/action.yml) creates a temporary key. Different runs therefore do not provide a stable APK upgrade identity. The module retains its default trusted certificate; a temporary-signed ZySU Manager needs SuperKey with signature bypass configured during image patching, or a module rebuilt with that certificate. Both authentication modes require the configured Manager package, normally `com.zying.zysu`. Updating only the APK does not replace a kernel module's trusted certificate.
 
 `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` are optional detached-signature settings. They are separate from Android APK signing. LKM, ksud and ksuinit artifacts can be uploaded without `.sig` files; APK GPG signing also requires a configured APK keystore.
 

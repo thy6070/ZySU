@@ -8,7 +8,7 @@ ZySU, [SukiSU-Ultra](https://github.com/ShirkNeko/SukiSU-Ultra) projesinden tür
 
 ## Mevcut özellikler
 
-- Çekirdek düzeyinde `su`, uygulama bazında yetkilendirme ve profiller, Manager imza doğrulaması, dinamik Manager ve SuperKey kimlik doğrulaması.
+- Çekirdek düzeyinde `su`, uygulama bazında yetkilendirme ve profiller, ZySU paketine bağlı Manager imza doğrulaması ve SuperKey kimlik doğrulaması.
 - Modül yükleme, etkinleştirme, devre dışı bırakma, kaldırma, açılış betikleri, WebUI ve depo yönetimi.
 - ksud içine gömülü SUMHP ile OverlayFS, Magic Mount, SUMH veya bağlamama modu. `auto`, uygun olduğunda önce OverlayFS, ardından Magic Mount seçer. SUMH açıkça seçilmelidir. Harici MetaModule yaşam döngüsü arayüzleri de korunur.
 - Açılış imajlarını yamalama ve geri yükleme, doğrudan LKM enjeksiyonu, bölüm işlemleri, AnyKernel3 ve ramdisk düzenleme.

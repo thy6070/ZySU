@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">SELinux-kontext</string>
     <string name="profile_umount_modules">Afmonteret moduler</string>
     <string name="failed_to_update_app_profile">Opdatering af App Profil for %s fejlede</string>
-    <string name="set_as_dynamic_manager">Indstil som dynamisk manager</string>
-    <string name="set_as_dynamic_manager_summary">Bevar denne apps signatur og betro den som dynamisk manager</string>
-    <string name="dynamic_manager_set_failed">Kunne ikke indstille %s som dynamisk manager</string>
-    <string name="dynamic_manager_del_failed">Kunne ikke fjerne %s fra dynamiske managere</string>
-    <string name="dynamic_manager_signature_unavailable">Kunne ikke udtrække dynamisk manager-signatur for %s</string>
     <string name="require_kernel_version">Kernelopdatering påkrævet. Tryk for at installere.</string>
     <string name="settings_umount_modules_default">Afmontere moduler som standard</string>
     <string name="settings_umount_modules_default_summary">Global standard for indstillingen \"Afmonter moduler\" i App Profile. Når det er aktiveret, fjernes modulændringer for apps uden en profil. Denne indstilling er som standard slået fra, så nye eller ukendte apps beholder modulændringer.</string>

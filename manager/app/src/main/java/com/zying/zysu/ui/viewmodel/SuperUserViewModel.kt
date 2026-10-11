@@ -167,7 +167,6 @@ class SuperUserViewModel : ViewModel() {
         val uid: Int,
         val apps: List<AppInfo>,
         val profile: Natives.Profile?,
-        val dynamicManagerFlags: Int = 0
     ) : Parcelable {
         @IgnoredOnParcel
         val mainApp: AppInfo = apps.first()
@@ -177,12 +176,6 @@ class SuperUserViewModel : ViewModel() {
         val profileKey: String = mainApp.profileKey
         @IgnoredOnParcel
         val allowSu: Boolean = profile?.allowSu == true
-        @IgnoredOnParcel
-        val isPresetManager: Boolean =
-            dynamicManagerFlags and Natives.DYNAMIC_MANAGER_FLAG_PRESET != 0
-        @IgnoredOnParcel
-        val isDynamicManager: Boolean =
-            dynamicManagerFlags and Natives.DYNAMIC_MANAGER_FLAG_TRUSTED != 0
         @IgnoredOnParcel
         val userName: String? = Natives.getUserName(uid)
         @IgnoredOnParcel
@@ -600,44 +593,24 @@ class SuperUserViewModel : ViewModel() {
         }
     }
 
-    private fun loadDynamicManagerFlags(): Map<Int, Int> {
-        val items = runCatching { Natives.getDynamicManagers() }.getOrDefault(IntArray(0))
-        if (items.size < 2) return emptyMap()
-
-        val result = mutableMapOf<Int, Int>()
-        var index = 0
-        while (index + 1 < items.size) {
-            val appId = items[index]
-            val flags = items[index + 1]
-            result[appId] = flags
-            index += 2
-        }
-        return result
-    }
-
     private fun groupAppsByUid(appList: List<AppInfo>): List<AppGroup> {
-        val dynamicManagers = loadDynamicManagerFlags()
-
         return appList.groupBy { it.uid }
             .map { (uid, apps) ->
                 val sortedApps = apps.sortedBy { it.label }
                 val profile = apps.firstOrNull()?.profile
-                val dynamicManagerFlags = dynamicManagers[uid % PER_USER_RANGE] ?: 0
                 AppGroup(
                     uid = uid,
                     apps = sortedApps,
                     profile = profile,
-                    dynamicManagerFlags = dynamicManagerFlags
                 )
             }
             .sortedWith(
                 compareBy<AppGroup> {
                     when {
-                        it.isDynamicManager -> 0
-                        it.uid == SHELL_UID -> 1
-                        it.allowSu -> 2
-                        it.hasCustomProfile -> 3
-                        else -> 4
+                        it.uid == SHELL_UID -> 0
+                        it.allowSu -> 1
+                        it.hasCustomProfile -> 2
+                        else -> 3
                     }
                 }.thenBy(Collator.getInstance(Locale.getDefault())) {
                     it.userName?.takeIf { name -> name.isNotBlank() } ?: it.uid.toString()

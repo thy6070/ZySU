@@ -2,6 +2,7 @@
 #include "manager/superkey.h"
 #include "klog.h"
 #include "manager/manager_identity.h"
+#include "manager/throne_tracker.h"
 #include <crypto/hash.h>
 #include <linux/delay.h>
 #include <linux/err.h>
@@ -9,7 +10,6 @@
 #include <linux/sched/signal.h>
 #include <linux/slab.h>
 #include <linux/string.h>
-#include <linux/uaccess.h>
 #include <linux/reboot.h>
 
 #define SUPERKEY_KILL_THRESHOLD 3
@@ -142,54 +142,26 @@ void superkey_init(void)
 	pr_info("superkey: no superkey configured\n");
 }
 
-int superkey_authenticate(const char __user *user_key)
+int superkey_authenticate(const char *key)
 {
-	char key[SUPERKEY_MAX_LEN + 1] = {0};
-	long len;
-
-	if (!user_key)
-		return 0;
-
-	len = strncpy_from_user(key, user_key, SUPERKEY_MAX_LEN);
-	if (len <= 0)
-		return 0;
-
-	key[SUPERKEY_MAX_LEN] = '\0';
-
+	/* The ioctl dispatcher has already copied and terminated this key. */
 	if (!verify_superkey(key)) {
 		superkey_on_auth_fail();
-		return 0;
+		return -EACCES;
 	}
-
-	superkey_on_auth_success(current_uid().val);
-	return 0;
-}
-
-void superkey_set_manager_uid(uid_t uid)
-{
-	spin_lock(&superkey_lock);
-	authenticated_manager_uid = uid;
-	spin_unlock(&superkey_lock);
+	return superkey_on_auth_success(current_uid().val) ? 0 : -EACCES;
 }
 
 bool superkey_is_manager(void)
 {
-	uid_t current_uid_val;
-	bool result;
+	uid_t uid;
 
 	if (!superkey_is_set())
 		return false;
 
-	current_uid_val = current_uid().val;
-
-	spin_lock(&superkey_lock);
-	result =
-	    (authenticated_manager_uid != (uid_t)-1 &&
-	     (authenticated_manager_uid == current_uid_val ||
-	      authenticated_manager_uid % 100000 == current_uid_val % 100000));
-	spin_unlock(&superkey_lock);
-
-	return result;
+	uid = superkey_get_manager_uid();
+	return uid != KSU_INVALID_UID &&
+	       uid % PER_USER_RANGE == current_uid().val % PER_USER_RANGE;
 }
 
 void superkey_invalidate(void)
@@ -207,7 +179,11 @@ uid_t superkey_get_manager_uid(void)
 	uid = authenticated_manager_uid;
 	spin_unlock(&superkey_lock);
 
-	return uid;
+	/* A package removal/UID change must also revoke password-only access.
+	 */
+	return uid != KSU_INVALID_UID && ksu_is_manager_package_uid(uid)
+		   ? uid
+		   : KSU_INVALID_UID;
 }
 
 void superkey_on_auth_fail(void)
@@ -227,9 +203,14 @@ void superkey_on_auth_fail(void)
 	}
 }
 
-void superkey_on_auth_success(uid_t uid)
+bool superkey_on_auth_success(uid_t uid)
 {
-	ksu_set_manager_uid(uid);
-	superkey_set_manager_uid(uid);
+	/* A valid password never authorizes a different installed package. */
+	if (!ksu_refresh_manager_package(uid))
+		return false;
+	spin_lock(&superkey_lock);
+	authenticated_manager_uid = uid;
+	spin_unlock(&superkey_lock);
 	atomic_set(&superkey_fail_count, 0);
+	return true;
 }

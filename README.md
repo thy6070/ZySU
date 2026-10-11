@@ -10,7 +10,7 @@ ZySU 是从 [SukiSU-Ultra](https://github.com/ShirkNeko/SukiSU-Ultra) 分叉、�
 
 ## 当前功能
 
-- **Root 与授权**：内核侧 `su`、按应用授权和 App Profile、管理器签名识别、动态管理器与 SuperKey 认证。
+- **Root 与授权**：内核侧 `su`、按应用授权和 App Profile、绑定 ZySU 包名的管理器签名识别与 SuperKey 认证。
 - **模块管理**：安装、启停、卸载、启动脚本、模块 WebUI、仓库与更新管理；保留外部 MetaModule 生命周期接口。
 - **内置挂载控制器 SUMHP**：提供 OverlayFS、Magic Mount、SUMH 和不挂载模式，可设置全局后端或逐模块规则。`auto` 优先选择适用的 OverlayFS，再尝试 Magic Mount；SUMH 需要显式选择。
 - **SUMH 与环境控制**：内核路径规则、挂载视图处理、运行状态查询，以及管理器中的配置和诊断。功能是否可用以设备运行时探测为准。

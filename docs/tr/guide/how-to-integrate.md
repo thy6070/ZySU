@@ -48,4 +48,6 @@ Seçenekler [Kconfig](../../../kernel/Kconfig) içinde tanımlanır. Örnek, Sup
 
 Ayrı derlenen modül, özel APK imza anahtarınıza otomatik olarak güvenmez. Kbuild, açık sertifika bilgisi için `KSU_MANAGER_CERT_SIZE` ve `KSU_MANAGER_CERT_SHA256` değerlerini birlikte kabul eder. [Actions imza kılavuzuna (İngilizce)](../../guide/workflow-build.md) bakın.
 
+Modül, tek bir Manager paketi olan `com.zying.zysu` ve derleme sırasında belirlenen tek bir sertifikayı tanır. SuperKey, imza atlama modunda da paket kısıtlamasını korur. Bir çatallamada `applicationId` değiştirilirse modülü derlerken aynı değeri `KSU_MANAGER_PACKAGE` olarak iletin. Boş değer kabul edilmez.
+
 Çekirdek sürümünü değiştirmek için `ZYSU_KERNEL_VERSION_NAME` ve `ZYSU_KERNEL_VERSION_CODE` kullanılır; doğrulama Python 3 gerektirir. Değer verilmezse Git bilgisi kullanılır ve GitHub sorguları yapılabilir. Tam APK'nın yerel derleme girişleri [build.sh](../../../scripts/build.sh) ve [build.bat](../../../scripts/build.bat) dosyalarıdır.

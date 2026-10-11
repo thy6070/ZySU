@@ -26,7 +26,6 @@ include $(src)/sumh/Kbuild
 
 ifneq ($(CONFIG_KSU_DISABLE_MANAGER),y)
 kernelsu-objs += manager/apk_sign.o
-kernelsu-objs += manager/dynamic_manager.o
 kernelsu-objs += manager/throne_tracker.o
 kernelsu-objs += manager/pkg_observer.o
 endif
@@ -239,9 +238,12 @@ endif
 ifeq ($(shell grep -q "SEC_SELINUX_PORTING_COMMON" $(srctree)/security/selinux/avc.c; echo $$?),0)
 ccflags-y += -DSAMSUNG_SELINUX_PORTING
 endif
-ifdef KSU_MANAGER_PACKAGE
+# Bind the built-in Manager certificate to its package, including default builds.
+KSU_MANAGER_PACKAGE ?= com.zying.zysu
+ifeq ($(strip $(KSU_MANAGER_PACKAGE)),)
+$(error KSU_MANAGER_PACKAGE must not be empty)
+endif
 ccflags-y += -DKSU_MANAGER_PACKAGE=\"$(KSU_MANAGER_PACKAGE)\"
 $(info -- ZySU Manager package name: $(KSU_MANAGER_PACKAGE))
-endif
 
 # Keep a new line here!! Because someone may append config

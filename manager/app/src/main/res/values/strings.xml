@@ -67,11 +67,6 @@
     <string name="profile_no_new_privs" tools:ignore="MissingTranslation">No new privileges</string>
     <string name="profile_no_new_privs_summary" tools:ignore="MissingTranslation">Prevent processes escalated with this profile (and their children) from re-escalating via KernelSU, e.g. running su again or calling GRANT_ROOT. Recommended.</string>
     <string name="failed_to_update_app_profile">Failed to update App Profile for %s</string>
-    <string name="set_as_dynamic_manager">Set as dynamic manager</string>
-    <string name="set_as_dynamic_manager_summary">Persist this app signature and trust it as a dynamic manager</string>
-    <string name="dynamic_manager_set_failed">Failed to set %s as dynamic manager</string>
-    <string name="dynamic_manager_del_failed">Failed to remove %s from dynamic managers</string>
-    <string name="dynamic_manager_signature_unavailable">Unable to extract dynamic manager signature for %s</string>
     <string name="require_kernel_version">Kernel update required. Tap to install.</string>
     <string name="settings_umount_modules_default">Umount modules by default</string>
     <string name="settings_umount_modules_default_summary">Umount modules for apps without their own profile. Off by default.</string>

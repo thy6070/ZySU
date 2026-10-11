@@ -38,8 +38,6 @@ int ksu_grant_root(void);
 int ksu_sumh_ioctl(unsigned long op, void *arg);
 
 bool uid_should_umount(int uid);
-uint32_t get_dynamic_managers(struct ksu_dynamic_manager_app *apps,
-                              uint32_t max_count);
 
 bool is_safe_mode();
 

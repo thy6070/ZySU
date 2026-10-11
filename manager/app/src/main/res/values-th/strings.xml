@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">บริบท SELinux</string>
     <string name="profile_umount_modules">Umount โมดูล</string>
     <string name="failed_to_update_app_profile">ไม่สามารถอัปเดตโปรไฟล์แอปสำหรับ %s ได้</string>
-    <string name="set_as_dynamic_manager">ตั้งเป็นตัวจัดการแบบไดนามิก</string>
-    <string name="set_as_dynamic_manager_summary">เก็บลายเซ็นของแอปนี้ไว้และเชื่อถือเป็นตัวจัดการแบบไดนามิก</string>
-    <string name="dynamic_manager_set_failed">ตั้ง %s เป็นตัวจัดการแบบไดนามิกไม่สำเร็จ</string>
-    <string name="dynamic_manager_del_failed">ลบ %s ออกจากตัวจัดการแบบไดนามิกไม่สำเร็จ</string>
-    <string name="dynamic_manager_signature_unavailable">ไม่สามารถดึงลายเซ็นตัวจัดการแบบไดนามิกสำหรับ %s</string>
     <string name="require_kernel_version">จำเป็นต้องอัปเดตเคอร์เนล แตะเพื่อติดตั้ง</string>
     <string name="settings_umount_modules_default">Umount โมดูลตามค่าเริ่มต้น</string>
     <string name="settings_umount_modules_default_summary">ค่าเริ่มต้นสากลสำหรับการตั้งค่า \"Unmount modules\" ใน App Profile เมื่อเปิดใช้งาน การแก้ไขโมดูลจะถูกลบสำหรับแอปที่ไม่มีโปรไฟล์ การตั้งค่านี้ปิดอยู่ตามค่าเริ่มต้น ดังนั้นแอปใหม่หรือแอปที่ไม่รู้จักจึงคงการแก้ไขโมดูลไว้</string>

@@ -48,6 +48,8 @@ TSR 系统调用路径使用 `CONFIG_HAVE_SYSCALL_TRACEPOINTS`。自定义内核
 
 单独编译模块时，给 APK 换签名不会自动改变模块信任的管理器证书。Kbuild 接受成对的 `KSU_MANAGER_CERT_SIZE` 与 `KSU_MANAGER_CERT_SHA256` 公共证书信息；Actions 会从签名密钥库导出它们，详见 [工作流签名说明](workflow-build.md)。
 
+模块仅识别一个管理器包名 `com.zying.zysu` 和一份构建时配置的签名证书。SuperKey 认证（包括签名绕过模式）也仅允许该包名。如果分支修改了管理器的 `applicationId`，编译模块时也必须通过 `KSU_MANAGER_PACKAGE` 传入相同包名；空值会使构建失败。这是在构建时替换唯一允许的包名，覆盖包名不会替代证书校验。
+
 自定义内核版本使用 `ZYSU_KERNEL_VERSION_NAME` 和 `ZYSU_KERNEL_VERSION_CODE`，需要 Python 3 校验。未覆盖时，Kbuild 根据 Git 推导版本并可能访问 GitHub。
 
 完整本地 APK 构建入口为 [build.sh](../../../scripts/build.sh) 和 [build.bat](../../../scripts/build.bat)（调用 [build.ps1](../../../scripts/build.ps1)）。它们依次构建 DDK 模块、ksuinit、ksud 和管理器，与本页仅针对设备内核编译模块的流程不同。

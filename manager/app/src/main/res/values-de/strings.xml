@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">SELinux-Kontext</string>
     <string name="profile_umount_modules">Module aushängen</string>
     <string name="failed_to_update_app_profile">App-Profilaktualisierung für %s fehlgeschlagen</string>
-    <string name="set_as_dynamic_manager">Als dynamischen Manager festlegen</string>
-    <string name="set_as_dynamic_manager_summary">Diese App-Signatur dauerhaft speichern und ihr als dynamischem Manager vertrauen</string>
-    <string name="dynamic_manager_set_failed">%s konnte nicht als dynamischer Manager festgelegt werden</string>
-    <string name="dynamic_manager_del_failed">%s konnte nicht aus den dynamischen Managern entfernt werden</string>
-    <string name="dynamic_manager_signature_unavailable">Signatur des dynamischen Managers für %s konnte nicht ermittelt werden</string>
     <string name="require_kernel_version">Kernel-Update erforderlich. Zum Installieren tippen.</string>
     <string name="settings_umount_modules_default">Module standardmäßig aushängen</string>
     <string name="settings_umount_modules_default_summary">Globaler Standard für die Einstellung „Module aushängen“ in App Profile. Wenn diese Option aktiviert ist, werden Moduländerungen für Apps ohne Profil entfernt. Diese Einstellung ist standardmäßig deaktiviert, sodass neue oder unbekannte Apps Moduländerungen beibehalten.</string>

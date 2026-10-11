@@ -38,7 +38,7 @@
 
 LKM 工作流从同一密钥库导出公共证书的大小和 SHA-256，由 Kbuild 嵌入管理器身份；重新打包步骤校验最终 APK 证书是否匹配。传给内核构建的是公共证书信息。
 
-未配置密钥库时，[签名 Action](../../../.github/actions/setup-manager-signing/action.yml) 生成临时密钥，不同运行的 APK 无法保持相同的覆盖安装身份。模块仍使用默认信任证书，临时签名管理器需要在修补镜像时配置 SuperKey 认证，或另行配置动态管理器信任。只更新 APK 不会替换内核模块内的信任证书。
+未配置密钥库时，[签名 Action](../../../.github/actions/setup-manager-signing/action.yml) 生成临时密钥，不同运行的 APK 无法保持相同的覆盖安装身份。模块仍使用默认信任证书，临时签名的 ZySU 管理器需要在修补镜像时配置 SuperKey 并启用签名绕过，或使用该证书重新编译模块。两种认证方式都要求匹配构建时指定的管理器包名，默认为 `com.zying.zysu`。只更新 APK 不会替换内核模块内的信任证书。
 
 `GPG_PRIVATE_KEY` 与 `GPG_PASSPHRASE` 用于可选的 GPG 附加签名，与 Android APK 签名分开。LKM、ksud、ksuinit 没有 `.sig` 时仍可上传；APK 的 GPG 签名还要求配置 APK 密钥库。
 

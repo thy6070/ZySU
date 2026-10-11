@@ -307,7 +307,6 @@ set(KSUD_OUR_SOURCES
     src/command_exec.cpp
     src/xz_range.c
     src/kernelsu_loader.cpp
-    src/dynamic_manager.cpp
     src/core/ksucalls.cpp
     src/core/feature.cpp
     src/core/su_path.cpp

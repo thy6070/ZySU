@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">Contexto SELinux</string>
     <string name="profile_umount_modules">Desactivar módulos</string>
     <string name="failed_to_update_app_profile">Erro ao actualizar o perfil da aplicación para %s</string>
-    <string name="set_as_dynamic_manager">Definir como xestor dinámico</string>
-    <string name="set_as_dynamic_manager_summary">Manter a sinatura desta aplicación e confiar nela como xestor dinámico</string>
-    <string name="dynamic_manager_set_failed">Erro ao definir %s como xestor dinámico</string>
-    <string name="dynamic_manager_del_failed">Erro ao retirar %s dos xestores dinámicos</string>
-    <string name="dynamic_manager_signature_unavailable">Non foi posíbel extraer a sinatura do xestor dinámico para %s</string>
     <string name="require_kernel_version">É necesario actualizar o núcleo. Toca para instalar.</string>
     <string name="settings_umount_modules_default">Módulos desactivados por defecto</string>
     <string name="settings_umount_modules_default_summary">Predeterminado global para a configuración \"Desmontar módulos\" en App Profile. Cando se activa, elimínanse as modificacións do módulo para as aplicacións sen perfil. Esta configuración está desactivada de forma predeterminada, polo que as aplicacións novas ou descoñecidas conservan as modificacións do módulo.</string>

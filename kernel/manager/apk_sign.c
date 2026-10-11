@@ -4,6 +4,7 @@
 #include <linux/kernel.h>
 #include <linux/limits.h>
 #include <linux/slab.h>
+#include <linux/string.h>
 #ifdef CONFIG_KSU_DEBUG
 #include <linux/moduleparam.h>
 #endif // #ifdef CONFIG_KSU_DEBUG
@@ -13,29 +14,16 @@
 #include "manager/apk_sign.h"
 #include "util.h"
 #include "klog.h" // IWYU pragma: keep
-#include "manager/dynamic_manager.h"
 #include "manager/manager_sign.h"
+#include "uapi/app_profile.h"
 
 #ifdef CONFIG_KSU_SUPERKEY
 #include "manager/superkey.h"
-extern bool ksu_signature_bypass;
 #endif // #ifdef CONFIG_KSU_SUPERKEY
 
 struct sdesc {
 	struct shash_desc shash;
 	char ctx[];
-};
-
-static apk_sign_key_t apk_sign_keys[] = {
-    {EXPECTED_SIZE, EXPECTED_HASH, APK_SIGN_FLAG_TRUSTED, "ZySU"},
-    {PRESET_SIZE_OFFICIAL, PRESET_HASH_OFFICIAL, 0, "KernelSU"},
-    {PRESET_SIZE_MKSU, PRESET_HASH_MKSU, 0, "MKSU"},
-    {PRESET_SIZE_RKSU, PRESET_HASH_RKSU, 0, "RKSU"},
-    {PRESET_SIZE_SUKISU, PRESET_HASH_SUKISU, 0, "SukiSU"},
-    {PRESET_SIZE_RESUKISU, PRESET_HASH_RESUKISU, 0, "ReSukiSU"},
-    {PRESET_SIZE_KOWSU, PRESET_HASH_KOWSU, 0, "KowSU"},
-    {PRESET_SIZE_KSUN, PRESET_HASH_KSUN, 0, "KernelSU-Next"},
-    {PRESET_SIZE_XXKSU, PRESET_HASH_XXKSU, 0, "xxKSU"},
 };
 
 static struct sdesc *init_sdesc(struct crypto_shash *alg)
@@ -108,15 +96,11 @@ static bool read_length_prefixed_end(struct file *fp, loff_t *pos,
 	return true;
 }
 
-static bool check_block(struct file *fp, loff_t *pos, loff_t block_end,
-			struct apk_sign_match *match)
+static bool check_block(struct file *fp, loff_t *pos, loff_t block_end)
 {
 	loff_t signers_end, signer_end, signed_data_end, digests_end,
 	    certificates_end;
 	u32 certificate_size;
-	bool signature_valid = false;
-	int i;
-	apk_sign_key_t sign_key;
 
 	if (!read_length_prefixed_end(fp, pos, block_end, &signers_end) ||
 	    !read_length_prefixed_end(fp, pos, signers_end, &signer_end) ||
@@ -135,8 +119,9 @@ static bool check_block(struct file *fp, loff_t *pos, loff_t block_end,
 		return false;
 
 #define CERT_MAX_LENGTH 1024
-	if (certificate_size > CERT_MAX_LENGTH) {
-		pr_info("cert length overlimit\n");
+	if (certificate_size != EXPECTED_SIZE ||
+	    certificate_size > CERT_MAX_LENGTH) {
+		pr_info("unexpected certificate size\n");
 		return false;
 	}
 
@@ -155,39 +140,7 @@ static bool check_block(struct file *fp, loff_t *pos, loff_t block_end,
 
 	bin2hex(hash_str, digest, SHA256_DIGEST_SIZE);
 	pr_info("sha256: %s\n", hash_str);
-	for (i = 0; i < ARRAY_SIZE(apk_sign_keys); i++) {
-		sign_key = apk_sign_keys[i];
-		if (certificate_size != sign_key.size)
-			continue;
-		pr_info("sha256: %s, expected: %s, index: %d\n", hash_str,
-			sign_key.sha256, i);
-		if (strcmp(sign_key.sha256, hash_str) == 0) {
-			signature_valid = true;
-			if (match) {
-				match->index = i;
-				match->trusted = (sign_key.flags &
-						  APK_SIGN_FLAG_TRUSTED) != 0;
-				match->name = sign_key.name;
-				match->size = certificate_size;
-				strscpy(match->hash, hash_str,
-					sizeof(match->hash));
-			}
-			break;
-		}
-	}
-	if (!signature_valid &&
-	    ksu_dynamic_manager_is_trusted_sign(certificate_size, hash_str)) {
-		signature_valid = true;
-		if (match) {
-			match->index = -1;
-			match->trusted = true;
-			match->name = "dynamic";
-			match->size = certificate_size;
-			strscpy(match->hash, hash_str, sizeof(match->hash));
-		}
-	}
-
-	return signature_valid;
+	return !strcmp(EXPECTED_HASH, hash_str);
 }
 
 struct zip_entry_header {
@@ -242,8 +195,7 @@ static bool has_v1_signature_file(struct file *fp)
 	return false;
 }
 
-static __always_inline bool check_v2_signature(char *path,
-					       struct apk_sign_match *match)
+static bool check_v2_signature(char *path)
 {
 	unsigned char buffer[0x10] = {0};
 	u32 cd_offset, cd_size;
@@ -357,8 +309,7 @@ static __always_inline bool check_v2_signature(char *path,
 
 		if (id == 0x7109871au) {
 			v2_signing_blocks++;
-			v2_signing_valid =
-			    check_block(fp, &pos, pair_end, match);
+			v2_signing_valid = check_block(fp, &pos, pair_end);
 		} else if (id != 0x42726577u) { /* APK verity padding */
 #ifdef CONFIG_KSU_DEBUG
 			pr_info("Unexpected signature block id: 0x%08x\n", id);
@@ -418,58 +369,52 @@ module_param_cb(ksu_debug_manager_uid, &expected_size_ops,
 
 #endif // #ifdef CONFIG_KSU_DEBUG
 
-bool is_manager_apk_ex(char *path, int *signature_index)
+static bool matches_manager_package(const char *name, size_t length)
 {
-	struct apk_sign_match match = {
-	    .index = -1,
-	};
+	size_t package_len = sizeof(KSU_MANAGER_PACKAGE) - 1;
 
-#ifdef CONFIG_KSU_SUPERKEY
-	// SuperKey mode: signature verification is bypassed entirely.
-	// The manager is identified by password (via prctl), not by APK
-	// signature — so this function correctly returns false (no
-	// signature match) and the caller falls through to SuperKey auth.
-	if (superkey_is_set() && superkey_is_signature_bypassed()) {
+	_Static_assert(sizeof(KSU_MANAGER_PACKAGE) > 1 &&
+			   sizeof(KSU_MANAGER_PACKAGE) <= KSU_MAX_PACKAGE_NAME,
+		       "Invalid KSU_MANAGER_PACKAGE length");
+	return length > package_len + 1 &&
+	       !strncmp(name, KSU_MANAGER_PACKAGE, package_len) &&
+	       name[package_len] == '-';
+}
+
+bool is_manager_package_dir(const char *path)
+{
+	const char *package;
+
+	if (!path || path[0] != '/')
 		return false;
-	}
-#endif // #ifdef CONFIG_KSU_SUPERKEY
-	if (!check_v2_signature(path, &match) || !match.trusted)
+	package = strrchr(path, '/') + 1;
+	return matches_manager_package(package, strlen(package));
+}
+
+bool is_manager_package(const char *path)
+{
+	const char *apk, *package;
+
+	if (!path || path[0] != '/')
 		return false;
-	if (signature_index)
-		*signature_index = match.index;
-	return true;
+	apk = strrchr(path, '/');
+	if (strcmp(apk, "/base.apk"))
+		return false;
+	package = apk;
+	while (package > path && package[-1] != '/')
+		package--;
+	return matches_manager_package(package, apk - package);
 }
 
 bool is_manager_apk(char *path)
 {
-	/*
-	 * If path is NULL, we just want to know whether signature
-	 * verification is generally enabled/ok for the manager.
-	 * In SuperKey mode, signature verification is irrelevant —
-	 * the manager is identified by password, not by APK signature.
-	 */
-	if (!path) {
 #ifdef CONFIG_KSU_SUPERKEY
-		// In SuperKey bypass mode, signature verification is
-		// disabled — report false so the caller knows not to rely
-		// on signature checks.
-		if (superkey_is_set() && superkey_is_signature_bypassed())
-			return false;
-#endif // #ifdef CONFIG_KSU_SUPERKEY
+	/* Password-only mode still requires the pinned package at auth time. */
+	if (superkey_is_set() && superkey_is_signature_bypassed())
+		return false;
+#endif
+	/* NULL queries whether signature authentication is enabled. */
+	if (!path)
 		return true;
-	}
-
-	return is_manager_apk_ex(path, NULL);
-}
-
-bool match_apk_signature(char *path, struct apk_sign_match *match)
-{
-	if (match) {
-		match->index = -1;
-		match->trusted = false;
-		match->name = NULL;
-		match->size = 0;
-		match->hash[0] = '\0';
-	}
-	return check_v2_signature(path, match);
+	return is_manager_package(path) && check_v2_signature(path);
 }

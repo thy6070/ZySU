@@ -228,33 +228,6 @@ struct ksu_superkey_status_cmd {
   __u32 manager_uid;
 };
 
-#define KSU_DYNAMIC_MANAGER_MAX_SIGNS 64
-#define KSU_DYNAMIC_MANAGER_MAX_APPS 64
-
-struct ksu_dynamic_manager_sign {
-  __u32 size;
-  char hash[65];
-};
-
-struct ksu_dynamic_manager_cmd {
-  __u32 count;
-  __aligned_u64 signs;
-};
-
-#define KSU_DYNAMIC_MANAGER_FLAG_PRESET (1U << 0)
-#define KSU_DYNAMIC_MANAGER_FLAG_TRUSTED (1U << 1)
-
-struct ksu_dynamic_manager_app {
-  __u32 appid;
-  __u32 flags;
-};
-
-struct ksu_get_dynamic_managers_cmd {
-  __u32 count;
-  __u32 total_count;
-  __aligned_u64 apps;
-};
-
 // IOCTL definitions
 #define KSU_IOCTL_GRANT_ROOT _IOC(_IOC_NONE, 'K', 1, 0)
 #define KSU_IOCTL_GET_INFO _IOC(_IOC_READ, 'K', 2, 0)
@@ -289,10 +262,7 @@ struct ksu_get_dynamic_managers_cmd {
 #define KSU_IOCTL_GET_MANAGER_UID _IOC(_IOC_READ, 'K', 201, 0)
 
 /* ZySU private ioctl range */
-#define KSU_IOCTL_SET_DYNAMIC_MANAGERS _IOC(_IOC_WRITE, 'K', 240, 0)
-#define KSU_IOCTL_GET_DYNAMIC_MANAGERS                                         \
-  _IOWR('K', 241, struct ksu_get_dynamic_managers_cmd)
-/* Commands 242-245 are retired; do not reuse them. */
+/* Commands 240-245 are retired; do not reuse them. */
 #define KSU_IOCTL_GET_LOAD_MODE _IOR('K', 246, struct ksu_get_load_mode_cmd)
 /* Commands 247-250 are retired; do not reuse them. */
 

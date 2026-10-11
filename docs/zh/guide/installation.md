@@ -60,8 +60,8 @@ adb shell getprop ro.boot.slot_suffix
 
 ## 认证与首次启动
 
-- 未设置 SuperKey 时，按管理器签名路径识别。自签 APK 需要对应的 LKM 信任配置，具体见[集成指南](how-to-integrate.md)。
-- 设置 SuperKey 后，按安装时配置的认证模式使用该密钥。签名绕过选项切换为仅 SuperKey 认证，不是关闭 Linux 模块签名校验。
+- 管理器认证仅允许构建时指定的包名，默认为 `com.zying.zysu`。未设置 SuperKey 时，其 APK 必须匹配模块配置的签名证书。自签 APK 需要对应的 LKM 信任配置，具体见[集成指南](how-to-integrate.md)。
+- 设置 SuperKey 后，按安装时配置的认证模式使用该密钥。签名绕过选项跳过管理器证书校验，仍保留包名限制，也不会关闭 Linux 模块签名校验。
 - “允许 shell”是允许 Android shell UID 获取 root；启用 adbd 是另一项设置。两者均按需配置。
 - 重启后检查首页的内核版本、认证状态、UAPI 匹配情况与 ksud 版本。需要时点击 ksud 卡片同步 APK 内置程序。
 - 按需给应用授权，并在该应用中验证 root 访问。SUMHP 已内置，普通模块挂载不要求额外安装一个挂载 MetaModule。

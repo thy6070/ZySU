@@ -55,11 +55,6 @@
     <string name="profile_selinux_context">SELinux ಸಂದರ್ಭ</string>
     <string name="profile_umount_modules">Umount ಮಾಡ್ಯೂಲ್‌ಗಳು</string>
     <string name="failed_to_update_app_profile">%s ಗಾಗಿ ಅಪ್ಲಿಕೇಶನ್ ಪ್ರೊಫೈಲ್ ಅನ್ನು ನವೀಕರಿಸಲು ವಿಫಲವಾಗಿದೆ</string>
-    <string name="set_as_dynamic_manager">ಡೈನಾಮಿಕ್ ನಿರ್ವಾಹಕವಾಗಿ ಹೊಂದಿಸಿ</string>
-    <string name="set_as_dynamic_manager_summary">ಈ ಆ್ಯಪ್‌ನ ಸಹಿಯನ್ನು ಉಳಿಸಿಕೊಳ್ಳಿ ಮತ್ತು ಅದನ್ನು ಡೈನಾಮಿಕ್ ನಿರ್ವಾಹಕವಾಗಿ ನಂಬಿರಿ</string>
-    <string name="dynamic_manager_set_failed">%s ಅನ್ನು ಡೈನಾಮಿಕ್ ನಿರ್ವಾಹಕವಾಗಿ ಹೊಂದಿಸಲು ವಿಫಲವಾಗಿದೆ</string>
-    <string name="dynamic_manager_del_failed">ಡೈನಾಮಿಕ್ ನಿರ್ವಾಹಕಗಳಿಂದ %s ಅನ್ನು ತೆಗೆದುಹಾಕಲು ವಿಫಲವಾಗಿದೆ</string>
-    <string name="dynamic_manager_signature_unavailable">%s ಗಾಗಿ ಡೈನಾಮಿಕ್ ನಿರ್ವಾಹಕ ಸಹಿಯನ್ನು ಹೊರತೆಗೆಯಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ</string>
     <string name="require_kernel_version">ಕರ್ನಲ್ ಅನ್ನು ನವೀಕರಿಸುವ ಅಗತ್ಯವಿದೆ. ಸ್ಥಾಪಿಸಲು ಟ್ಯಾಪ್ ಮಾಡಿ.</string>
     <string name="settings_umount_modules_default">ಡೀಫಾಲ್ಟ್ ಆಗಿ Umount ಮಾಡ್ಯೂಲ್</string>
     <string name="settings_umount_modules_default_summary">App Profile ನಲ್ಲಿ \"ಅನ್‌ಮೌಂಟ್ ಮಾಡ್ಯೂಲ್\" ಸೆಟ್ಟಿಂಗ್‌ಗಾಗಿ ಜಾಗತಿಕ ಡೀಫಾಲ್ಟ್. ಸಕ್ರಿಯಗೊಳಿಸಿದಾಗ, ಪ್ರೊಫೈಲ್ ಇಲ್ಲದ ಅಪ್ಲಿಕೇಶನ್‌ಗಳಿಗಾಗಿ ಮಾಡ್ಯೂಲ್ ಮಾರ್ಪಾಡುಗಳನ್ನು ತೆಗೆದುಹಾಕಲಾಗುತ್ತದೆ. ಈ ಸೆಟ್ಟಿಂಗ್ ಡಿಫಾಲ್ಟ್ ಆಗಿ ಆಫ್ ಆಗಿದೆ, ಆದ್ದರಿಂದ ಹೊಸ ಅಥವಾ ಅಪರಿಚಿತ ಅಪ್ಲಿಕೇಶನ್‌ಗಳು ಮಾಡ್ಯೂಲ್ ಮಾರ್ಪಾಡುಗಳನ್ನು ಇರಿಸುತ್ತವೆ.</string>

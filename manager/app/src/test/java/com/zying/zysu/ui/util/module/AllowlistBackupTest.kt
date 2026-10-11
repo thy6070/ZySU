@@ -58,7 +58,7 @@ class AllowlistBackupTest {
     }
 
     @Test fun unknownMissingAndWrongTypedFieldsAreRejected() {
-        listOf("dynamicManagers", "arbitrary").forEach { key ->
+        listOf("unknown", "arbitrary").forEach { key ->
             val root = JsonParser.parseString(json()).asJsonObject
             root.addProperty(key, true)
             assertFails { AllowlistBackup.parse(root.toString()) }
