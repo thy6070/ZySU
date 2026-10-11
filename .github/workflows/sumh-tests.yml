@@ -7,7 +7,7 @@ on:
       - 'kernel/sumh/**'
       - 'kernel/feature/selinux_hide.c'
       - 'uapi/feature.h'
-      - 'scripts/ci/test_selinux_hide_status.py'
+      - 'scripts/ci/test_selinux_hide_*.py'
       - 'userspace/ksud/sumhp/**'
       - 'userspace/ksud/src/cli_args.cpp'
       - 'userspace/ksud/src/boot/boot_patch.cpp'
@@ -32,7 +32,7 @@ on:
       - 'kernel/sumh/**'
       - 'kernel/feature/selinux_hide.c'
       - 'uapi/feature.h'
-      - 'scripts/ci/test_selinux_hide_status.py'
+      - 'scripts/ci/test_selinux_hide_*.py'
       - 'userspace/ksud/sumhp/**'
       - 'userspace/ksud/src/cli_args.cpp'
       - 'userspace/ksud/src/boot/boot_patch.cpp'
@@ -73,6 +73,8 @@ jobs:
           python3 scripts/ci/test_sumh_mount_views.py --cc clang
           python3 scripts/ci/test_sumh_native_namespace.py --cc clang
           python3 scripts/ci/test_selinux_hide_status.py --cc clang
+          python3 scripts/ci/test_selinux_hide_context.py --cc clang
+          python3 scripts/ci/test_selinux_hide_setprocattr.py --cc clang
           python3 scripts/ci/test_sumh_guards.py --cc clang
           python3 scripts/ci/test_sumh_kernel_build.py --cc clang
           python3 scripts/ci/test_sumh_rules.py --cc clang
