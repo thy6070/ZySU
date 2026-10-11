@@ -123,13 +123,13 @@ static struct avtab_node *get_avtab_node(struct policydb *db,
 		if (!node)
 			return NULL;
 
+		/* Keep extra space for types added without updating db->len. */
 		int grow_size = sizeof(struct avtab_key);
 		grow_size += sizeof(struct avtab_datum);
 		if (key->specified & AVTAB_XPERMS) {
-			grow_size += sizeof(u8);
-			grow_size += sizeof(u8);
-			grow_size +=
-			    sizeof(u32) * ARRAY_SIZE(avdatum.u.xperms->perms.p);
+			grow_size += sizeof(avdatum.u.xperms->specified) +
+				     sizeof(avdatum.u.xperms->driver) +
+				     sizeof(avdatum.u.xperms->perms.p);
 		}
 		db->len += grow_size;
 	}
@@ -153,7 +153,10 @@ static bool remove_avtab_node(struct policydb *db, struct avtab_node *node)
 	struct avtab removed = {};
 	struct avtab_node *n;
 	struct avtab_node *prev;
-	int shrink_size = sizeof(struct avtab_key) + sizeof(struct avtab_datum);
+	/* Match the serialized fields written by avtab_write_item(). */
+	int shrink_size =
+	    sizeof(node->key.source_type) + sizeof(node->key.target_type) +
+	    sizeof(node->key.target_class) + sizeof(node->key.specified);
 	int ret;
 	int i;
 
@@ -175,13 +178,13 @@ static bool remove_avtab_node(struct policydb *db, struct avtab_node *node)
 			if (db->te_avtab.nel > 0)
 				db->te_avtab.nel--;
 
-			if ((n->key.specified & AVTAB_XPERMS) &&
-			    n->datum.u.xperms) {
+			if (n->key.specified & AVTAB_XPERMS)
 				shrink_size +=
-				    sizeof(u8) + sizeof(u8) +
-				    sizeof(u32) *
-					ARRAY_SIZE(n->datum.u.xperms->perms.p);
-			}
+				    sizeof(n->datum.u.xperms->specified) +
+				    sizeof(n->datum.u.xperms->driver) +
+				    sizeof(n->datum.u.xperms->perms.p);
+			else
+				shrink_size += sizeof(n->datum.u.data);
 			n->next = NULL;
 			removed.htable[0] = n;
 			removed.nel = 1;
@@ -421,16 +424,9 @@ static void add_xperm_rule_raw(struct policydb *db, struct type_datum *src,
 		}
 		datum = &node->datum;
 
-		if (datum->u.xperms == NULL) {
-			datum->u.xperms =
-			    (struct avtab_extended_perms *)(kzalloc(
-				sizeof(xperms), GFP_KERNEL));
-			if (!datum->u.xperms) {
-				pr_err("alloc xperms failed\n");
-				return;
-			}
-			memcpy(datum->u.xperms, &xperms, sizeof(xperms));
-		}
+		/* Merge permission bits into both new and existing xperms. */
+		for (i = 0; i < ARRAY_SIZE(xperms.perms.p); i++)
+			datum->u.xperms->perms.p[i] |= xperms.perms.p[i];
 	}
 }
 

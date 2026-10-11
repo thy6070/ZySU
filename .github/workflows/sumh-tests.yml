@@ -6,8 +6,10 @@ on:
     paths:
       - 'kernel/sumh/**'
       - 'kernel/feature/selinux_hide.c'
+      - 'kernel/selinux/sepolicy.c'
       - 'uapi/feature.h'
       - 'scripts/ci/test_selinux_hide_*.py'
+      - 'scripts/ci/test_sepolicy_avtab.py'
       - 'userspace/ksud/sumhp/**'
       - 'userspace/ksud/src/cli_args.cpp'
       - 'userspace/ksud/src/boot/boot_patch.cpp'
@@ -31,8 +33,10 @@ on:
     paths:
       - 'kernel/sumh/**'
       - 'kernel/feature/selinux_hide.c'
+      - 'kernel/selinux/sepolicy.c'
       - 'uapi/feature.h'
       - 'scripts/ci/test_selinux_hide_*.py'
+      - 'scripts/ci/test_sepolicy_avtab.py'
       - 'userspace/ksud/sumhp/**'
       - 'userspace/ksud/src/cli_args.cpp'
       - 'userspace/ksud/src/boot/boot_patch.cpp'
@@ -66,6 +70,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+      - name: SELinux policy AVTAB removal and extended permissions
+        run: python3 scripts/ci/test_sepolicy_avtab.py --cc clang
       - name: Kernel ownership, VFS helpers and build spoofing
         run: |
           python3 scripts/ci/test_sumh_core.py --cc clang
