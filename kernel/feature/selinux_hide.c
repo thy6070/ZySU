@@ -92,11 +92,11 @@ static write_op_fn orig_context_write, orig_access_write;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
 #define ksu_avc_has_perm(...) avc_has_perm(__VA_ARGS__)
-#define ksu_security_bounded_transition(...) \
+#define ksu_security_bounded_transition(...)                                   \
 	security_bounded_transition(__VA_ARGS__)
 #else
 #define ksu_avc_has_perm(...) avc_has_perm(&selinux_state, __VA_ARGS__)
-#define ksu_security_bounded_transition(...) \
+#define ksu_security_bounded_transition(...)                                   \
 	security_bounded_transition(&selinux_state, __VA_ARGS__)
 #endif
 
@@ -116,13 +116,14 @@ static ssize_t my_write_context(struct file *file, char *buf, size_t size)
 	u32 sid, len;
 	ssize_t length;
 
-	length = ksu_avc_has_perm(current_sid(), SECINITSID_SECURITY,
-			      SECCLASS_SECURITY, SECURITY__CHECK_CONTEXT, NULL);
+	length =
+	    ksu_avc_has_perm(current_sid(), SECINITSID_SECURITY,
+			     SECCLASS_SECURITY, SECURITY__CHECK_CONTEXT, NULL);
 	if (length)
 		goto out;
-	length = security_context_to_sid_with_policy(
-	    backup_sepolicy, buf, size, &sid, SECSID_NULL, GFP_KERNEL,
-	    NULL, NULL);
+	length = security_context_to_sid_with_policy(backup_sepolicy, buf, size,
+						     &sid, SECSID_NULL,
+						     GFP_KERNEL, NULL, NULL);
 	if (length)
 		goto out;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
@@ -161,8 +162,9 @@ static ssize_t my_write_access(struct file *file, char *buf, size_t size)
 	struct av_decision avd;
 	ssize_t length;
 
-	length = ksu_avc_has_perm(current_sid(), SECINITSID_SECURITY,
-			      SECCLASS_SECURITY, SECURITY__COMPUTE_AV, NULL);
+	length =
+	    ksu_avc_has_perm(current_sid(), SECINITSID_SECURITY,
+			     SECCLASS_SECURITY, SECURITY__COMPUTE_AV, NULL);
 	if (length)
 		goto out;
 
@@ -268,7 +270,8 @@ static int __nocfi my_setprocattr(const char *name, void *value, size_t size)
 			return error ?: live_error;
 	}
 
-	/* Use the live SID directly instead of parsing again in the old hook. */
+	/* Use the live SID directly instead of parsing again in the old hook.
+	 */
 	new = prepare_creds();
 	if (!new)
 		return -ENOMEM;
@@ -699,14 +702,10 @@ void ksu_selinux_hide_drop_backup_if_unused(void)
  * Both strings are mutable; the caller owns both initialized contexts even on
  * failure, including any partially allocated MLS ranges.
  */
-static int string_to_context_struct(struct policydb *pol,
-				    struct policydb *live_pol,
-				    struct sidtab *sidtabp,
-				    struct sidtab *live_sidtabp,
-				    char *scontext, char *live_scontext,
-				    struct context *ctx,
-				    struct context *live_ctx,
-				    u32 def_sid, int *live_rc)
+static int string_to_context_struct(
+    struct policydb *pol, struct policydb *live_pol, struct sidtab *sidtabp,
+    struct sidtab *live_sidtabp, char *scontext, char *live_scontext,
+    struct context *ctx, struct context *live_ctx, u32 def_sid, int *live_rc)
 {
 	struct role_datum *role, *live_role;
 	struct type_datum *typdatum, *live_typdatum;
@@ -777,9 +776,9 @@ static int string_to_context_struct(struct policydb *pol,
 		live_ctx->type = live_typdatum->value;
 
 	rc = mls_context_to_sid(pol, oldc, p, ctx, sidtabp, def_sid);
-	*live_rc = mls_context_to_sid(live_pol, oldc,
-				      live_scontext + (p - scontext),
-				      live_ctx, live_sidtabp, def_sid);
+	*live_rc =
+	    mls_context_to_sid(live_pol, oldc, live_scontext + (p - scontext),
+			       live_ctx, live_sidtabp, def_sid);
 	if (rc)
 		goto out;
 
@@ -828,10 +827,10 @@ retry:
 	global_sid = SECSID_NULL;
 	rcu_read_lock();
 	live_policy = rcu_dereference(selinux_state.policy);
-	rc = string_to_context_struct(
-	    &policy->policydb, &live_policy->policydb, policy->sidtab,
-	    live_policy->sidtab, scontext2, live_scontext, &context,
-	    &live_context, def_sid, &global_rc);
+	rc = string_to_context_struct(&policy->policydb, &live_policy->policydb,
+				      policy->sidtab, live_policy->sidtab,
+				      scontext2, live_scontext, &context,
+				      &live_context, def_sid, &global_rc);
 	if (!rc) {
 		rc = sidtab_context_to_sid(policy->sidtab, &context, sid);
 		if (!rc && !global_rc)
