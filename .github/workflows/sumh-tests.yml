@@ -82,6 +82,7 @@ jobs:
           python3 scripts/ci/test_selinux_hide_context.py --cc clang
           python3 scripts/ci/test_selinux_hide_setprocattr.py --cc clang
           python3 scripts/ci/test_sumh_guards.py --cc clang
+          python3 scripts/ci/test_sumh_unicode_guard.py --cc clang
           python3 scripts/ci/test_sumh_kernel_build.py --cc clang
           python3 scripts/ci/test_sumh_rules.py --cc clang
       - name: Userspace client, configuration, CLI and restoration

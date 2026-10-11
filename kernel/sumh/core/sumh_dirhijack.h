@@ -13,6 +13,8 @@ void sumh_dirhijack_stop_new(void);
 void sumh_dirhijack_exit(void);
 
 bool sumh_dirhijack_enabled(void);
+/* Shared cached-FUSE lookup ingress required by the Unicode path guard. */
+bool sumh_dirhijack_fuse_guard_available(void);
 const struct inode_operations *
 sumh_dirhijack_original_iops(const struct inode *inode);
 

@@ -24,6 +24,7 @@
 #include "sumh_sop_shadow.h"
 #include "sumh_vfs_hooks.h"
 #include "sumh_vnode.h"
+#include "sumh_unicode_guard.h"
 #include "feature/sucompat_vfs.h"
 
 /*
@@ -141,6 +142,11 @@ static void sumh_dh_child_free(struct sumh_dh_child *c);
 bool sumh_dirhijack_enabled(void)
 {
 	return READ_ONCE(sumh_dh_ready);
+}
+
+bool sumh_dirhijack_fuse_guard_available(void)
+{
+	return READ_ONCE(sumh_dh_ready) && READ_ONCE(sumh_dh_fuse_registered);
 }
 
 /* ---- meta accessors ---------------------------------------------------- */
@@ -264,6 +270,7 @@ static int sumh_dh_fuse_revalidate_pre(struct kprobe *probe,
 	struct inode *parent;
 	const struct qstr *name;
 	bool hidden;
+	bool unicode_blocked;
 	int idx;
 
 	(void)probe;
@@ -284,12 +291,16 @@ static int sumh_dh_fuse_revalidate_pre(struct kprobe *probe,
 	parent = d_inode(dentry->d_parent);
 	name = &dentry->d_name;
 #endif
-	hidden = sumh_dh_hidden_name(parent, name);
+	/* Security decisions are independent of VIEW/SPOOF and UID hide
+	 * exemptions. Run before the normal SUMH module visibility policy.
+	 */
+	unicode_blocked = sumh_unicode_guard_reject_component(name);
+	hidden = !unicode_blocked && sumh_dh_hidden_name(parent, name);
 	spin_unlock(&dentry->d_lock);
 	srcu_read_unlock(&sumh_dh_srcu, idx);
-	if (!hidden)
+	if (!hidden && !unicode_blocked)
 		return 0;
-	regs->regs[0] = (unsigned long)-ENOENT;
+	regs->regs[0] = (unsigned long)(unicode_blocked ? -EACCES : -ENOENT);
 	instruction_pointer_set(regs, regs->regs[30]);
 	return 1;
 #else

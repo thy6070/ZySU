@@ -10,7 +10,7 @@ kernelsu-objs += $(addprefix sumh/, \
  hooks/sumh_vfs_hooks.o \
  features/sumh_iop_override.o \
  features/sumh_fop_override.o features/sumh_fake_mountinfo.o \
- features/sumh_kernel_build.o \
+ features/sumh_kernel_build.o features/sumh_unicode_guard.o \
  features/sumh_vfs_view.o)
 ccflags-y += -DSUMH_EMBEDDED
 ccflags-y += -I$(srctree)

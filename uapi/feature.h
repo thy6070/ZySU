@@ -28,6 +28,10 @@ enum ksu_feature_id {
   KSU_FEATURE_UNSHARE_MNT = 107,
   // Read-only runtime state; feature 4 remains the persisted requested setting.
   KSU_FEATURE_SELINUX_HIDE_STATUS = 108,
+  // Opt-in casefold/FUSE path mitigation; disabled by default.
+  KSU_FEATURE_UNICODE_PATH_GUARD = 109,
+  // Read-only hook readiness and runtime state for feature 109.
+  KSU_FEATURE_UNICODE_PATH_GUARD_STATUS = 110,
 
   KSU_FEATURE_MAX
 };
@@ -37,6 +41,12 @@ enum ksu_selinux_hide_status {
   KSU_SELINUX_HIDE_ACTIVE = 1,
   KSU_SELINUX_HIDE_PENDING_REBOOT = 2,
   KSU_SELINUX_HIDE_FAILED = 3,
+};
+
+enum ksu_unicode_path_guard_status {
+  KSU_UNICODE_PATH_GUARD_DISABLED = 0,
+  KSU_UNICODE_PATH_GUARD_ACTIVE = 1,
+  KSU_UNICODE_PATH_GUARD_UNSUPPORTED = 2,
 };
 
 #ifdef __cplusplus

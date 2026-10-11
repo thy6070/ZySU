@@ -166,6 +166,8 @@ object Natives {
     const val FEATURE_SUMH = 106
     const val FEATURE_UNSHARE_MNT = 107
     const val FEATURE_SELINUX_HIDE_STATUS = 108
+    const val FEATURE_UNICODE_PATH_GUARD = 109
+    const val FEATURE_UNICODE_PATH_GUARD_STATUS = 110
 
     /**
      * Reads a feature's value straight from the kernel, or -1 when the kernel

@@ -350,7 +350,7 @@ internal fun getFeatureValueOrNull(feature: Int): Boolean? =
  *  runtime state if persistence fails. SUMH and the su mode are kernel-owned. */
 suspend fun setFeatureValue(feature: String, enabled: Boolean): Boolean =
     withContext(Dispatchers.IO) {
-        if (feature in setOf("sumh", "su_compat", "sumh_sucompat")) {
+        if (feature in setOf("sumh", "su_compat", "sumh_sucompat", "selinux_hide_status", "unicode_path_guard_status")) {
             return@withContext false
         }
         execKsud(

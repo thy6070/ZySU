@@ -32,6 +32,7 @@ SUMHP 已内置于 ksud。自动挂载按适用条件选择 OverlayFS 或 Magic 
 | --- | --- |
 | [SUMH 行为验证](guide/sumh-validation.md) | 内核能力、运行状态、规则与真机检查 |
 | [内核构建信息替换](guide/sumh-kernel-build.md) | Release / Version 字符串、配置、生效时机与验证 |
+| [Unicode 路径防护](guide/unicode-path-guard.md) | CVE-2025-48567 原理、SUMH 防护开关、边界与验证 |
 | [Magic Mount 验证](guide/magic-mount-validation.md) | 挂载树、生命周期、回归和设备检查 |
 | [OverlayFS 验证](guide/overlayfs-validation.md) | 目录分层、能力限制和回归入口 |
 | [环境状态与可观测性](guide/environment-observability.md) | 设置值、有效值、运行时证据与错误定位 |

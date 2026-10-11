@@ -27,6 +27,7 @@
 #include "sumh_fop_override.h"
 #include "sumh_fake_mountinfo.h"
 #include "sumh_kernel_build.h"
+#include "sumh_unicode_guard.h"
 
 /* VFS callbacks outlive individual control requests; pin their host module. */
 static bool sumh_unload_pin_held;
@@ -326,6 +327,10 @@ void ksu_sumh_init(void)
 
 	if (ret)
 		pr_err("sumh: feature registration failed: %d\n", ret);
+	/* Independent security control; reports unsupported if view startup
+	 * could not provide the shared FUSE revalidation hook.
+	 */
+	sumh_unicode_guard_init();
 }
 
 void ksu_sumh_post_fs_data(void)
@@ -345,6 +350,7 @@ void ksu_sumh_post_fs_data(void)
 
 void ksu_sumh_exit(void)
 {
+	sumh_unicode_guard_exit();
 	ksu_unregister_feature_handler(KSU_FEATURE_SUMH);
 	down_write(&sumh_lifecycle_lock);
 	if (!sumh_started) {

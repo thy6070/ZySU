@@ -700,4 +700,14 @@
     <string name="selinux_hide_runtime_pending">运行状态：等待重启后生效</string>
     <string name="selinux_hide_runtime_failed">运行状态：启用失败，请检查内核日志</string>
     <string name="selinux_hide_runtime_unknown">运行状态：暂不可用或当前内核未提供</string>
+    <string name="unicode_path_guard_title">Unicode 路径防护</string>
+    <string name="unicode_path_guard_loading">正在检查内核支持…</string>
+    <string name="unicode_path_guard_saving">正在保存并检查运行状态…</string>
+    <string name="unicode_path_guard_disabled">运行状态：已关闭</string>
+    <string name="unicode_path_guard_active">运行状态：已启用，作用于新路径查找</string>
+    <string name="unicode_path_guard_unsupported">当前内核缺少必要支持，请更新内核后使用此防护。</string>
+    <string name="unicode_path_guard_unknown">运行状态未知，请更新内核后再启用此防护。</string>
+    <string name="unicode_path_guard_scope">拦截 FUSE 与支持的 casefold 文件系统上，含可忽略 Unicode 字符且折叠为 Android、data 或 obb 的名称。刻意使用此类字符命名的目录也可能无法访问。</string>
+    <string name="unicode_path_guard_notice">作用于新路径查找；已有文件句柄和挂载缓存需重启清理。此缓解措施不能替代系统或 Google Play 提供的 MediaProvider 安全更新。</string>
+    <string name="unicode_path_guard_saved">已保存并确认运行状态。已有文件句柄和挂载缓存需重启清理。</string>
 </resources>

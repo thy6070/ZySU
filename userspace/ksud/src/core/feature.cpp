@@ -56,6 +56,8 @@ const std::map<std::string, uint32_t>& get_feature_map() {
         {"sumh_sucompat", KSU_FEATURE_SUMH_SUCOMPAT},
         {"sumh", KSU_FEATURE_SUMH},
         {"unshare_mnt", KSU_FEATURE_UNSHARE_MNT},
+        {"unicode_path_guard", KSU_FEATURE_UNICODE_PATH_GUARD},
+        {"unicode_path_guard_status", KSU_FEATURE_UNICODE_PATH_GUARD_STATUS},
     };
     return map;
 }
@@ -94,6 +96,12 @@ const std::map<uint32_t, const char*>& get_feature_descriptions() {
         {KSU_FEATURE_UNSHARE_MNT,
          "Mount View Cleanup - rebuilds the namespace after module unmounting and normalizes "
          "visible propagation IDs (off by default)"},
+        {KSU_FEATURE_UNICODE_PATH_GUARD,
+         "Unicode Path Guard - opt-in CVE-2025-48567 mitigation for casefold/FUSE paths; "
+         "blocks ignorable-character aliases of Android, data or obb on new path lookups. "
+         "Restart to clear existing handles/caches; does not replace the MediaProvider update"},
+        {KSU_FEATURE_UNICODE_PATH_GUARD_STATUS,
+         "Unicode Path Guard runtime state (read-only): 0 disabled, 1 active, 2 unsupported"},
     };
     return desc;
 }
@@ -105,7 +113,8 @@ bool is_fixed_feature_id(uint32_t id) {
 }
 
 bool is_configurable_feature_id(uint32_t id) {
-    if (is_fixed_feature_id(id) || id == KSU_FEATURE_SELINUX_HIDE_STATUS)
+    if (is_fixed_feature_id(id) || id == KSU_FEATURE_SELINUX_HIDE_STATUS ||
+        id == KSU_FEATURE_UNICODE_PATH_GUARD_STATUS)
         return false;
     // Removed feature IDs in old binary configs must never be restored or saved.
     const auto& known_features = get_feature_map();
@@ -143,6 +152,25 @@ void print_selinux_hide_runtime_status() {
     const auto [value, supported] = get_feature(KSU_FEATURE_SELINUX_HIDE_STATUS);
     printf("Runtime status: %s\n",
            supported ? selinux_hide_status_name(value) : "unavailable (kernel does not report it)");
+}
+
+const char* unicode_path_guard_status_name(uint64_t value) {
+    switch (value) {
+    case KSU_UNICODE_PATH_GUARD_DISABLED:
+        return "disabled";
+    case KSU_UNICODE_PATH_GUARD_ACTIVE:
+        return "active (new casefold/FUSE path lookups)";
+    case KSU_UNICODE_PATH_GUARD_UNSUPPORTED:
+        return "unsupported";
+    default:
+        return "unknown";
+    }
+}
+
+void print_unicode_path_guard_runtime_status() {
+    const auto [value, supported] = get_feature(KSU_FEATURE_UNICODE_PATH_GUARD_STATUS);
+    printf("Runtime status: %s\n",
+           supported ? unicode_path_guard_status_name(value) : "unavailable (update the kernel)");
 }
 
 int refresh_sucompat_vfs_locked() {
@@ -250,7 +278,8 @@ int feature_save_config_locked() {
 }
 
 int feature_set_impl(const std::string& id, uint32_t feature_id, uint64_t value) {
-    if (feature_id == KSU_FEATURE_SELINUX_HIDE_STATUS) {
+    if (feature_id == KSU_FEATURE_SELINUX_HIDE_STATUS ||
+        feature_id == KSU_FEATURE_UNICODE_PATH_GUARD_STATUS) {
         LOGE("Feature %s reports runtime status and is read-only", id.c_str());
         return 1;
     }
@@ -290,6 +319,8 @@ int feature_set_impl(const std::string& id, uint32_t feature_id, uint64_t value)
            value != 0 ? "enabled" : "disabled");
     if (feature_id == KSU_FEATURE_SELINUX_HIDE)
         print_selinux_hide_runtime_status();
+    if (feature_id == KSU_FEATURE_UNICODE_PATH_GUARD)
+        print_unicode_path_guard_runtime_status();
     return 0;
 }
 
@@ -315,12 +346,17 @@ int feature_get(const std::string& id) {
     printf("Status: ");
     if (feature_id == KSU_FEATURE_SELINUX_HIDE_STATUS) {
         terminal::status(stdout, selinux_hide_status_name(value), value == KSU_SELINUX_HIDE_ACTIVE);
+    } else if (feature_id == KSU_FEATURE_UNICODE_PATH_GUARD_STATUS) {
+        terminal::status(stdout, unicode_path_guard_status_name(value),
+                         value == KSU_UNICODE_PATH_GUARD_ACTIVE);
     } else {
         terminal::status(stdout, value != 0 ? "enabled" : "disabled", value != 0);
     }
     printf("\n");
     if (feature_id == KSU_FEATURE_SELINUX_HIDE)
         print_selinux_hide_runtime_status();
+    if (feature_id == KSU_FEATURE_UNICODE_PATH_GUARD)
+        print_unicode_path_guard_runtime_status();
 
     return 0;
 }
@@ -395,6 +431,8 @@ void feature_list() {
             status = "NOT_SUPPORTED";
         } else if (id == KSU_FEATURE_SELINUX_HIDE_STATUS) {
             status = selinux_hide_status_name(value);
+        } else if (id == KSU_FEATURE_UNICODE_PATH_GUARD_STATUS) {
+            status = unicode_path_guard_status_name(value);
         } else if (value != 0) {
             status = "ENABLED";
         } else {
@@ -402,8 +440,10 @@ void feature_list() {
         }
 
         printf("[");
-        const bool active =
-            id == KSU_FEATURE_SELINUX_HIDE_STATUS ? value == KSU_SELINUX_HIDE_ACTIVE : value != 0;
+        const bool active = id == KSU_FEATURE_SELINUX_HIDE_STATUS ? value == KSU_SELINUX_HIDE_ACTIVE
+                            : id == KSU_FEATURE_UNICODE_PATH_GUARD_STATUS
+                                ? value == KSU_UNICODE_PATH_GUARD_ACTIVE
+                                : value != 0;
         terminal::status(stdout, status, supported && active);
         printf("] %s (ID=%u)\n", name.c_str(), id);
         printf("    %s\n", feature_id_to_description(id));

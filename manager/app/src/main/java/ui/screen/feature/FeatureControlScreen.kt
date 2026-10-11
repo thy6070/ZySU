@@ -16,6 +16,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zying.zysu.Natives
 import com.zying.zysu.R
 import com.zying.zysu.ui.component.KsuIsValid
@@ -165,10 +168,34 @@ fun FeatureControlContent(
     )
     val adbRoot = rememberFeatureToggleState(Natives.FEATURE_ADB_ROOT)
     val hideBootloader = rememberFeatureToggleState(Natives.FEATURE_HIDE_BOOTLOADER)
+    val unicodePathGuard = rememberFeatureToggleState(Natives.FEATURE_UNICODE_PATH_GUARD)
+    var unicodePathGuardRuntime by remember { mutableStateOf(UnicodePathGuardRuntime.Loading) }
+    var unicodePathGuardRefresh by remember { mutableIntStateOf(0) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) unicodePathGuardRefresh++
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(unicodePathGuard.saving, unicodePathGuardRefresh) {
+        if (unicodePathGuard.saving) return@LaunchedEffect
+        val (value, runtime) = withContext(Dispatchers.IO) {
+            val value = Natives.getFeature(Natives.FEATURE_UNICODE_PATH_GUARD)
+            value to UnicodePathGuardRuntime.fromKernel(
+                featureSupported = value >= 0,
+                status = Natives.getFeature(Natives.FEATURE_UNICODE_PATH_GUARD_STATUS),
+            )
+        }
+        unicodePathGuard.checked = value > 0
+        unicodePathGuardRuntime = runtime
+    }
 
     val saving = listOf(
         selinuxHide, kernelUmountDisabled, webViewZygoteUmount,
         adbRoot, hideBootloader,
+        unicodePathGuard,
     ).any { it.saving }
     val savingCallback by rememberUpdatedState(onSavingChanged)
     SideEffect { savingCallback(saving) }
@@ -178,6 +205,7 @@ fun FeatureControlContent(
 
     val savedRebootMessage = stringResource(R.string.setting_change_saved_reboot)
     val failedMessage = stringResource(R.string.setting_change_failed)
+    val unicodePathGuardSavedMessage = stringResource(R.string.unicode_path_guard_saved)
 
     Column(
         modifier = (if (scrollable) {
@@ -320,11 +348,84 @@ fun FeatureControlContent(
                     }
                 )
             }
+
+            UnicodePathGuardCard(
+                state = unicodePathGuard,
+                runtime = unicodePathGuardRuntime,
+                enabled = !saving,
+                onChange = { enabled ->
+                    scope.persistFeature(
+                        state = unicodePathGuard,
+                        featureId = Natives.FEATURE_UNICODE_PATH_GUARD,
+                        featureName = "unicode_path_guard",
+                        kernelEnabled = enabled,
+                        afterPersist = {
+                            withContext(Dispatchers.IO) {
+                                val runtime = UnicodePathGuardRuntime.fromKernel(
+                                    Natives.isFeatureSupported(Natives.FEATURE_UNICODE_PATH_GUARD),
+                                    Natives.getFeature(Natives.FEATURE_UNICODE_PATH_GUARD_STATUS),
+                                )
+                                val expected = if (enabled) UnicodePathGuardRuntime.Active
+                                    else UnicodePathGuardRuntime.Disabled
+                                runtime == expected
+                            }
+                        },
+                        onRuntimeSettled = { unicodePathGuardRefresh++ },
+                        onSuccess = { snackbarHost.showSnackbar(unicodePathGuardSavedMessage) },
+                        onFailure = { snackbarHost.showSnackbar(failedMessage) },
+                    )
+                },
+            )
         }
 
         if (scrollable) Spacer(modifier = Modifier.height(8.dp))
     }
 
+}
+
+@Composable
+private fun UnicodePathGuardCard(
+    state: FeatureToggleState,
+    runtime: UnicodePathGuardRuntime,
+    enabled: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    val runtimeSummary = stringResource(
+        if (state.saving) R.string.unicode_path_guard_saving else when (runtime) {
+            UnicodePathGuardRuntime.Loading -> R.string.unicode_path_guard_loading
+            UnicodePathGuardRuntime.Disabled -> R.string.unicode_path_guard_disabled
+            UnicodePathGuardRuntime.Active -> R.string.unicode_path_guard_active
+            UnicodePathGuardRuntime.Unsupported -> R.string.unicode_path_guard_unsupported
+            UnicodePathGuardRuntime.Unknown -> R.string.unicode_path_guard_unknown
+        }
+    )
+    SettingsCard(title = stringResource(R.string.unicode_path_guard_cve)) {
+        SwitchSettingItem(
+            icon = Icons.Filled.Security,
+            title = stringResource(R.string.unicode_path_guard_title),
+            summary = runtimeSummary,
+            checked = state.checked,
+            enabled = enabled && runtime.configurable && !state.saving,
+            groupPosition = MoreSettingsItemPosition.Only,
+            onChange = onChange,
+        )
+        if (state.saving) LinearProgressIndicator(Modifier.fillMaxWidth())
+        Column(
+            Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                stringResource(R.string.unicode_path_guard_scope),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                stringResource(R.string.unicode_path_guard_notice),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 /** Native isolation controls embedded beside the shared SUMH settings. */

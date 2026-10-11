@@ -704,4 +704,15 @@
     <string name="selinux_hide_runtime_pending" tools:ignore="MissingTranslation">Runtime: waiting for a reboot</string>
     <string name="selinux_hide_runtime_failed" tools:ignore="MissingTranslation">Runtime: could not activate. Check the kernel log.</string>
     <string name="selinux_hide_runtime_unknown" tools:ignore="MissingTranslation">Runtime: unavailable or not reported by this kernel</string>
+    <string name="unicode_path_guard_cve" translatable="false">CVE-2025-48567</string>
+    <string name="unicode_path_guard_title" tools:ignore="MissingTranslation">Unicode path protection</string>
+    <string name="unicode_path_guard_loading" tools:ignore="MissingTranslation">Checking kernel support…</string>
+    <string name="unicode_path_guard_saving" tools:ignore="MissingTranslation">Saving and checking runtime status…</string>
+    <string name="unicode_path_guard_disabled" tools:ignore="MissingTranslation">Runtime: disabled</string>
+    <string name="unicode_path_guard_active" tools:ignore="MissingTranslation">Runtime: enabled for new path lookups</string>
+    <string name="unicode_path_guard_unsupported" tools:ignore="MissingTranslation">Required kernel support is unavailable. Update the kernel to use this protection.</string>
+    <string name="unicode_path_guard_unknown" tools:ignore="MissingTranslation">Runtime status is unknown. Update the kernel before enabling this protection.</string>
+    <string name="unicode_path_guard_scope" tools:ignore="MissingTranslation">Blocks names containing ignorable Unicode characters that fold to Android, data or obb on FUSE and supported casefold filesystems. Deliberately named directories using these characters may also become inaccessible.</string>
+    <string name="unicode_path_guard_notice" tools:ignore="MissingTranslation">Applies to new path lookups; restart to clear existing file handles and mount caches. This mitigation does not replace the MediaProvider system or Google Play security update.</string>
+    <string name="unicode_path_guard_saved" tools:ignore="MissingTranslation">Saved and runtime status verified. Restart to clear existing file handles and mount caches.</string>
 </resources>
