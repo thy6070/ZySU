@@ -1,69 +1,34 @@
 package com.zying.zysu.ui.screen
 
-import android.annotation.SuppressLint
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.*
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.*
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberTopAppBarState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -72,54 +37,38 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.dergoogler.mmrl.ui.component.LabelItem
-import com.dergoogler.mmrl.ui.component.LabelItemDefaults
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.generated.destinations.AppProfileScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.AuthorizationPoliciesScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.AuthorizationRecordsScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.SuperUserScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.zying.zysu.Natives
 import com.zying.zysu.R
-import com.zying.zysu.ui.component.FabMenuPresets
 import com.zying.zysu.ui.component.LocalBottomBarPadding
 import com.zying.zysu.ui.component.SearchAppBar
-import com.zying.zysu.ui.component.VerticalExpandableFab
 import com.zying.zysu.ui.component.YukiIcon
-import com.zying.zysu.ui.component.YukiTopBarTitle
 import com.zying.zysu.ui.component.YukiPageScaffold
 import com.zying.zysu.ui.component.YukiPullToRefreshBox
-import com.zying.zysu.ui.component.clickHapticFeedback
-import com.zying.zysu.ui.theme.isExpressiveUi
+import com.zying.zysu.ui.component.YukiTopAppBar
+import com.zying.zysu.ui.component.YukiTopBarTitle
 import com.zying.zysu.ui.theme.CardConfig
 import com.zying.zysu.ui.theme.getCardBorder
-import com.zying.zysu.ui.util.rememberSnackbarController
 import com.zying.zysu.ui.util.module.ModuleModify
+import com.zying.zysu.ui.util.rememberSnackbarController
 import com.zying.zysu.ui.viewmodel.AppCategory
 import com.zying.zysu.ui.viewmodel.SortType
 import com.zying.zysu.ui.viewmodel.SuperUserViewModel
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
-enum class AppPriority(val value: Int) {
-    SHELL(0), ROOT(1), CUSTOM(2), DEFAULT(3)
-}
-
-data class BottomSheetMenuItem(
-    val icon: ImageVector,
-    val titleRes: Int,
-    val onClick: () -> Unit
+private data class AuthorizationChange(
+    val groups: List<SuperUserViewModel.AppGroup>,
+    val allowSu: Boolean,
+    val umountModules: Boolean? = null,
+    val batch: Boolean = false,
 )
 
-private enum class AppSwipeAction {
-    GrantRoot,
-    UmountModules
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
 fun SuperUserScreen(navigator: DestinationsNavigator) {
@@ -128,325 +77,261 @@ fun SuperUserScreen(navigator: DestinationsNavigator) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SuperUserPage(
-    navigator: DestinationsNavigator,
-) {
+internal fun SuperUserPage(navigator: DestinationsNavigator) {
     val viewModel = viewModel<SuperUserViewModel>()
     val scope = rememberCoroutineScope()
-    val topAppBarState = rememberTopAppBarState()
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(topAppBarState)
-    val listState = rememberLazyListState()
     val context = LocalContext.current
-    val snackBarHostState = rememberSnackbarController()
-
-    val bottomSheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
-    )
-    var showBottomSheet by remember { mutableStateOf(false) }
-
-    val backupLauncher = ModuleModify.rememberAllowlistBackupLauncher(
-        context,
-        snackBarHostState,
-        viewModel
-    )
-    val restoreLauncher = ModuleModify.rememberAllowlistRestoreLauncher(
-        context,
-        snackBarHostState,
-        viewModel
-    )
-
-    LaunchedEffect(viewModel.selectedApps, viewModel.showBatchActions) {
-        if (viewModel.showBatchActions && viewModel.selectedApps.isEmpty()) {
-            viewModel.showBatchActions = false
-        }
+    val snackbar = rememberSnackbarController()
+    val listState = rememberLazyListState()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    var showOptions by rememberSaveable { mutableStateOf(false) }
+    var managedUid by rememberSaveable { mutableStateOf<Int?>(null) }
+    var pendingChange by remember { mutableStateOf<AuthorizationChange?>(null) }
+    val busy = viewModel.isUpdatingPermissions
+    val visibleGroups = viewModel.appGroupList
+    val appCounts = remember(visibleGroups) {
+        AppCategory.entries.associateWith { category -> visibleGroups.count { it.matches(category) } }
     }
-
-    val filteredAndSortedAppGroups = remember(
-        viewModel.appGroupList,
-        viewModel.selectedCategory,
-        viewModel.currentSortType,
-        viewModel.search,
-        viewModel.showSystemApps
-    ) {
-        var groups = viewModel.appGroupList
-
-        // 按分类筛选
-        groups = when (viewModel.selectedCategory) {
-            AppCategory.ALL -> groups
-            AppCategory.ROOT -> groups.filter { it.allowSu }
-            AppCategory.CUSTOM -> groups.filter { !it.allowSu && it.hasCustomProfile }
-            AppCategory.DEFAULT -> groups.filter { !it.allowSu && !it.hasCustomProfile }
+    val displayedGroups = remember(visibleGroups, viewModel.selectedCategory, viewModel.currentSortType) {
+        val comparator: Comparator<SuperUserViewModel.AppGroup> = when (viewModel.currentSortType) {
+            SortType.NAME_ASC -> compareBy { it.mainApp.label.lowercase() }
+            SortType.NAME_DESC -> compareByDescending { it.mainApp.label.lowercase() }
+            SortType.INSTALL_TIME_NEW -> compareByDescending { it.mainApp.packageInfo.firstInstallTime }
+            SortType.INSTALL_TIME_OLD -> compareBy { it.mainApp.packageInfo.firstInstallTime }
         }
+        visibleGroups.filter { it.matches(viewModel.selectedCategory) }.sortedWith(comparator.thenBy { it.uid })
+    }
+    val backupLauncher = ModuleModify.rememberAllowlistBackupLauncher(context, snackbar, viewModel)
+    val restoreLauncher = ModuleModify.rememberAllowlistRestoreLauncher(context, snackbar, viewModel)
+    val selectedGroups = SuperUserViewModel.appGroups.filter { it.uid in viewModel.selectedUids }
 
-        // 排序
-        groups.sortedWith { group1, group2 ->
-            val priority1 = when {
-                group1.uid == SuperUserViewModel.SHELL_UID -> AppPriority.SHELL
-                group1.allowSu -> AppPriority.ROOT
-                group1.hasCustomProfile -> AppPriority.CUSTOM
-                else -> AppPriority.DEFAULT
-            }
-            val priority2 = when {
-                group2.uid == SuperUserViewModel.SHELL_UID -> AppPriority.SHELL
-                group2.allowSu -> AppPriority.ROOT
-                group2.hasCustomProfile -> AppPriority.CUSTOM
-                else -> AppPriority.DEFAULT
-            }
+    LaunchedEffect(Unit) { if (!viewModel.hasLoaded) viewModel.fetchAppList() }
+    WorkspaceOperationGuard(busy, SuperUserScreenDestination.route)
+    BackHandler(viewModel.showBatchActions || busy) { if (!busy) viewModel.exitBatchMode() }
 
-            val priorityComparison = priority1.value.compareTo(priority2.value)
-            if (priorityComparison != 0) {
-                priorityComparison
+    fun applyChange(change: AuthorizationChange) {
+        managedUid = null
+        scope.launch {
+            if (change.batch) {
+                val result = viewModel.updateBatchPermissions(change.allowSu, change.umountModules, change.groups)
+                snackbar.showSnackbar(context.getString(
+                    if (result.failureCount == 0) R.string.authorization_batch_success else R.string.authorization_batch_partial,
+                    result.successCount, result.failureCount,
+                ))
             } else {
-                when (viewModel.currentSortType) {
-                    SortType.NAME_ASC -> group1.mainApp.label.lowercase()
-                        .compareTo(group2.mainApp.label.lowercase())
-                    SortType.NAME_DESC -> group2.mainApp.label.lowercase()
-                        .compareTo(group1.mainApp.label.lowercase())
-                    SortType.INSTALL_TIME_NEW -> group2.mainApp.packageInfo.firstInstallTime
-                        .compareTo(group1.mainApp.packageInfo.firstInstallTime)
-                    SortType.INSTALL_TIME_OLD -> group1.mainApp.packageInfo.firstInstallTime
-                        .compareTo(group2.mainApp.packageInfo.firstInstallTime)
-                    else -> group1.mainApp.label.lowercase()
-                        .compareTo(group2.mainApp.label.lowercase())
-                }
+                val group = change.groups.single()
+                val success = viewModel.updateGroupPermission(group, change.allowSu, change.umountModules)
+                snackbar.showSnackbar(context.getString(
+                    if (success) R.string.authorization_updated else R.string.authorization_update_failed,
+                    group.mainApp.label,
+                ))
             }
         }
     }
 
-    val appCounts = remember(viewModel.appGroupList, viewModel.showSystemApps) {
-        mapOf(
-            AppCategory.ALL to viewModel.appGroupList.size,
-            AppCategory.ROOT to viewModel.appGroupList.count { it.allowSu },
-            AppCategory.CUSTOM to viewModel.appGroupList.count { !it.allowSu && it.hasCustomProfile },
-            AppCategory.DEFAULT to viewModel.appGroupList.count { !it.allowSu && !it.hasCustomProfile }
-        )
+    fun requestChange(change: AuthorizationChange) {
+        if (busy || change.groups.isEmpty()) return
+        managedUid = null
+        if (change.allowSu || change.batch || change.groups.any { it.apps.size > 1 } ||
+            (change.umountModules != null && change.groups.any { it.allowSu })) pendingChange = change
+        else applyChange(change)
     }
 
     YukiPageScaffold(
         topBar = {
             Column {
-                SearchAppBar(
-                    title = { TopBarTitle() },
-                    searchText = viewModel.search,
-                    onSearchTextChange = { viewModel.search = it },
-                    onClearClick = { viewModel.search = "" },
-                    navigationActions = {
-                        AuthorizationShortcut(
-                            icon = Icons.Outlined.Tune,
-                            label = stringResource(R.string.nav_policies),
-                            onClick = { navigator.navigate(AuthorizationPoliciesScreenDestination) },
-                        )
-                        AuthorizationShortcut(
-                            icon = Icons.Outlined.History,
-                            label = stringResource(R.string.nav_records),
-                            onClick = { navigator.navigate(AuthorizationRecordsScreenDestination) },
-                        )
-                    },
-                    dropdownContent = {
-                        IconButton(onClick = { showBottomSheet = true }) {
-                            YukiIcon(
-                                imageVector = Icons.Filled.MoreVert,
-                                contentDescription = stringResource(id = R.string.settings),
+                if (viewModel.showBatchActions) {
+                    YukiTopAppBar(
+                        title = { YukiTopBarTitle(stringResource(R.string.authorization_selected_count, selectedGroups.size)) },
+                        navigationIcon = {
+                            IconButton(onClick = viewModel::exitBatchMode, enabled = !busy) {
+                                YukiIcon(Icons.Filled.Close, stringResource(R.string.cancel))
+                            }
+                        },
+                        actions = {
+                            TextButton(onClick = { viewModel.selectGroups(displayedGroups) }, enabled = !busy && displayedGroups.isNotEmpty()) {
+                                Text(stringResource(R.string.authorization_select_visible))
+                            }
+                        },
+                    )
+                    AuthorizationBatchBar(
+                        enabled = !busy && selectedGroups.isNotEmpty(),
+                        onChange = { allow, unmount -> requestChange(AuthorizationChange(selectedGroups, allow, unmount, batch = true)) },
+                        onClear = viewModel::clearSelection,
+                    )
+                } else {
+                    SearchAppBar(
+                        title = { YukiTopBarTitle(stringResource(R.string.nav_authorization)) },
+                        searchText = viewModel.search,
+                        onSearchTextChange = { viewModel.search = it },
+                        onClearClick = { viewModel.search = "" },
+                        placeholder = { Text(stringResource(R.string.authorization_search_hint)) },
+                        navigationActions = {
+                            AuthorizationShortcut(Icons.Outlined.Tune, stringResource(R.string.nav_policies), enabled = !busy) {
+                                navigator.navigate(AuthorizationPoliciesScreenDestination)
+                            }
+                            AuthorizationShortcut(Icons.Outlined.History, stringResource(R.string.nav_records), enabled = !busy) {
+                                navigator.navigate(AuthorizationRecordsScreenDestination)
+                            }
+                        },
+                        dropdownContent = {
+                            IconButton(onClick = { showOptions = true }, enabled = !busy) {
+                                YukiIcon(Icons.Filled.MoreVert, stringResource(R.string.authorization_options))
+                            }
+                        },
+                        scrollBehavior = scrollBehavior,
+                    )
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(AppCategory.entries, key = { it.persistKey }) { category ->
+                            FilterChip(
+                                selected = viewModel.selectedCategory == category,
+                                onClick = {
+                                    viewModel.updateSelectedCategory(category)
+                                    scope.launch { listState.scrollToItem(0) }
+                                },
+                                label = { Text("${stringResource(category.displayNameRes)} · ${appCounts[category] ?: 0}") },
+                                modifier = Modifier.heightIn(min = 48.dp),
                             )
                         }
-                    },
-                    scrollBehavior = scrollBehavior
-                )
-                if (viewModel.selectedCategory != AppCategory.ALL) {
-                    TextButton(
-                        onClick = { showBottomSheet = true },
-                        colors = ButtonDefaults.textButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-                            .padding(horizontal = 12.dp)
-                            .heightIn(min = 48.dp),
-                    ) {
-                        Text(
-                            text = "${stringResource(viewModel.selectedCategory.displayNameRes)} · ${appCounts[viewModel.selectedCategory] ?: 0}",
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.labelLarge,
-                            textAlign = TextAlign.Start,
+                    }
+                }
+                if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbar.hostState, Modifier.padding(bottom = LocalBottomBarPadding.current)) },
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+    ) { innerPadding ->
+        val layoutDirection = LocalLayoutDirection.current
+        YukiPullToRefreshBox(
+            modifier = Modifier.fillMaxSize().imePadding(),
+            indicatorTopPadding = innerPadding.calculateTopPadding(),
+            isRefreshing = viewModel.isRefreshing,
+            onRefresh = { if (!busy) scope.launch { viewModel.fetchAppList(forceRefresh = true) } },
+        ) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection),
+                contentPadding = PaddingValues(
+                    start = innerPadding.calculateStartPadding(layoutDirection) + 16.dp,
+                    end = innerPadding.calculateEndPadding(layoutDirection) + 16.dp,
+                    top = innerPadding.calculateTopPadding() + 12.dp,
+                    bottom = innerPadding.calculateBottomPadding() + LocalBottomBarPadding.current + 24.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (!viewModel.showBatchActions && viewModel.search.isBlank() && visibleGroups.isNotEmpty()) {
+                    item(key = "overview") { AuthorizationOverview(appCounts, viewModel.showSystemApps) }
+                }
+                if (viewModel.loadError != null) {
+                    item(key = "load-error") {
+                        AuthorizationLoadError(viewModel.isRefreshing || busy) { scope.launch { viewModel.fetchAppList(forceRefresh = true) } }
+                    }
+                }
+                item(key = "list-tools") {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.authorization_result_count, displayedGroups.size), style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                stringResource(if (viewModel.showBatchActions) R.string.authorization_selection_hint else R.string.authorization_manage_hint),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (!viewModel.showBatchActions) {
+                            IconButton(onClick = { showOptions = true }, enabled = !busy) { YukiIcon(Icons.Filled.Sort, stringResource(R.string.sort_options)) }
+                            TextButton(onClick = viewModel::toggleBatchMode, enabled = displayedGroups.isNotEmpty() && !busy) {
+                                Text(stringResource(R.string.authorization_select))
+                            }
+                        }
+                    }
+                }
+                items(displayedGroups, key = { it.uid }) { group ->
+                    AuthorizationAppRow(
+                        group = group,
+                        selecting = viewModel.showBatchActions,
+                        selected = group.uid in viewModel.selectedUids,
+                        enabled = !busy,
+                        onClick = { if (viewModel.showBatchActions) viewModel.toggleGroupSelection(group) else managedUid = group.uid },
+                        onLongClick = {
+                            if (!viewModel.showBatchActions) viewModel.toggleBatchMode()
+                            viewModel.toggleGroupSelection(group)
+                        },
+                        onToggleRoot = { allow -> requestChange(AuthorizationChange(listOf(group), allow)) },
+                    )
+                }
+                if (displayedGroups.isEmpty() && viewModel.loadError == null) {
+                    item(key = "empty") {
+                        AuthorizationEmptyState(
+                            loading = viewModel.isRefreshing || !viewModel.hasLoaded,
+                            filtered = viewModel.search.isNotBlank() || viewModel.selectedCategory != AppCategory.ALL,
+                            onReset = { viewModel.search = ""; viewModel.updateSelectedCategory(AppCategory.ALL) },
+                            onRefresh = { scope.launch { viewModel.fetchAppList(forceRefresh = true) } },
                         )
-                        YukiIcon(Icons.Filled.ExpandMore, contentDescription = null)
                     }
                 }
             }
-        },
-        snackbarHost = { SnackbarHost(snackBarHostState.hostState) },
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-        floatingActionButton = {
-            Box(Modifier.padding(bottom = LocalBottomBarPadding.current)) {
-                SuperUserFab(viewModel, filteredAndSortedAppGroups, listState, scope)
-            }
-        }
-    ) { innerPadding ->
-        SuperUserContent(
-            innerPadding = innerPadding,
-            viewModel = viewModel,
-            filteredAndSortedAppGroups = filteredAndSortedAppGroups,
-            listState = listState,
-            scrollBehavior = scrollBehavior,
-            navigator = navigator,
-            scope = scope
-        )
-
-        if (showBottomSheet) {
-            SuperUserBottomSheet(
-                bottomSheetState = bottomSheetState,
-                onDismiss = { showBottomSheet = false },
-                viewModel = viewModel,
-                appCounts = appCounts,
-                backupLauncher = backupLauncher,
-                restoreLauncher = restoreLauncher,
-                scope = scope,
-                listState = listState
-            )
         }
     }
+    if (showOptions) {
+        AuthorizationOptionsSheet(
+            viewModel = viewModel,
+            onDismiss = { showOptions = false },
+            onRefresh = { showOptions = false; scope.launch { viewModel.fetchAppList(forceRefresh = true) } },
+            onBackup = { showOptions = false; backupLauncher.launch(ModuleModify.createAllowlistBackupIntent()) },
+            onRestore = { showOptions = false; restoreLauncher.launch(ModuleModify.createAllowlistRestoreIntent()) },
+        )
+    }
+    SuperUserViewModel.appGroups.firstOrNull { it.uid == managedUid }?.let { group ->
+        AuthorizationAppSheet(
+            group = group, busy = busy,
+            onDismiss = { managedUid = null },
+            onEditProfile = { app -> managedUid = null; navigator.navigate(AppProfileScreenDestination(app)) },
+            onPermissionChange = { allow, unmount -> requestChange(AuthorizationChange(listOf(group), allow, unmount)) },
+        )
+    }
+    pendingChange?.let { change ->
+        AuthorizationConfirmDialog(change, onDismiss = { pendingChange = null }, onConfirm = { pendingChange = null; applyChange(change) })
+    }
+}
+
+private fun SuperUserViewModel.AppGroup.matches(category: AppCategory) = when (category) {
+    AppCategory.ALL -> true
+    AppCategory.ROOT -> allowSu
+    AppCategory.CUSTOM -> !allowSu && hasCustomProfile
+    AppCategory.DEFAULT -> !allowSu && !hasCustomProfile
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AuthorizationShortcut(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun AuthorizationShortcut(icon: ImageVector, label: String, enabled: Boolean = true, onClick: () -> Unit) {
     TooltipBox(
         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
-        tooltip = { PlainTooltip { Text(label) } },
-        state = rememberTooltipState(),
-    ) {
-        IconButton(onClick = onClick) { YukiIcon(icon, label) }
-    }
+        tooltip = { PlainTooltip { Text(label) } }, state = rememberTooltipState(),
+    ) { IconButton(onClick = onClick, enabled = enabled) { YukiIcon(icon, label) } }
 }
 
 @Composable
-private fun TopBarTitle() {
-    YukiTopBarTitle(
-        text = stringResource(R.string.nav_authorization),
-    )
-}
-
-@Composable
-private fun SuperUserFab(
-    viewModel: SuperUserViewModel,
-    filteredAndSortedAppGroups: List<SuperUserViewModel.AppGroup>,
-    listState: androidx.compose.foundation.lazy.LazyListState,
-    scope: CoroutineScope
-) {
-    VerticalExpandableFab(
-        menuItems = if (viewModel.showBatchActions && viewModel.selectedApps.isNotEmpty()) {
-            FabMenuPresets.getBatchActionMenuItems(
-                onCancel = {
-                    viewModel.selectedApps = emptySet()
-                    viewModel.showBatchActions = false
-                },
-                onDeny = { scope.launch { viewModel.updateBatchPermissions(false) } },
-                onAllow = { scope.launch { viewModel.updateBatchPermissions(true) } },
-                onUnmountModules = {
-                    scope.launch { viewModel.updateBatchPermissions(
-                        allowSu = false,
-                        umountModules = true
-                    ) }
-                },
-                onDisableUnmount = {
-                    scope.launch { viewModel.updateBatchPermissions(
-                        allowSu = false,
-                        umountModules = false
-                    ) }
-                }
-            )
-        } else {
-            FabMenuPresets.getScrollMenuItems(
-                onScrollToTop = { scope.launch { listState.animateScrollToItem(0) } },
-                onScrollToBottom = {
-                    scope.launch {
-                        val lastIndex = filteredAndSortedAppGroups.size - 1
-                        if (lastIndex >= 0) listState.animateScrollToItem(lastIndex)
-                    }
-                }
-            )
-        },
-        mainButtonIcon = if (viewModel.showBatchActions && viewModel.selectedApps.isNotEmpty()) {
-            Icons.Filled.GridView
-        } else {
-            Icons.Filled.Add
-        },
-        mainButtonExpandedIcon = Icons.Filled.Close
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SuperUserContent(
-    innerPadding: PaddingValues,
-    viewModel: SuperUserViewModel,
-    filteredAndSortedAppGroups: List<SuperUserViewModel.AppGroup>,
-    listState: androidx.compose.foundation.lazy.LazyListState,
-    scrollBehavior: TopAppBarScrollBehavior,
-    navigator: DestinationsNavigator,
-    scope: CoroutineScope
-) {
-    val layoutDirection = LocalLayoutDirection.current
-    YukiPullToRefreshBox(
-        modifier = Modifier.fillMaxSize(),
-        indicatorTopPadding = innerPadding.calculateTopPadding(),
-        onRefresh = { scope.launch { viewModel.fetchAppList(forceRefresh = true) } },
-        isRefreshing = viewModel.isRefreshing
-    ) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = PaddingValues(
-                start = innerPadding.calculateStartPadding(layoutDirection) + 20.dp,
-                end = innerPadding.calculateEndPadding(layoutDirection) + 20.dp,
-                top = innerPadding.calculateTopPadding() + 16.dp,
-                bottom = innerPadding.calculateBottomPadding() + 96.dp + LocalBottomBarPadding.current,
-            ),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            filteredAndSortedAppGroups.forEach { appGroup ->
-                item(key = "${appGroup.uid}-${appGroup.mainApp.packageName}") {
-                    AppGroupItem(
-                        appGroup = appGroup,
-                        isSelected = appGroup.packageNames.any { viewModel.selectedApps.contains(it) },
-                        onToggleSelection = {
-                            appGroup.packageNames.forEach { viewModel.toggleAppSelection(it) }
-                        },
-                        onClick = {
-                            if (viewModel.showBatchActions) {
-                                appGroup.packageNames.forEach { viewModel.toggleAppSelection(it) }
-                            } else {
-                                navigator.navigate(AppProfileScreenDestination(appGroup.mainApp))
-                            }
-                        },
-                        onLongClick = {
-                            if (!viewModel.showBatchActions) {
-                                viewModel.toggleBatchMode()
-                                appGroup.packageNames.forEach { viewModel.toggleAppSelection(it) }
-                            }
-                        },
-                        viewModel = viewModel
+private fun AuthorizationOverview(counts: Map<AppCategory, Int>, showSystemApps: Boolean) {
+    Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                YukiIcon(Icons.Filled.Security, null)
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.authorization_overview), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(if (showSystemApps) R.string.authorization_scope_all else R.string.authorization_scope_user),
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
-
-            if (filteredAndSortedAppGroups.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier.fillParentMaxSize().padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if ((viewModel.isRefreshing || viewModel.appGroupList.isEmpty()) && viewModel.search.isEmpty()) {
-                            LoadingAnimation(isLoading = true)
-                        } else {
-                            EmptyState(
-                                selectedCategory = viewModel.selectedCategory,
-                                isSearchEmpty = viewModel.search.isNotEmpty()
-                            )
-                        }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                listOf(AppCategory.ALL, AppCategory.ROOT, AppCategory.CUSTOM).forEach { category ->
+                    Column(Modifier.weight(1f)) {
+                        Text((counts[category] ?: 0).toString(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(category.displayNameRes), style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -454,774 +339,184 @@ private fun SuperUserContent(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SuperUserBottomSheet(
-    bottomSheetState: SheetState,
-    onDismiss: () -> Unit,
-    viewModel: SuperUserViewModel,
-    appCounts: Map<AppCategory, Int>,
-    backupLauncher: androidx.activity.result.ActivityResultLauncher<android.content.Intent>,
-    restoreLauncher: androidx.activity.result.ActivityResultLauncher<android.content.Intent>,
-    scope: CoroutineScope,
-    listState: androidx.compose.foundation.lazy.LazyListState
-) {
-    val bottomSheetMenuItems = remember(viewModel.showSystemApps) {
-        listOf(
-            BottomSheetMenuItem(
-                icon = Icons.Filled.Refresh,
-                titleRes = R.string.refresh,
-                onClick = {
-                    scope.launch {
-                        viewModel.fetchAppList(forceRefresh = true)
-                        bottomSheetState.hide()
-                        onDismiss()
-                    }
-                }
-            ),
-            BottomSheetMenuItem(
-                icon = if (viewModel.showSystemApps) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                titleRes = if (viewModel.showSystemApps) R.string.hide_system_apps else R.string.show_system_apps,
-                onClick = {
-                    viewModel.updateShowSystemApps(!viewModel.showSystemApps)
-                    scope.launch {
-                        kotlinx.coroutines.delay(100)
-                        bottomSheetState.hide()
-                        onDismiss()
-                    }
-                }
-            ),
-            BottomSheetMenuItem(
-                icon = Icons.Filled.Save,
-                titleRes = R.string.backup_allowlist,
-                onClick = {
-                    backupLauncher.launch(ModuleModify.createAllowlistBackupIntent())
-                    scope.launch {
-                        bottomSheetState.hide()
-                        onDismiss()
-                    }
-                }
-            ),
-            BottomSheetMenuItem(
-                icon = Icons.Filled.RestoreFromTrash,
-                titleRes = R.string.restore_allowlist,
-                onClick = {
-                    restoreLauncher.launch(ModuleModify.createAllowlistRestoreIntent())
-                    scope.launch {
-                        bottomSheetState.hide()
-                        onDismiss()
-                    }
-                }
-            )
-        )
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        modifier = Modifier.clickHapticFeedback(),
-        sheetState = bottomSheetState,
-        dragHandle = {
-            Surface(
-                modifier = Modifier.padding(vertical = 11.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Box(Modifier.size(width = 32.dp, height = 4.dp))
-            }
-        }
-    ) {
-        BottomSheetContent(
-            menuItems = bottomSheetMenuItems,
-            currentSortType = viewModel.currentSortType,
-            onSortTypeChanged = { newSortType ->
-                viewModel.updateCurrentSortType(newSortType)
-                scope.launch {
-                    bottomSheetState.hide()
-                    onDismiss()
-                }
-            },
-            selectedCategory = viewModel.selectedCategory,
-            onCategorySelected = { newCategory ->
-                viewModel.updateSelectedCategory(newCategory)
-                scope.launch {
-                    listState.animateScrollToItem(0)
-                    bottomSheetState.hide()
-                    onDismiss()
-                }
-            },
-            appCounts = appCounts
-        )
-    }
-}
-
-@Composable
-private fun BottomSheetContent(
-    menuItems: List<BottomSheetMenuItem>,
-    currentSortType: SortType,
-    onSortTypeChanged: (SortType) -> Unit,
-    selectedCategory: AppCategory,
-    onCategorySelected: (AppCategory) -> Unit,
-    appCounts: Map<AppCategory, Int>
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)
-    ) {
-        Text(
-            text = stringResource(R.string.menu_options),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
-        )
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(4),
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(menuItems) { menuItem ->
-                BottomSheetMenuItemView(menuItem = menuItem)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp))
-
-        Text(
-            text = stringResource(R.string.sort_options),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
-        )
-
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(SortType.entries.toTypedArray()) { sortType ->
-                FilterChip(
-                    onClick = { onSortTypeChanged(sortType) },
-                    label = { Text(stringResource(sortType.displayNameRes)) },
-                    selected = currentSortType == sortType,
-                    shape = CircleShape,
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp))
-
-        Text(
-            text = stringResource(R.string.app_categories),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
-        )
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(AppCategory.entries.toTypedArray()) { category ->
-                CategoryChip(
-                    category = category,
-                    isSelected = selectedCategory == category,
-                    onClick = { onCategorySelected(category) },
-                    appCount = appCounts[category] ?: 0
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CategoryChip(
-    category: AppCategory,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    appCount: Int,
-    modifier: Modifier = Modifier
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessHigh
-        ),
-        label = "categoryChipScale"
-    )
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .scale(scale)
-            .selectable(
-                selected = isSelected,
-                interactionSource = interactionSource,
-                indication = LocalIndication.current,
-                role = Role.Tab,
-                onClick = onClick,
-            ),
-        shape = RoundedCornerShape(24.dp),
-        color = if (isSelected) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
-        },
-        tonalElevation = 0.dp,
-        border = if (isSelected) {
-            getCardBorder(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
-        } else {
-            getCardBorder()
-        },
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = stringResource(category.displayNameRes),
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                    ),
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                AnimatedVisibility(
-                    visible = isSelected,
-                    enter = scaleIn() + fadeIn(),
-                    exit = scaleOut() + fadeOut()
-                ) {
-                    YukiIcon(
-                        imageVector = Icons.Filled.Check,
-                        contentDescription = stringResource(R.string.selected),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-
-            Text(
-                text = "$appCount apps",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (isSelected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun BottomSheetMenuItemView(menuItem: BottomSheetMenuItem) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1.0f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessHigh
-        ),
-        label = "menuItemScale"
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .scale(scale)
-            .clickable(interactionSource = interactionSource, indication = null) { menuItem.onClick() }
-            .padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Surface(
-            modifier = Modifier.size(48.dp),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                YukiIcon(
-                    imageVector = menuItem.icon,
-                    contentDescription = stringResource(menuItem.titleRes),
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = stringResource(menuItem.titleRes),
-            style = MaterialTheme.typography.labelSmall,
-            textAlign = TextAlign.Center,
-            maxLines = 2
-        )
-    }
-}
-
-@Composable
-private fun LoadingAnimation(
-    modifier: Modifier = Modifier,
-    isLoading: Boolean = true
-) {
-    AnimatedVisibility(
-        visible = isLoading,
-        enter = fadeIn(animationSpec = tween(150)),
-        exit = fadeOut(animationSpec = tween(100)),
-        modifier = modifier
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            LinearProgressIndicator(
-                modifier = Modifier.width(200.dp).height(4.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
-            )
-        }
-    }
-}
-
-@Composable
-@SuppressLint("ModifierParameter")
-private fun EmptyState(
-    selectedCategory: AppCategory,
-    modifier: Modifier = Modifier,
-    isSearchEmpty: Boolean = false
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = modifier
-    ) {
-        YukiIcon(
-            imageVector = if (isSearchEmpty) Icons.Filled.SearchOff else Icons.Filled.Archive,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 16.dp).size(48.dp)
-        )
-        Text(
-            text = if (isSearchEmpty || selectedCategory == AppCategory.ALL) {
-                stringResource(R.string.no_apps_found)
-            } else {
-                stringResource(R.string.no_apps_in_category)
-            },
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyLarge,
-        )
-    }
-}
-
-@Composable
-private fun SwipeActionContainer(
+private fun AuthorizationAppRow(
+    group: SuperUserViewModel.AppGroup,
+    selecting: Boolean,
+    selected: Boolean,
     enabled: Boolean,
-    onSwipeLeft: suspend () -> Boolean,
-    onSwipeRight: suspend () -> Boolean,
-    content: @Composable () -> Unit
-) {
-    val density = LocalDensity.current
-    val hapticFeedback = LocalHapticFeedback.current
-    val actionThresholdPx = remember(density) { with(density) { 132.dp.toPx() } }
-    val maxRevealPx = remember(density) { with(density) { 148.dp.toPx() } }
-    val rootBackgroundColor = MaterialTheme.colorScheme.primaryContainer
-    val rootContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-    val umountBackgroundColor = MaterialTheme.colorScheme.errorContainer
-    val umountContentColor = MaterialTheme.colorScheme.onErrorContainer
-    val containerShape = RoundedCornerShape(28.dp)
-    val scope = rememberCoroutineScope()
-    var targetOffsetX by remember { mutableFloatStateOf(0f) }
-    var isDragging by remember { mutableStateOf(false) }
-    var settleSpec by remember { mutableStateOf<AnimationSpec<Float>>(spring(stiffness = Spring.StiffnessMediumLow)) }
-    val offsetX by animateFloatAsState(
-        targetValue = targetOffsetX,
-        animationSpec = if (isDragging) snap() else settleSpec,
-        label = "appSwipeOffset"
-    )
-    val action = when {
-        offsetX < 0f -> AppSwipeAction.UmountModules
-        offsetX > 0f -> AppSwipeAction.GrantRoot
-        else -> null
-    }
-    val actionProgress = (abs(offsetX) / actionThresholdPx).coerceIn(0f, 1f)
-    val remainingProgress = 1f - actionProgress
-    val backgroundAlpha = 1f - remainingProgress * remainingProgress
-    val backgroundColor = when (action) {
-        AppSwipeAction.GrantRoot -> rootBackgroundColor.copy(alpha = backgroundAlpha)
-        AppSwipeAction.UmountModules -> umountBackgroundColor.copy(alpha = backgroundAlpha)
-        null -> Color.Transparent
-    }
-    val contentColor = when (action) {
-        AppSwipeAction.GrantRoot -> rootContentColor
-        AppSwipeAction.UmountModules -> umountContentColor
-        null -> Color.Transparent
-    }
-
-    fun boundedSwipeOffset(rawOffset: Float): Float {
-        return rawOffset.coerceIn(-maxRevealPx, maxRevealPx)
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(containerShape)
-            .background(backgroundColor)
-    ) {
-        if (action != null) {
-            SwipeActionHint(
-                action = action,
-                contentColor = contentColor.copy(alpha = 0.45f + actionProgress * 0.55f),
-                modifier = Modifier
-                    .matchParentSize()
-                    .padding(horizontal = 24.dp)
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .offset { IntOffset(offsetX.roundToInt(), 0) }
-                .fillMaxWidth()
-                .pointerInput(enabled, onSwipeLeft, onSwipeRight) {
-                    if (!enabled) return@pointerInput
-
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        var pointerId = down.id
-                        var totalX = 0f
-                        var totalY = 0f
-                        var horizontalLocked = false
-                        var thresholdHapticSent = false
-
-                        while (!horizontalLocked) {
-                            val event = awaitPointerEvent(PointerEventPass.Main)
-                            val change = event.changes.firstOrNull { it.id == pointerId }
-                                ?: event.changes.firstOrNull { it.pressed }
-                                ?: return@awaitEachGesture
-
-                            pointerId = change.id
-
-                            if (!change.pressed) {
-                                return@awaitEachGesture
-                            }
-
-                            val delta = change.positionChange()
-                            totalX += delta.x
-                            totalY += delta.y
-
-                            val absX = abs(totalX)
-                            val absY = abs(totalY)
-                            val touchSlop = viewConfiguration.touchSlop
-
-                            if (absY > touchSlop && absY > absX) {
-                                return@awaitEachGesture
-                            }
-
-                            if (absX > touchSlop * 2.4f && absX > absY * 1.8f) {
-                                horizontalLocked = true
-                                change.consume()
-                                isDragging = true
-                                targetOffsetX = boundedSwipeOffset(totalX)
-                            }
-                        }
-
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Main)
-                            val change = event.changes.firstOrNull { it.id == pointerId }
-                                ?: event.changes.firstOrNull { it.pressed }
-                                ?: break
-
-                            if (!change.pressed) {
-                                break
-                            }
-
-                            val deltaX = change.positionChange().x
-                            if (deltaX != 0f) {
-                                change.consume()
-                                targetOffsetX = boundedSwipeOffset(targetOffsetX + deltaX)
-                                if (!thresholdHapticSent && abs(targetOffsetX) >= actionThresholdPx) {
-                                    thresholdHapticSent = true
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                }
-                            }
-                        }
-
-                        isDragging = false
-                        val finalOffset = targetOffsetX
-                        when {
-                            finalOffset <= -actionThresholdPx -> {
-                                settleSpec = tween(120)
-                                targetOffsetX = -maxRevealPx
-                                scope.launch {
-                                    kotlinx.coroutines.delay(120)
-                                    onSwipeLeft()
-                                    settleSpec = spring(stiffness = Spring.StiffnessHigh)
-                                    targetOffsetX = 0f
-                                }
-                            }
-                            finalOffset >= actionThresholdPx -> {
-                                settleSpec = tween(120)
-                                targetOffsetX = maxRevealPx
-                                scope.launch {
-                                    kotlinx.coroutines.delay(120)
-                                    onSwipeRight()
-                                    settleSpec = spring(stiffness = Spring.StiffnessHigh)
-                                    targetOffsetX = 0f
-                                }
-                            }
-                            else -> {
-                                settleSpec = spring(stiffness = Spring.StiffnessMediumLow)
-                                targetOffsetX = 0f
-                            }
-                        }
-                    }
-                }
-        ) {
-            content()
-        }
-    }
-}
-
-@Composable
-private fun SwipeActionHint(
-    action: AppSwipeAction,
-    contentColor: Color,
-    modifier: Modifier = Modifier
-) {
-    val isEndAction = action == AppSwipeAction.UmountModules
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = if (isEndAction) Arrangement.End else Arrangement.Start
-    ) {
-        if (action == AppSwipeAction.UmountModules) {
-            SwipeActionHintContent(
-                icon = Icons.Filled.VisibilityOff,
-                label = stringResource(R.string.profile_umount_modules),
-                contentColor = contentColor
-            )
-        } else {
-            SwipeActionHintContent(
-                icon = Icons.Filled.Security,
-                label = stringResource(R.string.category_root_apps),
-                contentColor = contentColor
-            )
-        }
-    }
-}
-
-@Composable
-private fun SwipeActionHintContent(
-    icon: ImageVector,
-    label: String,
-    contentColor: Color
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        YukiIcon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = contentColor
-        )
-        Text(
-            text = label,
-            color = contentColor,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
-@Composable
-private fun AppGroupItem(
-    appGroup: SuperUserViewModel.AppGroup,
-    isSelected: Boolean,
-    onToggleSelection: () -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
-    viewModel: SuperUserViewModel,
+    onToggleRoot: (Boolean) -> Unit,
 ) {
-    val mainApp = appGroup.mainApp
-    val containerColor = when {
-        isSelected -> MaterialTheme.colorScheme.secondaryContainer
-        else -> MaterialTheme.colorScheme.surfaceContainerLow
+    val selectLabel = stringResource(R.string.authorization_select_app, group.mainApp.label)
+    val rootLabel = stringResource(R.string.authorization_root_for_app, group.mainApp.label)
+    val modulesUnmounted = remember(group.uid, group.profile) {
+        !group.allowSu && Natives.uidShouldUmount(group.uid)
     }
-
-    SwipeActionContainer(
-        enabled = !viewModel.showBatchActions,
-        onSwipeLeft = {
-            viewModel.updateGroupPermission(
-                appGroup = appGroup,
-                allowSu = false,
-                umountModules = !Natives.uidShouldUmount(appGroup.uid)
-            )
-        },
-        onSwipeRight = {
-            viewModel.updateGroupPermission(
-                appGroup = appGroup,
-                allowSu = !appGroup.allowSu
-            )
-        }
+    Surface(
+        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), border = getCardBorder(),
+        color = (if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow).copy(alpha = CardConfig.cardAlpha),
     ) {
-        AppGroupListItemLayout(
-            onClick = onClick,
-            onLongClick = onLongClick,
-            classicContainerColor = containerColor,
-            expressiveContainerColor = containerColor,
-            headlineContent = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = mainApp.label,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            },
-            supportingContent = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    val summaryText = if (appGroup.apps.size > 1) {
-                        stringResource(R.string.group_contains_apps, appGroup.apps.size)
-                    } else {
-                        mainApp.packageName
-                    }
-
-                    Text(
-                        text = summaryText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        if (appGroup.allowSu) {
-                            LabelItem(text = "ROOT")
-                        } else {
-                            if (Natives.uidShouldUmount(appGroup.uid)) {
-                                LabelItem(
-                                    text = "UMOUNT",
-                                    style = LabelItemDefaults.style.copy(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                )
-                            }
-                        }
-                        if (appGroup.hasCustomProfile) {
-                            LabelItem(
-                                text = "CUSTOM",
-                                style = LabelItemDefaults.style.copy(
-                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                                )
-                            )
-                        } else if (!appGroup.allowSu) {
-                            LabelItem(
-                                text = "DEFAULT",
-                                style = LabelItemDefaults.style.copy(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            )
-                        }
-                        if (appGroup.apps.size > 1) {
-                            appGroup.userName?.let {
-                                LabelItem(
-                                    text = it,
-                                    style = LabelItemDefaults.style.copy(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            },
+        ListItem(
+            modifier = Modifier.clip(RoundedCornerShape(24.dp)).combinedClickable(
+                enabled = enabled, onClick = onClick,
+                onLongClickLabel = stringResource(R.string.authorization_select), onLongClick = onLongClick,
+            ),
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             leadingContent = {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(mainApp.packageInfo)
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier.size(44.dp)
+                    model = ImageRequest.Builder(LocalContext.current).data(group.mainApp.packageInfo).build(),
+                    contentDescription = null, modifier = Modifier.size(44.dp),
                 )
             },
-            trailingContent = {
-                AnimatedVisibility(
-                    visible = viewModel.showBatchActions,
-                    enter = fadeIn(animationSpec = tween(150)),
-                    exit = fadeOut(animationSpec = tween(100))
-                ) {
-                    Checkbox(
-                        modifier = Modifier.semantics { contentDescription = mainApp.label },
-                        checked = isSelected,
-                        onCheckedChange = { onToggleSelection() },
+            content = { Text(group.mainApp.label, maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium) },
+            supportingContent = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(group.mainApp.packageName, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        if (group.apps.size > 1) stringResource(R.string.authorization_shared_uid_count, group.uid, group.apps.size) else "UID ${group.uid}",
+                        style = MaterialTheme.typography.labelSmall,
                     )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        AuthorizationBadge(stringResource(if (group.allowSu) R.string.authorization_granted else R.string.authorization_not_granted), group.allowSu)
+                        if (modulesUnmounted) AuthorizationBadge(stringResource(R.string.authorization_unmount_enable))
+                        if (group.hasCustomProfile) AuthorizationBadge(stringResource(R.string.category_custom_apps))
+                    }
                 }
-            }
+            },
+            trailingContent = {
+                if (selecting) {
+                    Checkbox(checked = selected, onCheckedChange = { onClick() }, enabled = enabled, modifier = Modifier.semantics { contentDescription = selectLabel })
+                } else {
+                    Switch(checked = group.allowSu, onCheckedChange = onToggleRoot, enabled = enabled, modifier = Modifier.semantics { contentDescription = rootLabel })
+                }
+            },
         )
     }
 }
 
 @Composable
-private fun AppGroupListItemLayout(
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    classicContainerColor: Color,
-    expressiveContainerColor: Color,
-    headlineContent: @Composable () -> Unit,
-    supportingContent: @Composable (() -> Unit)?,
-    leadingContent: @Composable (() -> Unit)?,
-    trailingContent: @Composable (() -> Unit)?
-) {
-    Column {
-        ListItem(
-            modifier = Modifier
-                .clip(RoundedCornerShape(28.dp))
-                .border(getCardBorder(), RoundedCornerShape(28.dp))
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClickLabel = stringResource(R.string.select),
-                    onLongClick = onLongClick
-                ),
-            colors = ListItemDefaults.colors(
-                containerColor = (if (isExpressiveUi) expressiveContainerColor else classicContainerColor)
-                    .copy(alpha = CardConfig.cardAlpha)
-            ),
-            content = headlineContent,
-            supportingContent = supportingContent,
-            leadingContent = leadingContent,
-            trailingContent = trailingContent
-        )
+private fun AuthorizationBadge(label: String, emphasized: Boolean = false) {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = if (emphasized) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = if (emphasized) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+    ) { Text(label, Modifier.padding(horizontal = 6.dp, vertical = 3.dp), style = MaterialTheme.typography.labelSmall) }
+}
+
+@Composable
+private fun AuthorizationBatchBar(enabled: Boolean, onChange: (Boolean, Boolean?) -> Unit, onClear: () -> Unit) {
+    var showMore by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)).padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FilledTonalButton(onClick = { onChange(true, null) }, enabled = enabled, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.authorization_grant)) }
+        OutlinedButton(onClick = { onChange(false, null) }, enabled = enabled, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.authorization_revoke)) }
+        Box {
+            IconButton(onClick = { showMore = true }, enabled = enabled) { YukiIcon(Icons.Filled.MoreVert, stringResource(R.string.authorization_batch_more)) }
+            DropdownMenu(expanded = showMore, onDismissRequest = { showMore = false }) {
+                DropdownMenuItem(text = { Text(stringResource(R.string.authorization_unmount_enable)) }, onClick = { showMore = false; onChange(false, true) })
+                DropdownMenuItem(text = { Text(stringResource(R.string.authorization_unmount_disable)) }, onClick = { showMore = false; onChange(false, false) })
+                DropdownMenuItem(text = { Text(stringResource(R.string.authorization_clear_selection)) }, onClick = { showMore = false; onClear() })
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AuthorizationOptionsSheet(viewModel: SuperUserViewModel, onDismiss: () -> Unit, onRefresh: () -> Unit, onBackup: () -> Unit, onRestore: () -> Unit) {
+    val systemLabel = stringResource(R.string.show_system_apps)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+            Text(stringResource(R.string.authorization_options), Modifier.padding(horizontal = 24.dp, vertical = 12.dp), style = MaterialTheme.typography.titleLarge)
+            ListItem(
+                content = { Text(systemLabel) },
+                supportingContent = { Text(stringResource(R.string.authorization_system_hint)) },
+                trailingContent = { Switch(checked = viewModel.showSystemApps, onCheckedChange = viewModel::updateShowSystemApps, modifier = Modifier.semantics { contentDescription = systemLabel }) },
+            )
+            Text(stringResource(R.string.sort_options), Modifier.padding(horizontal = 24.dp, vertical = 12.dp), style = MaterialTheme.typography.titleSmall)
+            SortType.entries.forEach { sort ->
+                Row(
+                    Modifier.fillMaxWidth().selectable(selected = viewModel.currentSortType == sort, role = Role.RadioButton, onClick = { viewModel.updateCurrentSortType(sort) })
+                        .padding(horizontal = 24.dp).heightIn(min = 48.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    RadioButton(selected = viewModel.currentSortType == sort, onClick = null)
+                    Text(stringResource(sort.displayNameRes), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            HorizontalDivider(Modifier.padding(vertical = 12.dp, horizontal = 24.dp))
+            AuthorizationOption(Icons.Filled.Refresh, stringResource(R.string.refresh), onRefresh)
+            AuthorizationOption(Icons.Filled.Save, stringResource(R.string.backup_allowlist), onBackup)
+            AuthorizationOption(Icons.Filled.Restore, stringResource(R.string.restore_allowlist), onRestore)
+        }
+    }
+}
+
+@Composable
+private fun AuthorizationOption(icon: ImageVector, label: String, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)) {
+        YukiIcon(icon, null)
+        Spacer(Modifier.width(16.dp))
+        Text(label, Modifier.weight(1f), textAlign = TextAlign.Start)
+    }
+}
+
+@Composable
+private fun AuthorizationConfirmDialog(change: AuthorizationChange, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    val title = when {
+        change.umountModules == true -> R.string.authorization_unmount_enable
+        change.umountModules == false -> R.string.authorization_unmount_disable
+        change.allowSu -> R.string.authorization_grant
+        else -> R.string.authorization_revoke
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { YukiIcon(Icons.Filled.Security, null) }, title = { Text(stringResource(title)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(if (change.allowSu) R.string.authorization_grant_warning else R.string.authorization_change_warning))
+                if (change.umountModules != null) Text(stringResource(R.string.authorization_unmount_warning))
+                if (change.groups.any { it.apps.size > 1 }) Text(stringResource(R.string.authorization_shared_warning))
+                Text(stringResource(R.string.authorization_affected_count, change.groups.size), fontWeight = FontWeight.SemiBold)
+                change.groups.forEach { group ->
+                    Column {
+                        Text(group.mainApp.label, style = MaterialTheme.typography.bodyMedium)
+                        Text("UID ${group.uid} · ${group.packageNames.joinToString()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(title)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+@Composable
+private fun AuthorizationLoadError(refreshing: Boolean, onRetry: () -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.authorization_load_failed), style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onRetry, enabled = !refreshing) { Text(stringResource(R.string.authorization_retry)) }
+        }
+    }
+}
+
+@Composable
+private fun AuthorizationEmptyState(loading: Boolean, filtered: Boolean, onReset: () -> Unit, onRefresh: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 40.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (loading) {
+            CircularProgressIndicator()
+            Text(stringResource(R.string.authorization_loading), style = MaterialTheme.typography.bodyMedium)
+        } else {
+            YukiIcon(Icons.Filled.SearchOff, null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.no_apps_found), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(if (filtered) R.string.authorization_empty_filtered else R.string.authorization_empty), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            TextButton(onClick = if (filtered) onReset else onRefresh) { Text(stringResource(if (filtered) R.string.authorization_reset_filters else R.string.refresh)) }
+        }
     }
 }

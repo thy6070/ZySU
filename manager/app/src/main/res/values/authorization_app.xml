@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Simplified Chinese is translated alongside the English fallback. -->
+    <string name="auth_app_title" tools:ignore="MissingTranslation">Manage app</string>
+    <string name="auth_app_uid" tools:ignore="MissingTranslation">UID: %1$d</string>
+    <string name="auth_app_package" tools:ignore="MissingTranslation">Package: %1$s</string>
+    <string name="auth_app_status_granted" tools:ignore="MissingTranslation">Root allowed</string>
+    <string name="auth_app_status_denied" tools:ignore="MissingTranslation">Root not allowed</string>
+    <string name="auth_app_grant_root" tools:ignore="MissingTranslation">Allow Root</string>
+    <string name="auth_app_revoke_root" tools:ignore="MissingTranslation">Revoke Root access</string>
+    <string name="auth_app_edit_profile" tools:ignore="MissingTranslation">Edit app profile</string>
+    <string name="auth_app_system_info" tools:ignore="MissingTranslation">System app info</string>
+    <string name="auth_app_system_info_unavailable" tools:ignore="MissingTranslation">System app info is unavailable for this app.</string>
+    <string name="auth_app_system_info_for_app" tools:ignore="MissingTranslation">App info for %1$s</string>
+    <string name="auth_app_copy_package" tools:ignore="MissingTranslation">Copy package name</string>
+    <string name="auth_app_copy_package_for_app" tools:ignore="MissingTranslation">Copy package name for %1$s</string>
+    <string name="auth_app_shared_uid_warning" tools:ignore="MissingTranslation">These apps share a UID. Authorization changes apply to all of them.</string>
+    <string name="auth_app_shared_apps" tools:ignore="MissingTranslation">Apps sharing this UID</string>
+    <string name="auth_app_umount_modules" tools:ignore="MissingTranslation">Unmount modules</string>
+    <string name="auth_app_umount_summary" tools:ignore="MissingTranslation">Hide module mounts from this app. Restart the app to apply.</string>
+    <string name="auth_app_umount_revokes_root" tools:ignore="MissingTranslation">Changing this setting also revokes Root access for this UID.</string>
+    <string name="auth_app_copy_done" tools:ignore="MissingTranslation">Package name copied</string>
+    <string name="auth_app_busy" tools:ignore="MissingTranslation">Saving authorization…</string>
+    <string name="auth_app_unknown" tools:ignore="MissingTranslation">Unknown</string>
+    <string name="auth_app_close" tools:ignore="MissingTranslation">Close app management</string>
+</resources>

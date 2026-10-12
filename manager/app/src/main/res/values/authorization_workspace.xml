@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation,PluralsCandidate">
+    <string name="authorization_overview">Application access</string>
+    <string name="authorization_scope_user">User apps and Shell · grouped by UID</string>
+    <string name="authorization_scope_all">Including system apps · grouped by UID</string>
+    <string name="authorization_search_hint">App name, package or UID</string>
+    <string name="authorization_options">App management options</string>
+    <string name="authorization_system_hint">Include system applications in the list and counts</string>
+    <string name="authorization_result_count">%1$d app groups</string>
+    <string name="authorization_manage_hint">Tap an app to manage access and details</string>
+    <string name="authorization_selection_hint">Actions apply to every app sharing the selected UIDs</string>
+    <string name="authorization_selected_count">%1$d selected</string>
+    <string name="authorization_select">Select</string>
+    <string name="authorization_select_visible">Select results</string>
+    <string name="authorization_clear_selection">Clear selection</string>
+    <string name="authorization_select_app">Select %1$s</string>
+    <string name="authorization_root_for_app">Root access for %1$s</string>
+    <string name="authorization_granted">Root granted</string>
+    <string name="authorization_not_granted">Root not granted</string>
+    <string name="authorization_shared_uid_count">UID %1$d · %2$d shared apps</string>
+    <string name="authorization_grant">Grant Root</string>
+    <string name="authorization_revoke">Revoke Root</string>
+    <string name="authorization_batch_more">More batch actions</string>
+    <string name="authorization_unmount_enable">Unmount modules</string>
+    <string name="authorization_unmount_disable">Keep modules mounted</string>
+    <string name="authorization_grant_warning">Root gives these applications elevated access to your device. Grant access only to apps you trust.</string>
+    <string name="authorization_change_warning">Apply this permission change to the following applications?</string>
+    <string name="authorization_unmount_warning">This sets an explicit module mount preference and revokes Root access for the selected apps. Restart the affected apps for mount changes to take effect.</string>
+    <string name="authorization_shared_warning">Apps sharing a UID use the same authorization. This change applies to all packages listed under that UID.</string>
+    <string name="authorization_affected_count">Affected app groups: %1$d</string>
+    <string name="authorization_updated">Updated permissions for %1$s</string>
+    <string name="authorization_update_failed">Could not update %1$s. Check manager/kernel access and try again.</string>
+    <string name="authorization_batch_success">Updated %1$d app groups</string>
+    <string name="authorization_batch_partial">Updated %1$d; failed %2$d. Failed groups remain selected for retry.</string>
+    <string name="authorization_load_failed">Could not load applications. Check Root access and the package service, then retry.</string>
+    <string name="authorization_retry">Retry</string>
+    <string name="authorization_loading">Loading applications…</string>
+    <string name="authorization_empty_filtered">Try another name, package or UID, or clear the search and category filter.</string>
+    <string name="authorization_empty">Refresh the list or enable system apps in app management options.</string>
+    <string name="authorization_reset_filters">Clear filters</string>
+</resources>

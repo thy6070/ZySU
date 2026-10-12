@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="authorization_overview">应用授权概览</string>
+    <string name="authorization_scope_user">用户应用与 Shell · 按 UID 分组</string>
+    <string name="authorization_scope_all">包含系统应用 · 按 UID 分组</string>
+    <string name="authorization_search_hint">应用名称、包名或 UID</string>
+    <string name="authorization_options">应用管理选项</string>
+    <string name="authorization_system_hint">在应用列表和统计中包含系统应用</string>
+    <string name="authorization_result_count">%1$d 个应用组</string>
+    <string name="authorization_manage_hint">点击应用管理授权与应用信息</string>
+    <string name="authorization_selection_hint">操作将应用于所选 UID 下的全部应用</string>
+    <string name="authorization_selected_count">已选择 %1$d 组</string>
+    <string name="authorization_select">多选</string>
+    <string name="authorization_select_visible">全选结果</string>
+    <string name="authorization_clear_selection">清空选择</string>
+    <string name="authorization_select_app">选择 %1$s</string>
+    <string name="authorization_root_for_app">%1$s 的 Root 授权</string>
+    <string name="authorization_granted">已授予 Root</string>
+    <string name="authorization_not_granted">未授予 Root</string>
+    <string name="authorization_shared_uid_count">UID %1$d · %2$d 个共享应用</string>
+    <string name="authorization_grant">授予 Root</string>
+    <string name="authorization_revoke">撤销 Root</string>
+    <string name="authorization_batch_more">更多批量操作</string>
+    <string name="authorization_unmount_enable">卸载模块</string>
+    <string name="authorization_unmount_disable">保留模块挂载</string>
+    <string name="authorization_grant_warning">Root 权限允许应用以更高权限访问设备。请仅向信任的应用授权。</string>
+    <string name="authorization_change_warning">将此权限变更应用于以下应用？</string>
+    <string name="authorization_unmount_warning">此操作将明确设置模块挂载偏好，并撤销所选应用的 Root 权限。请重新启动相关应用，使挂载变更生效。</string>
+    <string name="authorization_shared_warning">共享 UID 的应用使用相同授权，此变更会影响该 UID 下列出的全部应用。</string>
+    <string name="authorization_affected_count">受影响的应用组：%1$d</string>
+    <string name="authorization_updated">已更新 %1$s 的权限</string>
+    <string name="authorization_update_failed">无法更新 %1$s。请检查管理器与内核访问权限后重试。</string>
+    <string name="authorization_batch_success">已更新 %1$d 个应用组</string>
+    <string name="authorization_batch_partial">已更新 %1$d 组，失败 %2$d 组。失败项目已保留选择，可重试。</string>
+    <string name="authorization_load_failed">无法加载应用。请检查 Root 权限及应用服务后重试。</string>
+    <string name="authorization_retry">重试</string>
+    <string name="authorization_loading">正在加载应用…</string>
+    <string name="authorization_empty_filtered">请尝试其他应用名称、包名或 UID，或清除搜索与分类筛选。</string>
+    <string name="authorization_empty">请刷新列表，或在应用管理选项中显示系统应用。</string>
+    <string name="authorization_reset_filters">清除筛选</string>
+</resources>

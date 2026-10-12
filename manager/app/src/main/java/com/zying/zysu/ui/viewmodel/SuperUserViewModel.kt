@@ -48,10 +48,7 @@ enum class SortType(val displayNameRes: Int, val persistKey: String) {
     NAME_ASC(com.zying.zysu.R.string.sort_name_asc, "NAME_ASC"),
     NAME_DESC(com.zying.zysu.R.string.sort_name_desc, "NAME_DESC"),
     INSTALL_TIME_NEW(com.zying.zysu.R.string.sort_install_time_new, "INSTALL_TIME_NEW"),
-    INSTALL_TIME_OLD(com.zying.zysu.R.string.sort_install_time_old, "INSTALL_TIME_OLD"),
-    SIZE_DESC(com.zying.zysu.R.string.sort_size_desc, "SIZE_DESC"),
-    SIZE_ASC(com.zying.zysu.R.string.sort_size_asc, "SIZE_ASC"),
-    USAGE_FREQ(com.zying.zysu.R.string.sort_usage_freq, "USAGE_FREQ");
+    INSTALL_TIME_OLD(com.zying.zysu.R.string.sort_install_time_old, "INSTALL_TIME_OLD");
 
     companion object {
         fun fromPersistKey(key: String): SortType = entries.find { it.persistKey == key } ?: NAME_ASC
@@ -86,7 +83,13 @@ class SuperUserViewModel : ViewModel() {
         private const val BATCH_SIZE = 20
         private const val PER_USER_RANGE = 100000
         private val fetchAppListMutex = Mutex()
+        private val permissionMutex = Mutex()
+        private val appListMutex = Mutex()
         private val allowlistBackupMutex = Mutex()
+        private var sharedHasLoaded by mutableStateOf(false)
+        private var sharedLoadError by mutableStateOf<String?>(null)
+        private var sharedIsRefreshing by mutableStateOf(false)
+        private var sharedIsUpdatingPermissions by mutableStateOf(false)
         private val ksuServiceLock = Any()
         // Keep one process-wide binding so ordinary reads reuse the service package snapshot.
         private var ksuServiceBinder: IBinder? = null
@@ -192,7 +195,6 @@ class SuperUserViewModel : ViewModel() {
         }
     }.asCoroutineDispatcher()
 
-    private val appListMutex = Mutex()
     private val configChangeListeners = mutableSetOf<(String) -> Unit>()
     private val prefs = ksuApp.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -203,14 +205,46 @@ class SuperUserViewModel : ViewModel() {
         private set
     var currentSortType by mutableStateOf(loadCurrentSortType())
         private set
-    var isRefreshing by mutableStateOf(false)
-        private set
+    val isRefreshing: Boolean get() = sharedIsRefreshing
+    /** True after the first successful package snapshot (including an empty snapshot). */
+    val hasLoaded: Boolean get() = sharedHasLoaded
+    /** Diagnostic for the last failed package load; the UI supplies localized recovery text. */
+    val loadError: String? get() = sharedLoadError
     var showBatchActions by mutableStateOf(false)
         internal set
-    var selectedApps by mutableStateOf<Set<String>>(emptySet())
-        internal set
+    var selectedUids by mutableStateOf<Set<Int>>(emptySet())
+        private set
+    /**
+     * Compatibility bridge for older UI callers. Selection is UID based, so selecting
+     * one package selects every package sharing that UID.
+     */
+    var selectedApps: Set<String>
+        get() = apps.filter { it.uid in selectedUids }.mapTo(linkedSetOf()) { it.packageName }
+        internal set(value) {
+            selectedUids = apps.asSequence()
+                .filter { it.packageName in value }
+                .map { it.uid }
+                .toSet()
+        }
+    val isUpdatingPermissions: Boolean get() = sharedIsUpdatingPermissions
     var loadingProgress by mutableFloatStateOf(0f)
         private set
+
+    data class PermissionUpdateResult(val successCount: Int, val failureCount: Int) {
+        val isSuccess: Boolean get() = failureCount == 0
+    }
+
+    private val permissionStore = object : AuthorizationPermissions.Store {
+        override fun read(target: AuthorizationPermissions.Target): Natives.Profile {
+            val profile = Natives.readAppProfile(target.uid)
+                ?: return Natives.Profile(name = target.profileKey, currentUid = target.uid)
+            check(profile.currentUid == target.uid) { "Profile UID does not match the requested application" }
+            check(target.profileKey in target.packageNames) { "Profile key does not belong to the application" }
+            return if (profile.name in target.packageNames) profile else profile.copy(name = target.profileKey)
+        }
+
+        override fun write(profile: Natives.Profile): Boolean = Natives.setAppProfile(profile)
+    }
 
     private fun loadSelectedCategory(): AppCategory {
         val categoryKey = prefs.getString(KEY_SELECTED_CATEGORY, AppCategory.ALL.persistKey)
@@ -227,13 +261,6 @@ class SuperUserViewModel : ViewModel() {
     fun updateShowSystemApps(newValue: Boolean) {
         showSystemApps = newValue
         prefs.edit { putBoolean(KEY_SHOW_SYSTEM_APPS, newValue) }
-        notifyAppListChanged()
-    }
-
-    private fun notifyAppListChanged() {
-        val currentApps = apps
-        apps = emptyList()
-        apps = currentApps
     }
 
     fun updateSelectedCategory(newCategory: AppCategory) {
@@ -252,66 +279,117 @@ class SuperUserViewModel : ViewModel() {
     }
 
     fun toggleAppSelection(packageName: String) {
-        selectedApps = if (selectedApps.contains(packageName)) {
-            selectedApps - packageName
-        } else {
-            selectedApps + packageName
-        }
+        apps.firstOrNull { it.packageName == packageName }?.let { toggleGroupSelection(it.uid) }
+    }
+
+    fun toggleGroupSelection(group: AppGroup) = toggleGroupSelection(group.uid)
+
+    private fun toggleGroupSelection(uid: Int) {
+        selectedUids = if (uid in selectedUids) selectedUids - uid else selectedUids + uid
+    }
+
+    fun selectGroups(groups: Collection<AppGroup>) {
+        selectedUids = groups.mapTo(linkedSetOf()) { it.uid }
     }
 
     fun clearSelection() {
-        selectedApps = emptySet()
+        selectedUids = emptySet()
     }
 
-    suspend fun updateBatchPermissions(allowSu: Boolean, umountModules: Boolean? = null) {
-        val selectedUids = apps.asSequence()
-            .filter { it.packageName in selectedApps }
-            .map { it.uid }
-            .toSet()
-
-        selectedUids.forEach { uid ->
-            appGroups.find { it.uid == uid }?.let { group ->
-                val profile = Natives.getAppProfile(group.profileKey, uid)
-                val updatedProfile = profile.copy(
-                    allowSu = allowSu,
-                    umountModules = umountModules ?: profile.umountModules,
-                    nonRootUseDefault = false
-                )
-                if (Natives.setAppProfile(updatedProfile)) {
-                    updateUidProfileLocally(uid, updatedProfile)
-                    notifyConfigChange(group.profileKey)
-                }
-            }
-        }
+    fun exitBatchMode() {
         clearSelection()
         showBatchActions = false
-        refreshAppConfigurations()
     }
+
+    suspend fun updateBatchPermissions(
+        allowSu: Boolean,
+        umountModules: Boolean? = null,
+        requestedGroups: Collection<AppGroup>? = null,
+    ): PermissionUpdateResult {
+        val requestedUids = requestedGroups?.mapTo(linkedSetOf()) { it.uid } ?: selectedUids.toSet()
+        if (requestedUids.isEmpty()) return PermissionUpdateResult(0, 0)
+        val confirmedGroups = (requestedGroups ?: appGroups.filter { it.uid in requestedUids })
+            .associateBy { it.uid }
+        val confirmedTargets = requestedUids.map { uid ->
+            confirmedGroups[uid]?.permissionTarget()
+                ?: AuthorizationPermissions.Target(uid, "", emptySet())
+        }
+        if (!permissionMutex.tryLock()) return PermissionUpdateResult(0, requestedUids.size)
+        sharedIsUpdatingPermissions = true
+        try {
+            // Finish the result bookkeeping even if the page leaves during a native write.
+            return withContext(NonCancellable) {
+                val result = withContext(Dispatchers.IO) {
+                    appListMutex.withLock {
+                        val currentTargets = appGroups.map { it.permissionTarget() }
+                        AuthorizationPermissions.applyConfirmed(
+                            confirmedTargets, currentTargets, allowSu, umountModules, permissionStore,
+                        ).also { applyProfilesLocally(it.updated) }
+                    }
+                }
+                reportPermissionUpdates(result)
+                val failedUids = result.failed.mapTo(linkedSetOf()) { it.target.uid }
+                selectedUids = (selectedUids - requestedUids) + failedUids
+                if (selectedUids.isEmpty() && failedUids.isEmpty()) showBatchActions = false
+                PermissionUpdateResult(result.updated.size, failedUids.size)
+            }
+        } finally {
+            sharedIsUpdatingPermissions = false
+            permissionMutex.unlock()
+        }
+    }
+
+    private fun AppGroup.permissionTarget() = AuthorizationPermissions.Target(
+        uid = uid,
+        profileKey = profileKey,
+        packageNames = packageNames.toSet(),
+    )
 
     suspend fun updateGroupPermission(
         appGroup: AppGroup,
         allowSu: Boolean,
         umountModules: Boolean? = null
     ): Boolean {
-        val profile = Natives.getAppProfile(appGroup.profileKey, appGroup.uid)
-        val updatedProfile = profile.copy(
-            allowSu = allowSu,
-            umountModules = umountModules ?: profile.umountModules,
-            nonRootUseDefault = if (!allowSu && umountModules != null) {
-                !umountModules
-            } else {
-                profile.nonRootUseDefault
+        if (!permissionMutex.tryLock()) return false
+        sharedIsUpdatingPermissions = true
+        try {
+            return withContext(NonCancellable) {
+                val result = withContext(Dispatchers.IO) {
+                    appListMutex.withLock {
+                        AuthorizationPermissions.applyConfirmed(
+                            listOf(appGroup.permissionTarget()),
+                            appGroups.map { it.permissionTarget() },
+                            allowSu,
+                            umountModules,
+                            permissionStore,
+                        ).also { applyProfilesLocally(it.updated) }
+                    }
+                }
+                reportPermissionUpdates(result)
+                result.updated.isNotEmpty()
             }
-        )
-        val updated = Natives.setAppProfile(updatedProfile)
-
-        if (updated) {
-            updateUidProfileLocally(appGroup.uid, updatedProfile)
-            notifyConfigChange(appGroup.profileKey)
-            refreshAppConfigurations()
+        } finally {
+            sharedIsUpdatingPermissions = false
+            permissionMutex.unlock()
         }
+    }
 
-        return updated
+    /** Caller holds appListMutex so a package refresh cannot race identity validation. */
+    private fun applyProfilesLocally(profiles: List<Natives.Profile>) {
+        if (profiles.isEmpty()) return
+        val updates = profiles.associateBy { it.currentUid }
+        val updatedApps = apps.map { app ->
+            updates[app.uid]?.let { app.copy(profile = it) } ?: app
+        }
+        apps = updatedApps
+        appGroups = groupAppsByUid(updatedApps)
+    }
+
+    private fun reportPermissionUpdates(result: AuthorizationPermissions.Result) {
+        result.failed.forEach { failure ->
+            Log.e(TAG, "Failed to update permission for uid ${failure.target.uid}", failure.error)
+        }
+        result.updated.forEach { notifyConfigChange(it.name) }
     }
 
     fun updateUidProfileLocally(uid: Int, updatedProfile: Natives.Profile) {
@@ -342,38 +420,41 @@ class SuperUserViewModel : ViewModel() {
     }
 
     suspend fun refreshAppConfigurations() {
-        withContext(appProcessingThreadPool) {
-            supervisorScope {
-                val currentApps = apps.toList()
-                val uidGroups = currentApps.groupBy { it.uid }.values.toList()
-                val batches = uidGroups.chunked(BATCH_SIZE)
-                loadingProgress = 0f
+        // Publish the complete snapshot before any concurrent successful write is published.
+        // This avoids overwriting a just-granted permission with an older refresh result.
+        appListMutex.withLock {
+            withContext(appProcessingThreadPool) {
+                supervisorScope {
+                    val currentApps = apps.toList()
+                    val uidGroups = currentApps.groupBy { it.uid }.values.toList()
+                    val batches = uidGroups.chunked(BATCH_SIZE)
+                    loadingProgress = 0f
 
-                val updatedApps = batches.mapIndexed { batchIndex, batch ->
-                    async {
-                        val batchResult = batch.flatMap { uidApps ->
-                            try {
-                                val profile = loadUidProfile(uidApps)
-                                uidApps.map { it.copy(profile = profile) }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Error refreshing profile for uid ${uidApps.first().uid}", e)
-                                uidApps
+                    val updatedApps = batches.mapIndexed { batchIndex, batch ->
+                        async {
+                            val batchResult = batch.flatMap { uidApps ->
+                                try {
+                                    val profile = loadUidProfile(uidApps)
+                                    uidApps.map { it.copy(profile = profile) }
+                                } catch (error: CancellationException) {
+                                    throw error
+                                } catch (error: Exception) {
+                                    Log.e(TAG, "Error refreshing profile for uid ${uidApps.first().uid}", error)
+                                    uidApps
+                                }
                             }
+                            loadingProgress = (batchIndex + 1).toFloat() / batches.size.coerceAtLeast(1)
+                            batchResult
                         }
-                        loadingProgress = (batchIndex + 1).toFloat() / batches.size.coerceAtLeast(1)
-                        batchResult
-                    }
-                }.awaitAll().flatten()
+                    }.awaitAll().flatten()
 
-                appListMutex.withLock {
                     apps = updatedApps
                     appGroups = groupAppsByUid(updatedApps)
+                    loadingProgress = 1f
                 }
-                loadingProgress = 1f
             }
         }
     }
-
     private suspend fun connectKsuService(): IBinder? = withContext(Dispatchers.Main.immediate) {
         var staleConnection: ServiceConnection? = null
         val cachedBinder = synchronized(ksuServiceLock) {
@@ -413,15 +494,21 @@ class SuperUserViewModel : ViewModel() {
     }
 
     suspend fun fetchAppList(forceRefresh: Boolean = false) {
-        isRefreshing = true
-        loadingProgress = 0f
-
-        try {
-            fetchAppListMutex.withLock {
+        fetchAppListMutex.withLock {
+            sharedIsRefreshing = true
+            loadingProgress = 0f
+            sharedLoadError = null
+            try {
                 fetchAppListFromService(forceRefresh)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                sharedLoadError = error.message?.takeIf { it.isNotBlank() }
+                    ?: "Unable to load the app list"
+                Log.e(TAG, "Failed to load app list", error)
+            } finally {
+                sharedIsRefreshing = false
             }
-        } finally {
-            isRefreshing = false
         }
     }
 
@@ -528,11 +615,11 @@ class SuperUserViewModel : ViewModel() {
 
     private suspend fun fetchAppListFromService(forceRefresh: Boolean) {
         if (!withContext(Dispatchers.IO) { KsuCli.SHELL.isRoot }) {
-            Log.w(TAG, "Root access is required to load the app list")
-            return
+            throw IllegalStateException("Root access is required to load the app list")
         }
 
-        val binder = connectKsuService() ?: return
+        val binder = withTimeoutOrNull(15_000) { connectKsuService() }
+            ?: throw IllegalStateException("Package service is unavailable")
 
         withContext(Dispatchers.IO) {
             val pm = ksuApp.packageManager
@@ -563,10 +650,6 @@ class SuperUserViewModel : ViewModel() {
                 loadingProgress = start.toFloat() / total
             }
 
-            synchronized(appsLock) {
-                _isAppListLoaded.value = true
-            }
-
             appListMutex.withLock {
                 val filteredApps = result.filter { it.packageName != ksuApp.packageName }
                 val profiledApps = filteredApps.groupBy { it.uid }.values.flatMap { uidApps ->
@@ -576,16 +659,20 @@ class SuperUserViewModel : ViewModel() {
                 apps = profiledApps
                 appGroups = groupAppsByUid(profiledApps)
             }
+            sharedHasLoaded = true
+            sharedLoadError = null
+            _isAppListLoaded.value = true
             loadingProgress = 1f
         }
     }
 
     val appGroupList by derivedStateOf {
+        val query = search.trim()
         appGroups.filter { group ->
-            group.apps.any { app ->
-                app.label.contains(search, true) ||
-                        app.packageName.contains(search, true) ||
-                        HanziToPinyin.getInstance().toPinyinString(app.label)?.contains(search, true) == true
+            query.isEmpty() || group.uid.toString().contains(query, true) || group.apps.any { app ->
+                app.label.contains(query, true) ||
+                        app.packageName.contains(query, true) ||
+                        HanziToPinyin.getInstance().toPinyinString(app.label)?.contains(query, true) == true
             }
         }.filter { group ->
             group.uid == SHELL_UID || showSystemApps ||

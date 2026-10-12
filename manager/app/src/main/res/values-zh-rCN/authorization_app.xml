@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auth_app_title">应用管理</string>
+    <string name="auth_app_uid">UID：%1$d</string>
+    <string name="auth_app_package">包名：%1$s</string>
+    <string name="auth_app_status_granted">已允许 Root</string>
+    <string name="auth_app_status_denied">未允许 Root</string>
+    <string name="auth_app_grant_root">允许 Root</string>
+    <string name="auth_app_revoke_root">撤销 Root 授权</string>
+    <string name="auth_app_edit_profile">编辑应用配置</string>
+    <string name="auth_app_system_info">系统应用信息</string>
+    <string name="auth_app_system_info_unavailable">无法打开此应用的系统信息。</string>
+    <string name="auth_app_system_info_for_app">%1$s 的应用信息</string>
+    <string name="auth_app_copy_package">复制包名</string>
+    <string name="auth_app_copy_package_for_app">复制 %1$s 的包名</string>
+    <string name="auth_app_shared_uid_warning">这些应用共享同一 UID，更改授权会同时影响所有应用。</string>
+    <string name="auth_app_shared_apps">共享此 UID 的应用</string>
+    <string name="auth_app_umount_modules">卸载模块挂载</string>
+    <string name="auth_app_umount_summary">对该应用隐藏模块挂载，重启应用后生效。</string>
+    <string name="auth_app_umount_revokes_root">修改此设置也会撤销此 UID 的 Root 权限。</string>
+    <string name="auth_app_copy_done">已复制包名</string>
+    <string name="auth_app_busy">正在保存授权…</string>
+    <string name="auth_app_unknown">未知</string>
+    <string name="auth_app_close">关闭应用管理</string>
+</resources>
