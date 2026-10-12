@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="sumh_saved_configuration">Configuration saved</string>
+    <string name="sumh_saved_runtime_pending">Saved. SUMH is unavailable; apply these settings when the kernel is available.</string>
+    <string name="sumh_saved_applied_reboot">Saved and applied to the kernel. Mount settings take effect after reboot.</string>
+    <string name="sumh_runtime_apply_pending">Saved settings still need to be applied to the kernel. Retry when SUMH is available.</string>
+</resources>

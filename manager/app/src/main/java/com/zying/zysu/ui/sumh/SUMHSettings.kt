@@ -13,8 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -30,8 +28,6 @@ import com.zying.zysu.ui.sumh.util.SUMHUiAdapter as Controller
 import com.zying.zysu.ui.theme.getCardColors
 import com.zying.zysu.ui.theme.getCardBorder
 import com.zying.zysu.ui.theme.getCardElevation
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 import ui.screen.moreSettings.component.MoreSettingsItemPosition
 
 @Composable
@@ -44,6 +40,7 @@ internal fun SettingsTab(
     runtimeApplyPending: Boolean,
     onRetryApply: () -> Unit,
     onConfigChanged: (Controller.SUMHPConfig) -> Unit,
+    onUserRulesSavingChanged: (Boolean) -> Unit = {},
     onClearMapRules: () -> Unit,
     onAddMapRule: (Long, Long, Long, Long, String) -> Unit,
     section: SUMHSection,
@@ -61,6 +58,16 @@ internal fun SettingsTab(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         header()
+        if (runtimeApplyPending) {
+            ConfigSection {
+                Text(stringResource(R.string.sumh_runtime_apply_pending), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedButton(onClick = onRetryApply, enabled = kernelEnabled, modifier = Modifier.fillMaxWidth()) {
+                    YukiIcon(Icons.Filled.Refresh, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.sumh_retry_apply))
+                }
+            }
+        }
         when (section) {
             SUMHSection.Mount -> {
                 ConfigSection(stringResource(R.string.sumh_group_mount_backends), segmented = true, actions = headingActions) {
@@ -92,77 +99,18 @@ internal fun SettingsTab(
                     }
                 }
             }
-            SUMHSection.Isolation -> {
-                val mountHideSupported = features?.names?.contains("mount_hide") == true
-                val mapsSupported = features?.names?.contains("maps_spoof") == true
-                KernelBuildSpoofCard(
-                    config = config,
-                    controlsEnabled = enabled,
-                    kernelEnabled = kernelEnabled,
-                    supported = features?.names?.contains("kernel_build_spoof") == true,
-                    onConfigChanged = onConfigChanged,
-                    headingActions = headingActions,
-                )
-                ConfigSection(stringResource(R.string.sumh_group_mount_visibility), segmented = true) {
-                    SettingSwitch(stringResource(R.string.sumh_stealth), stringResource(R.string.sumh_stealth_desc), config.enableStealth,
-                        { onConfigChanged(config.copy(enableStealth = it)) }, kernelEnabled, Icons.Filled.VisibilityOff,
-                        MoreSettingsItemPosition.First)
-                    FeatureSettingSwitch(
-                        title = R.string.sumh_mount_hide,
-                        subtitle = R.string.sumh_mount_hide_desc,
-                        checked = config.enableMountHide,
-                        supported = mountHideSupported,
-                        controlsEnabled = enabled,
-                        kernelEnabled = kernelEnabled,
-                        icon = Icons.Filled.FolderOff,
-                        position = MoreSettingsItemPosition.Last,
-                        onCheckedChange = { onConfigChanged(config.copy(enableMountHide = it)) },
-                    )
-                }
-                ConfigSection(stringResource(R.string.sumh_group_filesystem), segmented = true) {
-                    FeatureSettingSwitch(
-                        title = R.string.sumh_overlay_xattr,
-                        subtitle = R.string.sumh_overlay_xattr_desc,
-                        checked = config.enableOverlayXattrHide,
-                        supported = features?.names?.contains("overlay_xattr_hide") == true,
-                        controlsEnabled = enabled,
-                        kernelEnabled = kernelEnabled,
-                        icon = Icons.Filled.Security,
-                        position = MoreSettingsItemPosition.First,
-                        onCheckedChange = { onConfigChanged(config.copy(enableOverlayXattrHide = it)) },
-                    )
-                    FeatureSettingSwitch(
-                        title = R.string.sumh_statfs_spoof,
-                        subtitle = R.string.sumh_statfs_spoof_desc,
-                        checked = config.enableStatfsSpoof,
-                        supported = features?.names?.contains("statfs_spoof") == true,
-                        controlsEnabled = enabled,
-                        kernelEnabled = kernelEnabled,
-                        icon = Icons.Filled.Storage,
-                        position = MoreSettingsItemPosition.Last,
-                        onCheckedChange = { onConfigChanged(config.copy(enableStatfsSpoof = it)) },
-                    )
-                }
-                ConfigSection(stringResource(R.string.sumh_maps_title), segmented = true) {
-                    val showMapRules = config.enableMapsSpoof && config.kernelAvailable && mapsSupported
-                    FeatureSettingSwitch(
-                        title = R.string.sumh_maps_spoof,
-                        subtitle = R.string.sumh_maps_spoof_desc,
-                        checked = config.enableMapsSpoof,
-                        supported = mapsSupported,
-                        controlsEnabled = enabled,
-                        kernelEnabled = kernelEnabled,
-                        icon = Icons.Filled.Memory,
-                        position = if (showMapRules) MoreSettingsItemPosition.First else MoreSettingsItemPosition.Only,
-                        onCheckedChange = { onConfigChanged(config.copy(enableMapsSpoof = it)) },
-                    )
-                    if (showMapRules) {
-                        MapsSpoofControls(kernelEnabled, onClearMapRules, onAddMapRule)
-                    }
-                }
-                // Custom path rules are independent of the stealth and mount-hide switches.
-                UserHideRulesCard(enabled, snackbarHostState)
-            }
+            SUMHSection.Isolation -> IsolationFeatureSettings(
+                config = config,
+                kernelAvailable = sumhStatus == Controller.SUMHStatus.AVAILABLE,
+                features = features,
+                controlsEnabled = enabled,
+                snackbarHostState = snackbarHostState,
+                onConfigChanged = onConfigChanged,
+                onUserRulesSavingChanged = onUserRulesSavingChanged,
+                onClearMapRules = onClearMapRules,
+                onAddMapRule = onAddMapRule,
+                headingActions = headingActions,
+            )
             SUMHSection.Debug -> ConfigSection(stringResource(R.string.sumh_workspace_debug), segmented = true, actions = headingActions) {
                 SettingSwitch(stringResource(R.string.sumh_debug), stringResource(R.string.sumh_debug_desc),
                     config.debug, { onConfigChanged(config.copy(debug = it)) }, enabled,
@@ -174,16 +122,6 @@ internal fun SettingsTab(
                     Icons.Filled.BugReport, MoreSettingsItemPosition.Last)
             }
             else -> Unit
-        }
-        if (runtimeApplyPending) {
-            ConfigSection(title = "") {
-                Text(stringResource(R.string.sumh_apply_failed), color = MaterialTheme.colorScheme.error)
-                OutlinedButton(onClick = onRetryApply, enabled = kernelEnabled, modifier = Modifier.fillMaxWidth()) {
-                    YukiIcon(Icons.Filled.Refresh, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.sumh_retry_apply))
-                }
-            }
         }
     }
 }
@@ -218,33 +156,6 @@ private fun FileSystemChoice(value: String, enabled: Boolean, onSelect: (String)
             }
         }
     }
-}
-
-@Composable
-private fun FeatureSettingSwitch(
-    title: Int,
-    subtitle: Int,
-    checked: Boolean,
-    supported: Boolean,
-    controlsEnabled: Boolean,
-    kernelEnabled: Boolean,
-    icon: ImageVector,
-    position: MoreSettingsItemPosition,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    SettingSwitch(
-        title = stringResource(title),
-        subtitle = stringResource(when {
-            supported -> subtitle
-            checked -> R.string.sumh_disable_unsupported
-            else -> R.string.feature_status_unsupported_summary
-        }),
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        enabled = controlsEnabled && ((kernelEnabled && supported) || (!supported && checked)),
-        icon = icon,
-        position = position,
-    )
 }
 
 @Composable
@@ -383,127 +294,6 @@ private fun EditableConfigPath(title: Int, subtitle: Int, value: String, enabled
         style = MaterialTheme.typography.bodySmall,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
     )
-}
-
-@Composable
-private fun UserHideRulesCard(enabled: Boolean, snackbar: SnackbarController) {
-    val scope = rememberCoroutineScope()
-    val resources = LocalResources.current
-    var states by remember { mutableStateOf(emptyList<Controller.ActiveRule>()) }
-    val paths = states.map { it.src }
-    var newPath by rememberSaveable { mutableStateOf("") }
-    var working by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        try { states = Controller.userHideStates() }
-        catch (error: Exception) { if (error is CancellationException) throw error; snackbar.showSnackbar(error.message.orEmpty()) }
-    }
-    fun change(path: String, remove: Boolean) {
-        if (!enabled || working) return
-        working = true
-        scope.launch {
-            try {
-                val ok = if (remove) Controller.removeUserHideRule(path) else Controller.addUserHideRule(path)
-                states = Controller.userHideStates()
-                working = false
-                if (ok) newPath = "" else snackbar.showSnackbar(resources.getString(R.string.operation_failed))
-            } catch (error: Exception) { working = false; if (error is CancellationException) throw error; snackbar.showSnackbar(error.message.orEmpty()) }
-            finally { working = false }
-        }
-    }
-    fun refresh(path: String? = null) {
-        if (working) return
-        working = true
-        scope.launch {
-            try {
-                val ok = when {
-                    path == null -> true
-                    states.find { it.src == path }?.hideState == -1 -> Controller.addUserHideRule(path)
-                    else -> Controller.retryUserHide(path)
-                }
-                states = Controller.userHideStates()
-                working = false
-                if (!ok) snackbar.showSnackbar(resources.getString(R.string.operation_failed))
-            } catch (error: Exception) {
-                working = false
-                if (error is CancellationException) throw error
-                snackbar.showSnackbar(error.message.orEmpty())
-            } finally { working = false }
-        }
-    }
-    ConfigSection(
-        title = stringResource(R.string.sumh_user_hide_title),
-        actions = {
-            IconButton(onClick = { refresh() }, enabled = !working) {
-                YukiIcon(Icons.Filled.Refresh, stringResource(R.string.sumh_rules_refresh))
-            }
-        }
-    ) {
-        Text(
-            stringResource(R.string.sumh_quick_hide),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Column {
-            val externalStorage = android.os.Environment.getExternalStorageDirectory()
-            listOf("/dev/scene", "/dev/cpuset/scene-daemon", externalStorage.resolve("Download/advanced").path, externalStorage.resolve("MT2").path).forEach { path ->
-                TextButton(
-                    onClick = { change(path, false) },
-                    enabled = enabled && !working && path !in paths,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                ) {
-                    YukiIcon(Icons.Filled.Add, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        path,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                }
-            }
-        }
-        states.forEach { rule ->
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Row(
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val path = rule.src
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(path, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-                    if (rule.hideState != null) Text(userHideStatus(rule), style = MaterialTheme.typography.bodySmall,
-                        color = if (rule.hideState == 3) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                if (rule.hideState == 3 || rule.hideState == 0 || rule.hideState == -1) {
-                    IconButton(onClick = { refresh(path) }, enabled = enabled && !working) {
-                        YukiIcon(Icons.Filled.Refresh, stringResource(R.string.sumh_hide_retry))
-                    }
-                }
-                IconButton(onClick = { change(path, true) }, enabled = enabled && !working) {
-                    YukiIcon(Icons.Filled.Delete, stringResource(R.string.sumh_user_hide_remove))
-                }
-            }
-        }
-        OutlinedTextField(
-            value = newPath,
-            onValueChange = { newPath = it },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = enabled && !working,
-            singleLine = true,
-            label = { Text(stringResource(R.string.sumh_absolute_path)) },
-            placeholder = { Text(stringResource(R.string.sumh_user_hide_placeholder)) },
-        )
-        Button(
-            onClick = { change(newPath.trim(), false) },
-            enabled = enabled && !working && newPath.startsWith('/') && newPath != "/system/bin/su",
-            modifier = Modifier.align(Alignment.End).heightIn(min = 48.dp),
-        ) {
-            YukiIcon(Icons.Filled.Add, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.sumh_user_hide_add))
-        }
-    }
 }
 
 @Composable

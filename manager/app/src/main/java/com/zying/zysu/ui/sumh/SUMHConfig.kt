@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -52,15 +53,21 @@ import com.zying.zysu.ui.component.YukiPanel
 import com.zying.zysu.ui.component.YukiAlertDialog
 import com.zying.zysu.ui.component.YukiTopAppBar
 import com.zying.zysu.ui.component.YukiTopBarTitle
+import com.zying.zysu.ui.screen.WorkspaceOperationGuard
 import com.zying.zysu.ui.theme.isExpressiveUi
 import com.zying.zysu.ui.theme.UtilityPreviewTheme
 import com.zying.zysu.ui.sumh.util.SUMHUiAdapter as SUMHManager
 import com.zying.zysu.ui.sumh.util.SUMHUiAdapter.SUMHStatus
+import com.zying.zysu.ui.sumh.util.SUMHMapsPathError
+import com.zying.zysu.ui.sumh.util.parseSUMHMapsNumber
+import com.zying.zysu.ui.sumh.util.parseSUMHMapsRuleInput
+import com.zying.zysu.ui.sumh.util.validateSUMHMapsPath
 import com.zying.zysu.ui.theme.getCardColors
 import com.zying.zysu.ui.theme.getCardBorder
 import com.zying.zysu.ui.theme.getCardElevation
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
+import com.ramcosta.composedestinations.generated.destinations.SUMHConfigScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -75,12 +82,14 @@ import ui.screen.moreSettings.component.SwitchSettingItem
 @Composable
 fun SUMHConfigScreen(navigator: DestinationsNavigator) {
     var selectedSection by rememberSaveable { mutableStateOf(SUMHSection.Status) }
+    var saving by remember { mutableStateOf(false) }
+    WorkspaceOperationGuard(saving, SUMHConfigScreenDestination.route)
     Scaffold(
         topBar = {
             YukiTopAppBar(
                 title = { YukiTopBarTitle(stringResource(R.string.sumh_title)) },
                 navigationIcon = {
-                    IconButton(onClick = { navigator.popBackStack() }) {
+                    IconButton(onClick = { if (!saving) navigator.popBackStack() }, enabled = !saving) {
                         YukiIcon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
                     }
                 }
@@ -88,8 +97,10 @@ fun SUMHConfigScreen(navigator: DestinationsNavigator) {
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-            SUMHTabs(selectedSection) { selectedSection = it }
-            Box(Modifier.weight(1f)) { SUMHWorkspace(selectedSection) }
+            SUMHTabs(selectedSection, enabled = !saving) { if (!saving) selectedSection = it }
+            Box(Modifier.weight(1f)) {
+                SUMHWorkspace(selectedSection, onSavingChanged = { saving = it })
+            }
         }
     }
 }
@@ -222,8 +233,16 @@ internal fun MapsSpoofControls(
     onClearRules: () -> Unit,
     onAddRule: (Long, Long, Long, Long, String) -> Unit,
 ) {
-    var showClearConfirm by remember { mutableStateOf(false) }
-    var showAddDialog by remember { mutableStateOf(false) }
+    var showClearConfirm by rememberSaveable { mutableStateOf(false) }
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
+    // Keep a failed submission or an accidentally dismissed dialog editable.
+    var tIno by rememberSaveable { mutableStateOf("") }
+    var tDev by rememberSaveable { mutableStateOf("0") }
+    var sIno by rememberSaveable { mutableStateOf("") }
+    var sDev by rememberSaveable { mutableStateOf("0") }
+    var path by rememberSaveable { mutableStateOf("") }
+    var submitted by rememberSaveable { mutableStateOf(false) }
+    var editedFields by rememberSaveable { mutableStateOf(0) }
 
     if (showClearConfirm) {
         YukiAlertDialog(
@@ -252,11 +271,23 @@ internal fun MapsSpoofControls(
     }
 
     if (showAddDialog) {
-        var tIno by remember { mutableStateOf("") }
-        var tDev by remember { mutableStateOf("0") }
-        var sIno by remember { mutableStateOf("") }
-        var sDev by remember { mutableStateOf("0") }
-        var path by remember { mutableStateOf("") }
+        val focusRequesters = remember { List(5) { FocusRequester() } }
+        val numbers = listOf(tIno, tDev, sIno, sDev)
+        val numberErrors = numbers.map { parseSUMHMapsNumber(it) == null }
+        val pathError = validateSUMHMapsPath(path)
+        val input = parseSUMHMapsRuleInput(tIno, tDev, sIno, sDev, path)
+        fun submit() {
+            if (!enabled) return
+            submitted = true
+            if (input == null) {
+                val invalidIndex = numberErrors.indexOfFirst { it }.takeIf { it >= 0 } ?: 4
+                focusRequesters[invalidIndex].requestFocus()
+                return
+            }
+            showAddDialog = false
+            submitted = false
+            onAddRule(input.targetInode, input.targetDevice, input.spoofedInode, input.spoofedDevice, input.path)
+        }
         YukiAlertDialog(
             onDismissRequest = { showAddDialog = false },
             title = { Text(stringResource(R.string.sumh_maps_add_rule)) },
@@ -265,68 +296,58 @@ internal fun MapsSpoofControls(
                     modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = tIno,
-                        onValueChange = { tIno = it },
-                        label = { Text(stringResource(R.string.sumh_maps_target_ino)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = enabled,
-                        shape = MaterialTheme.shapes.small,
-                        singleLine = true
+                    Text(
+                        stringResource(R.string.sumh_maps_input_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    OutlinedTextField(
-                        value = tDev,
-                        onValueChange = { tDev = it },
-                        label = { Text(stringResource(R.string.sumh_maps_target_dev)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = enabled,
-                        shape = MaterialTheme.shapes.small,
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = sIno,
-                        onValueChange = { sIno = it },
-                        label = { Text(stringResource(R.string.sumh_maps_spoof_ino)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = enabled,
-                        shape = MaterialTheme.shapes.small,
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = sDev,
-                        onValueChange = { sDev = it },
-                        label = { Text(stringResource(R.string.sumh_maps_spoof_dev)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = enabled,
-                        shape = MaterialTheme.shapes.small,
-                        singleLine = true
-                    )
+                    val labels = listOf(R.string.sumh_maps_target_ino, R.string.sumh_maps_target_dev,
+                        R.string.sumh_maps_spoof_ino, R.string.sumh_maps_spoof_dev)
+                    numbers.forEachIndexed { index, value ->
+                        OutlinedTextField(
+                            value = value,
+                            onValueChange = {
+                                when (index) { 0 -> tIno = it; 1 -> tDev = it; 2 -> sIno = it; 3 -> sDev = it }
+                                editedFields = editedFields or (1 shl index)
+                            },
+                            label = { Text(stringResource(labels[index])) },
+                            modifier = Modifier.fillMaxWidth().focusRequester(focusRequesters[index]),
+                            enabled = enabled,
+                            shape = MaterialTheme.shapes.small,
+                            singleLine = true,
+                            isError = (submitted || editedFields and (1 shl index) != 0) && numberErrors[index],
+                            supportingText = if ((submitted || editedFields and (1 shl index) != 0) && numberErrors[index]) {
+                                { Text(stringResource(R.string.sumh_maps_input_number_error)) }
+                            } else null,
+                            keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { focusRequesters[index + 1].requestFocus() }),
+                        )
+                    }
                     OutlinedTextField(
                         value = path,
-                        onValueChange = { path = it },
+                        onValueChange = { path = it; editedFields = editedFields or (1 shl 4) },
                         label = { Text(stringResource(R.string.sumh_maps_spoof_path)) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequesters[4]),
                         enabled = enabled,
                         shape = MaterialTheme.shapes.small,
-                        singleLine = true
+                        singleLine = true,
+                        isError = (submitted || editedFields and (1 shl 4) != 0) && pathError != null,
+                        supportingText = if ((submitted || editedFields and (1 shl 4) != 0) && pathError != null) {
+                            { Text(stringResource(when (pathError) {
+                                SUMHMapsPathError.AbsolutePath -> R.string.sumh_maps_input_path_absolute
+                                SUMHMapsPathError.ControlCharacter -> R.string.sumh_maps_input_path_control
+                                SUMHMapsPathError.TooLong -> R.string.sumh_maps_input_path_length
+                            })) }
+                        } else null,
+                        keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { submit() }),
                     )
                 }
             },
             confirmButton = {
                 TextButton(
-                    enabled = enabled,
-                    onClick = {
-                        if (!enabled) return@TextButton
-                        val ti = tIno.trim().toLongOrNull()
-                        val td = tDev.trim().toLongOrNull() ?: 0L
-                        val si = sIno.trim().toLongOrNull()
-                        val sd = sDev.trim().toLongOrNull() ?: 0L
-                        val p = path.trim()
-                        if (ti != null && si != null && p.isNotEmpty()) {
-                            showAddDialog = false
-                            onAddRule(ti, td, si, sd, p)
-                        }
-                    }
+                    enabled = enabled && input != null,
+                    onClick = { submit() }
                 ) {
                     Text(stringResource(R.string.sumh_maps_add_action))
                 }
@@ -343,6 +364,12 @@ internal fun MapsSpoofControls(
         Text(
             text = stringResource(R.string.sumh_maps_desc),
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.sumh_maps_input_runtime),
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(8.dp))

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sumh_features_title">SUMH 功能管理</string>
+    <string name="sumh_features_configured_count">配置已开启：%1$d / %2$d</string>
+    <string name="sumh_features_supported_count">当前内核支持：%1$d / %2$d</string>
+    <string name="sumh_features_saved_note">开关显示已保存的配置，应用成功后才会生效；内核支持不代表功能正在运行。</string>
+    <string name="sumh_features_search">搜索功能</string>
+    <string name="sumh_features_clear_search">清除功能搜索</string>
+    <string name="sumh_features_filter_on">配置已开启</string>
+    <string name="sumh_features_filter_supported">支持</string>
+    <string name="sumh_features_filter_unsupported">不支持</string>
+    <string name="sumh_features_configured_on">配置已开启</string>
+    <string name="sumh_features_configured_off">配置已关闭</string>
+    <string name="sumh_features_support_yes">内核支持</string>
+    <string name="sumh_features_support_no">内核不支持</string>
+    <string name="sumh_features_support_unknown">暂未获取到内核功能支持信息</string>
+    <string name="sumh_features_kernel_unavailable">SUMH 内核不可用</string>
+    <string name="sumh_features_item_status">%1$s · %2$s</string>
+    <string name="sumh_features_can_disable">可关闭以清理已保存的设置。</string>
+    <string name="sumh_features_result_count">显示 %1$d / %2$d 项功能</string>
+    <string name="sumh_features_empty">没有符合当前搜索和筛选条件的功能。</string>
+    <string name="sumh_features_reset">重置搜索和筛选</string>
+    <string name="sumh_features_cleanup">清理不支持的设置</string>
+    <string name="sumh_features_cleanup_confirm">关闭以下当前内核不支持、但配置已开启的功能？自定义内容和规则将保留。</string>
+    <string name="sumh_features_cleanup_confirm_action">关闭所列功能</string>
+</resources>

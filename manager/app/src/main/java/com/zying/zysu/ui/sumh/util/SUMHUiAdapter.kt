@@ -13,7 +13,7 @@ object SUMHUiAdapter {
     data class FeaturesResult(val bitmask: Int, val names: List<String>)
     data class ModuleInfo(val id: String, val name: String, val mode: String, val strategy: String)
     data class ActiveRule(val type: String, val src: String, val target: String? = null, val isUserDefined: Boolean = false,
-        val hideState: Int? = null, val hideError: Int = 0)
+        val hideState: Int? = null, val hideError: Int = 0, val persisted: Boolean = true)
     data class PartitionInfo(val name: String)
     data class MountStats(
         val totalMounts: Int, val overlayfsMounts: Int,
@@ -82,8 +82,9 @@ object SUMHUiAdapter {
             type == "hide" && path in userRules)
     }.toList()
 
-    private fun userRules(snapshot: SUMHManager.RuleSnapshot): List<ActiveRule> {
-        val registered = snapshot.system.optJSONArray("user_hide") ?: return snapshot.hideRules.map {
+    internal fun userRules(snapshot: SUMHManager.RuleSnapshot): List<ActiveRule> {
+        val storedPaths = snapshot.hideRules.toSet()
+        val registered = snapshot.system.optJSONArray("user_hide") ?: return storedPaths.map {
             ActiveRule("hide", it, isUserDefined = true)
         }
         val live = (0 until registered.length()).map(registered::getJSONObject).associateBy { it.getString("path") }
@@ -94,7 +95,7 @@ object SUMHUiAdapter {
                     state == null -> -1
                     state.optInt("management") == 1 -> 4
                     else -> state.optInt("binding")
-                }, hideError = state?.optInt("error") ?: 0)
+                }, hideError = state?.optInt("error") ?: 0, persisted = path in storedPaths)
         }
     }
 
@@ -111,6 +112,12 @@ object SUMHUiAdapter {
         return String.format(Locale.ROOT, "%.1f %s", amount, units[unit])
     }
 
+    internal fun parseFeatures(raw: JSONObject?): FeaturesResult? {
+        // Only an explicit capability list can establish that a feature is unsupported.
+        val names = raw?.optJSONArray("names") ?: return null
+        return FeaturesResult(raw.optInt("bitmask"), (0 until names.length()).map(names::getString))
+    }
+
     suspend fun load(): UiState = withContext(Dispatchers.IO) {
         val snapshot = SUMHManager.snapshot()
         val sys = snapshot.system
@@ -121,9 +128,8 @@ object SUMHUiAdapter {
             protocol < 1 -> SUMHStatus.KERNEL_TOO_OLD
             else -> SUMHStatus.MODULE_TOO_OLD
         }
-        val features = sys.optJSONObject("features") ?: JSONObject()
-        val names = features.optJSONArray("names")
-        val supported = if (names == null) emptyList() else (0 until names.length()).map(names::getString)
+        val features = parseFeatures(sys.optJSONObject("features"))
+        val supported = features?.names.orEmpty()
         val viewConfig = config(snapshot.config, supported.toSet(), snapshot.mounts.available, snapshot.mounts.externalOwner)
         val base = sys.optString("mount_base")
         val disk = try {
@@ -157,7 +163,7 @@ object SUMHUiAdapter {
                 stats?.let { MountStats(it.optInt("total_mounts"), it.optInt("overlayfs_mounts")) }, partitions,
                 sys.optString("hooks"), sys.optBoolean("enabled")),
             storage, activeRules(SUMHManager.RuleSnapshot(sys, snapshot.hideRules)),
-            FeaturesResult(features.optInt("bitmask"), supported),
+            features,
         )
     }
 
@@ -169,7 +175,7 @@ object SUMHUiAdapter {
         false
     }
 
-    suspend fun saveConfig(value: SUMHPConfig): SUMHManager.ConfigSaveResult {
+    internal fun configUpdates(value: SUMHPConfig): JSONObject {
         val old = config(value.original, value.supported, value.kernelAvailable, value.externalOwner)
         val updates = JSONObject()
         fun change(key: String, before: Any, after: Any) { if (before != after) updates.put(key, after) }
@@ -182,8 +188,6 @@ object SUMHUiAdapter {
         change("enable_stealth", old.enableStealth, value.enableStealth)
         change("enable_overlay_xattr_hide", old.enableOverlayXattrHide, value.enableOverlayXattrHide)
         change("enable_mount_hide", old.enableMountHide, value.enableMountHide)
-        // Mount hiding always uses normal mode; normalize older saved levels on save.
-        change("mount_hide_mode", value.original.optString("mount_hide_mode", "normal"), "normal")
         change("enable_maps_spoof", old.enableMapsSpoof, value.enableMapsSpoof)
         change("enable_statfs_spoof", old.enableStatfsSpoof, value.enableStatfsSpoof)
         change("enable_kernel_build_spoof", old.enableKernelBuildSpoof, value.enableKernelBuildSpoof)
@@ -195,6 +199,17 @@ object SUMHUiAdapter {
         change("overlayfs_enabled", old.overlayfsEnabled, value.overlayfsEnabled)
         change("magic_mount_enabled", old.magicMountEnabled, value.magicMountEnabled)
         if (old.partitions != value.partitions) updates.put("partitions", org.json.JSONArray(value.partitions))
+        val plan = planSUMHConfigSave(
+            updates.keys().asSequence().toSet(),
+            value.kernelAvailable,
+            value.original.optString("mount_hide_mode", "normal"),
+        )
+        if (plan.normalizeMountHideMode) updates.put("mount_hide_mode", "normal")
+        return updates
+    }
+
+    suspend fun saveConfig(value: SUMHPConfig): SUMHManager.ConfigSaveResult {
+        val updates = configUpdates(value)
         if (updates.length() == 0) return SUMHManager.ConfigSaveResult(false, false, noChanges = true)
         return SUMHManager.saveAndApplyConfig(updates, value.kernelAvailable)
     }
@@ -206,9 +221,12 @@ object SUMHUiAdapter {
     suspend fun listUserHideRules(): List<String> = SUMHManager.listHideRules()
     suspend fun userHideStates(): List<ActiveRule> {
         val snapshot = SUMHManager.ruleSnapshot()
-        val storedPaths = snapshot.hideRules.toHashSet()
-        return userRules(snapshot).filter { it.src in storedPaths }
+        // A saved deletion can fail in the kernel. Keep that live definition visible
+        // so the user can retry removal instead of losing its management entry.
+        return userRules(snapshot)
     }
+    suspend fun changeUserHideRules(action: SUMHHideAction, paths: List<String>) =
+        SUMHManager.changeUserHideRules(action, paths)
     suspend fun retryUserHide(path: String) = success { SUMHManager.retryUserHide(path) }
     suspend fun addUserHideRule(path: String) = success { SUMHManager.saveHide(path) }
     suspend fun removeUserHideRule(path: String) = success { SUMHManager.saveHide(path, true) }

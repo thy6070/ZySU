@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="sumh_user_rules_description">Manage saved user hide paths. Select paths to retry or remove them together; module rules are managed separately.</string>
+    <string name="sumh_user_rules_kernel_unavailable">SUMH is unavailable. Saved paths can still be managed; applying them requires a supported kernel.</string>
+    <string name="sumh_user_rules_load_error">Could not refresh rules: %1$s. Refresh before making changes.</string>
+    <string name="sumh_user_rules_search">Search saved paths</string>
+    <string name="sumh_user_rules_clear_search">Clear path search</string>
+    <string name="sumh_user_rules_filter_all">All · %1$d</string>
+    <string name="sumh_user_rules_filter_effective">Effective · %1$d</string>
+    <string name="sumh_user_rules_filter_attention">Needs attention · %1$d</string>
+    <string name="sumh_user_rules_selected">Selected: %1$d · visible in this filter: %2$d</string>
+    <string name="sumh_user_rules_select_visible">Select all visible</string>
+    <string name="sumh_user_rules_clear_selection">Clear selection</string>
+    <string name="sumh_user_rules_empty">No saved user rules. Add paths below to get started.</string>
+    <string name="sumh_user_rules_no_match">No paths match this search and filter.</string>
+    <string name="sumh_user_rules_unknown">State unavailable — refresh or retry</string>
+    <string name="sumh_user_rules_runtime_only">Running in kernel only · not saved</string>
+    <string name="sumh_user_rules_batch_limit">Maximum paths per operation: %1$d. Larger selections will not be shortened automatically.</string>
+    <string name="sumh_user_rules_retry_count">Retry eligible (%1$d)</string>
+    <string name="sumh_user_rules_remove_count">Remove selected (%1$d)</string>
+    <string name="sumh_user_rules_remove_confirm">Remove these user hide definitions from saved configuration and the kernel? Paths hidden by the current filter are included in this list.</string>
+    <string name="sumh_user_rules_copy_selected">Copy selected paths</string>
+    <string name="sumh_user_rules_copy_visible">Copy visible saved paths</string>
+    <string name="sumh_user_rules_copied">Paths copied: %1$d</string>
+    <string name="sumh_user_rules_result">Commands completed: %1$d · failed: %2$d</string>
+    <string name="sumh_user_rules_result_add">Last result: add paths</string>
+    <string name="sumh_user_rules_result_remove">Last result: remove paths</string>
+    <string name="sumh_user_rules_result_retry">Last result: retry paths</string>
+    <string name="sumh_user_rules_result_note">Completed commands do not confirm that a path is active. Check each rule’s refreshed state.</string>
+    <string name="sumh_user_rules_result_omitted">Failure details too large to restore: %1$d. Counts are complete; only the paths listed below can be retried here. Refresh and select the remaining paths again.</string>
+    <string name="sumh_user_rules_result_shortened">Long error messages were shortened when this screen was restored.</string>
+    <string name="sumh_user_rules_retry_failed">Retry failed commands (%1$d)</string>
+    <string name="sumh_user_rules_retry_restored_failed">Retry restored failed paths (%1$d)</string>
+    <string name="sumh_user_rules_add_label">Add paths</string>
+    <string name="sumh_user_rules_add_hint">One absolute path per line. New path limit: %1$d. Preview checks invalid and duplicate paths.</string>
+    <string name="sumh_user_rules_preview">Preview additions</string>
+    <string name="sumh_user_rules_preview_count">New: %1$d · duplicates skipped: %2$d · invalid: %3$d</string>
+    <string name="sumh_user_rules_preview_line">Line %1$d: %2$s</string>
+    <string name="sumh_user_rules_duplicate">Already saved or repeated in this input — skipped</string>
+    <string name="sumh_user_rules_ready">Ready to add</string>
+    <string name="sumh_user_rules_invalid_absolute">Enter an absolute path beginning with /.</string>
+    <string name="sumh_user_rules_invalid_root">The filesystem root cannot be hidden.</string>
+    <string name="sumh_user_rules_invalid_component">Remove repeated or trailing slashes, and . or .. path components.</string>
+    <string name="sumh_user_rules_invalid_control">Control characters are not allowed in paths.</string>
+    <string name="sumh_user_rules_invalid_length">This path or a path component exceeds the supported UTF-8 length.</string>
+    <string name="sumh_user_rules_invalid_protected">This path is protected and cannot be hidden.</string>
+</resources>

@@ -69,10 +69,11 @@ internal fun SUMHLogActions(content: @Composable RowScope.() -> Unit) {
 }
 
 @Composable
-internal fun SUMHTabs(selected: SUMHSection, onSelect: (SUMHSection) -> Unit) {
+internal fun SUMHTabs(selected: SUMHSection, enabled: Boolean = true, onSelect: (SUMHSection) -> Unit) {
     WorkspaceTabs(
         labels = SUMHSection.entries.map { stringResource(it.displayNameRes) },
         selected = selected.ordinal,
-        onSelected = { onSelect(SUMHSection.entries[it]) },
+        onSelected = { if (enabled) onSelect(SUMHSection.entries[it]) },
+        enabled = enabled,
     )
 }

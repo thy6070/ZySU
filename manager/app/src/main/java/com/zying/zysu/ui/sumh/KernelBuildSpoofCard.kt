@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +33,9 @@ import com.zying.zysu.R
 import com.zying.zysu.ui.sumh.util.KERNEL_BUILD_EARLY_STAGE
 import com.zying.zysu.ui.sumh.util.KERNEL_BUILD_LATE_STAGE
 import com.zying.zysu.ui.sumh.util.SUMHManager
+import com.zying.zysu.ui.sumh.util.SUMHFeatureState
+import com.zying.zysu.ui.sumh.util.SUMHFeatureSupport
+import com.zying.zysu.ui.sumh.util.SUMHManagedFeature
 import com.zying.zysu.ui.sumh.util.KernelBuildState
 import com.zying.zysu.ui.sumh.util.validKernelBuildField
 import com.zying.zysu.ui.sumh.util.validKernelBuildOverride
@@ -51,12 +55,14 @@ internal fun KernelBuildSpoofCard(
     config: Controller.SUMHPConfig,
     controlsEnabled: Boolean,
     kernelEnabled: Boolean,
-    supported: Boolean,
+    support: SUMHFeatureSupport,
     onConfigChanged: (Controller.SUMHPConfig) -> Unit,
     headingActions: (@Composable RowScope.() -> Unit)? = null,
 ) {
+    val supported = support == SUMHFeatureSupport.Supported
     // First-time enabling opens a draft; only a valid save changes the kernel.
     var pendingEnable by rememberSaveable { mutableStateOf(false) }
+    val editorState = rememberSaveableStateHolder()
     val expanded = config.enableKernelBuildSpoof || pendingEnable
     var refresh by remember { mutableIntStateOf(0) }
     var read by remember { mutableStateOf<KernelBuildRead>(KernelBuildRead.Unavailable) }
@@ -88,12 +94,10 @@ internal fun KernelBuildSpoofCard(
     ) {
         SettingSwitch(
             title = stringResource(R.string.sumh_kernel_build_enable),
-            subtitle = stringResource(when {
-                !supported && config.enableKernelBuildSpoof -> R.string.sumh_disable_unsupported
-                !supported -> R.string.feature_status_unsupported_summary
+            subtitle = sumhFeatureSummary(stringResource(when {
                 pendingEnable && !config.enableKernelBuildSpoof -> R.string.sumh_kernel_build_enable_pending
                 else -> R.string.sumh_kernel_build_spoof_desc
-            }),
+            }), SUMHFeatureState(SUMHManagedFeature.KernelBuild, config.enableKernelBuildSpoof, support)),
             checked = expanded,
             onCheckedChange = { requested ->
                 if (!requested) {
@@ -117,21 +121,23 @@ internal fun KernelBuildSpoofCard(
             position = if (expanded) MoreSettingsItemPosition.First else MoreSettingsItemPosition.Only,
         )
         if (expanded) {
-            SUMHControlGroup(MoreSettingsItemPosition.Last) {
-                KernelBuildSpoofEditor(
-                    config = config,
-                    editable = editable,
-                    read = read,
-                    onRetry = { refresh++ },
-                    onSave = { release, version, stage ->
-                        onConfigChanged(config.copy(
-                            enableKernelBuildSpoof = true,
-                            kernelBuildRelease = release,
-                            kernelBuildVersion = version,
-                            kernelBuildApplyStage = stage,
-                        ))
-                    },
-                )
+            editorState.SaveableStateProvider("kernel-build-draft") {
+                SUMHControlGroup(MoreSettingsItemPosition.Last) {
+                    KernelBuildSpoofEditor(
+                        config = config,
+                        editable = editable,
+                        read = read,
+                        onRetry = { refresh++ },
+                        onSave = { release, version, stage ->
+                            onConfigChanged(config.copy(
+                                enableKernelBuildSpoof = true,
+                                kernelBuildRelease = release,
+                                kernelBuildVersion = version,
+                                kernelBuildApplyStage = stage,
+                            ))
+                        },
+                    )
+                }
             }
         }
     }

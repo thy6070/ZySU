@@ -15,6 +15,9 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zying.zysu.R
 import com.zying.zysu.ui.component.YukiIcon
 import com.zying.zysu.ui.sumh.util.SUMHUiAdapter as Controller
@@ -58,7 +61,9 @@ fun SUMHWorkspace(
     val sectionState = rememberSaveableStateHolder()
     var isLoading by remember { mutableStateOf(false) }
     var configSaving by remember { mutableStateOf(false) }
-    val saving = configSaving || externalSaving
+    var userRulesSaving by remember { mutableStateOf(false) }
+    var userRulesRefresh by remember { mutableIntStateOf(0) }
+    val saving = configSaving || userRulesSaving || externalSaving
     var dataReady by remember { mutableStateOf(false) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var runtimeApplyPending by rememberSaveable { mutableStateOf(false) }
@@ -74,9 +79,18 @@ fun SUMHWorkspace(
     var logLoading by remember { mutableStateOf(false) }
     var logClearing by remember { mutableStateOf(false) }
     var logRefresh by remember { mutableIntStateOf(0) }
+    var resumeRefresh by remember { mutableIntStateOf(0) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     val savingCallback by rememberUpdatedState(onSavingChanged)
-    SideEffect { savingCallback(configSaving) }
+    SideEffect { savingCallback(configSaving || userRulesSaving) }
     DisposableEffect(Unit) { onDispose { savingCallback(false) } }
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) resumeRefresh++
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
 
     fun publish(loaded: Controller.UiState) {
         version = loaded.version
@@ -90,41 +104,51 @@ fun SUMHWorkspace(
         loadError = null
     }
 
+    suspend fun reload(): String? = try {
+        publish(Controller.load())
+        null
+    } catch (error: Exception) {
+        if (error is CancellationException) throw error
+        resources.getString(R.string.sumh_toast_load_error, error.message ?: "unknown").also {
+            // Keep the previous snapshot visible, but prevent edits based on stale data.
+            loadError = it
+        }
+    }
+
     fun loadData() {
-        if (isLoading || configSaving || externalSaving) return
+        if (isLoading || saving) return
         isLoading = true
         scope.launchUi(snackbar) {
-            try {
-                publish(Controller.load())
-            } catch (error: Exception) {
-                if (error is CancellationException) throw error
-                val message = resources.getString(R.string.sumh_toast_load_error, error.message ?: "unknown")
-                loadError = message
-                snackbar.showSnackbar(message)
+            val message = try {
+                reload()
             } finally {
                 isLoading = false
             }
+            message?.let { snackbar.showSnackbar(it) }
         }
     }
 
     fun saveConfig(newConfig: Controller.SUMHPConfig) {
-        if (configSaving || externalSaving || isLoading || !dataReady) return
+        if (saving || isLoading || !dataReady || loadError != null) return
         configSaving = true
         scope.launchUi(snackbar, start = CoroutineStart.UNDISPATCHED) {
-            // The existing backend performs persist/apply atomically. Preserve its result
-            // and refresh together if the host is disposed while that operation finishes.
+            // Saving and applying are separate outcomes; a failed refresh must not hide them.
             val message = withContext(NonCancellable) {
                 try {
                     val result = Controller.saveConfig(newConfig)
                     if (result.noChanges) return@withContext null
-                    if (result.persisted) runtimeApplyPending = result.error != null && newConfig.kernelAvailable
-                    publish(Controller.load())
-                    when {
+                    runtimeApplyPending = pendingSUMHApplyAfterSave(runtimeApplyPending, result)
+                    val refreshError = reload()
+                    val outcome = when {
                         result.error != null && result.persisted -> resources.getString(R.string.sumh_saved_apply_failed, result.error)
                         result.error != null -> result.error
+                        result.runtimeRequired && !result.applied -> resources.getString(R.string.sumh_saved_runtime_pending)
+                        result.applied && result.rebootRequired -> resources.getString(R.string.sumh_saved_applied_reboot)
+                        result.rebootRequired -> resources.getString(R.string.sumh_saved_reboot)
                         result.applied -> resources.getString(R.string.sumh_saved_applied)
-                        else -> resources.getString(R.string.sumh_saved_reboot)
+                        else -> resources.getString(R.string.sumh_saved_configuration)
                     }
+                    listOfNotNull(outcome, refreshError).joinToString("\n")
                 } finally {
                     configSaving = false
                 }
@@ -134,24 +158,27 @@ fun SUMHWorkspace(
     }
 
     fun retryApply() {
-        if (configSaving || externalSaving || isLoading) return
+        if (saving || isLoading || !dataReady || loadError != null ||
+            status != Controller.SUMHStatus.AVAILABLE) return
         configSaving = true
         scope.launchUi(snackbar, start = CoroutineStart.UNDISPATCHED) {
-            val applyFailed = withContext(NonCancellable) {
+            val message = withContext(NonCancellable) {
                 try {
                     runtimeApplyPending = !Controller.retryApply()
-                    publish(Controller.load())
-                    runtimeApplyPending
+                    val refreshError = reload()
+                    val outcome = resources.getString(if (runtimeApplyPending) R.string.sumh_apply_failed
+                        else R.string.sumh_saved_applied)
+                    listOfNotNull(outcome, refreshError).joinToString("\n")
                 } finally {
                     configSaving = false
                 }
             }
-            if (applyFailed) snackbar.showSnackbar(resources.getString(R.string.sumh_apply_failed))
+            snackbar.showSnackbar(message)
         }
     }
 
     fun refreshRules() {
-        if (rulesRefreshing || configSaving || externalSaving || isLoading || !dataReady) return
+        if (rulesRefreshing || saving || isLoading || !dataReady || loadError != null) return
         rulesRefreshing = true
         scope.launchUi(snackbar) {
             try {
@@ -163,14 +190,14 @@ fun SUMHWorkspace(
     }
 
     fun clearRules() {
-        if (configSaving || externalSaving || rulesRefreshing || isLoading || !dataReady) return
+        if (saving || rulesRefreshing || isLoading || !dataReady || loadError != null) return
         configSaving = true
         scope.launchUi(snackbar, start = CoroutineStart.UNDISPATCHED) {
             val message = withContext(NonCancellable) {
                 try {
                     if (Controller.clearAllRules()) {
-                        publish(Controller.load())
                         runtimeApplyPending = true
+                        reload()
                         R.string.sumh_workspace_rules_cleared
                     } else {
                         R.string.sumh_workspace_rules_clear_failed
@@ -184,7 +211,7 @@ fun SUMHWorkspace(
     }
 
     fun mutateMapRules(successMessage: Int, failureMessage: Int, mutation: suspend () -> Boolean) {
-        if (configSaving || externalSaving || isLoading || !dataReady) return
+        if (saving || isLoading || !dataReady || loadError != null) return
         if (!config.enableMapsSpoof || status != Controller.SUMHStatus.AVAILABLE ||
             features?.names?.contains("maps_spoof") != true) return
         configSaving = true
@@ -200,7 +227,7 @@ fun SUMHWorkspace(
         }
     }
 
-    LaunchedEffect(refreshKey) { loadData() }
+    LaunchedEffect(refreshKey, section, resumeRefresh, userRulesRefresh) { loadData() }
     LaunchedEffect(section, showKernelLog, logRefresh) {
         if (section != SUMHSection.Logs) return@LaunchedEffect
         logLoading = true
@@ -261,10 +288,14 @@ fun SUMHWorkspace(
                             sumhStatus = status,
                             features = features,
                             snackbarHostState = snackbar,
-                            controlsEnabled = dataReady && !saving && !isLoading,
+                            controlsEnabled = dataReady && loadError == null && !saving && !isLoading,
                             runtimeApplyPending = runtimeApplyPending,
                             onRetryApply = ::retryApply,
                             onConfigChanged = ::saveConfig,
+                            onUserRulesSavingChanged = { working ->
+                                if (userRulesSaving && !working) userRulesRefresh++
+                                userRulesSaving = working
+                            },
                             onClearMapRules = {
                                 mutateMapRules(R.string.sumh_maps_cleared, R.string.sumh_maps_clear_failed) {
                                     Controller.clearMapsRules()
@@ -286,7 +317,7 @@ fun SUMHWorkspace(
                             },
                         )
                         SUMHSection.Rules -> RulesTab(
-                            rules, status, dataReady && !saving && !rulesRefreshing && !isLoading,
+                            rules, status, dataReady && loadError == null && !saving && !rulesRefreshing && !isLoading,
                             ::refreshRules, ::clearRules,
                         )
                         SUMHSection.Logs -> LogsTab(

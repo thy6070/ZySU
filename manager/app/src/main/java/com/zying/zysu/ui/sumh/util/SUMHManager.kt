@@ -21,7 +21,14 @@ object SUMHManager {
     val revision = changes.asStateFlow()
 
     data class ModuleRule(val path: String, val mode: String)
-    data class ConfigSaveResult(val persisted: Boolean, val applied: Boolean, val error: String? = null, val noChanges: Boolean = false)
+    data class ConfigSaveResult(
+        val persisted: Boolean,
+        val applied: Boolean,
+        val error: String? = null,
+        val noChanges: Boolean = false,
+        val runtimeRequired: Boolean = false,
+        val rebootRequired: Boolean = false,
+    )
     data class MountConflict(val path: String, val modules: List<String>)
     data class ModuleInfo(
         val id: String, val mode: String, val rules: List<ModuleRule>,
@@ -157,17 +164,29 @@ object SUMHManager {
         command("config", "merge-json", updates.toString())
     }
 
-    suspend fun saveAndApplyConfig(updates: JSONObject, applyRuntime: Boolean): ConfigSaveResult =
+    suspend fun saveAndApplyConfig(updates: JSONObject, kernelAvailable: Boolean): ConfigSaveResult =
         withContext(NonCancellable + Dispatchers.IO) {
             operations.withLock {
+                val plan = planSUMHConfigSave(updates.keys().asSequence().toSet(), kernelAvailable)
                 var persisted = false
                 try {
                     command("config", "merge-json", updates.toString())
                     persisted = true
-                    if (applyRuntime) command("config", "apply")
-                    ConfigSaveResult(persisted = true, applied = applyRuntime)
+                    if (plan.applyRuntime) command("config", "apply")
+                    ConfigSaveResult(
+                        persisted = true,
+                        applied = plan.applyRuntime,
+                        runtimeRequired = plan.effects.runtimeRequired,
+                        rebootRequired = plan.effects.rebootRequired,
+                    )
                 } catch (error: Exception) {
-                    ConfigSaveResult(persisted, false, error.message ?: "Configuration operation failed")
+                    ConfigSaveResult(
+                        persisted = persisted,
+                        applied = false,
+                        error = error.message ?: "Configuration operation failed",
+                        runtimeRequired = plan.effects.runtimeRequired,
+                        rebootRequired = plan.effects.rebootRequired,
+                    )
                 } finally { changes.value++ }
             }
         }
@@ -205,17 +224,49 @@ object SUMHManager {
     }
 
     suspend fun saveHide(path: String, remove: Boolean = false) = mutate {
-        require(path.startsWith('/') && path != "/system/bin/su")
+        require(if (remove) path.startsWith('/') && '\u0000' !in path else validateSUMHHidePath(path) == null)
+        if (remove) requireSUMHHideRemoval(path, readHideRules().toSet(), kernelSnapshot())
         command("hide", if (remove) "remove" else "add", path)
     }
+
+    suspend fun changeUserHideRules(action: SUMHHideAction, paths: List<String>): SUMHHideBatchResult =
+        withContext(NonCancellable + Dispatchers.IO) {
+            operations.withLock {
+                // Ownership is read under the same Manager lock as the whole batch.
+                // Never use a global rule clear or allow a selected module rule to be removed.
+                val stored = readHideRules().toSet()
+                val retryAvailable = action != SUMHHideAction.Retry || kernelSnapshot().optBoolean("sumh_available")
+                try {
+                    runSUMHHideBatch(action, paths) { path ->
+                        when (action) {
+                            SUMHHideAction.Add -> command("hide", "add", path)
+                            SUMHHideAction.Remove -> {
+                                // Recheck each item: a compatibility kernel can leave managed
+                                // mode after the previous item removed its final registration.
+                                requireSUMHHideRemoval(path, stored, kernelSnapshot())
+                                command("hide", "remove", path)
+                            }
+                            SUMHHideAction.Retry -> {
+                                check(retryAvailable) { "SUMH is unavailable; saved rules have been retained" }
+                                check(path in stored) { "Rule is no longer saved; refresh the list" }
+                                // Idempotent add also restores missing registrations and works
+                                // with legacy kernels that lack managed-hide retry ioctls.
+                                command("hide", "add", path)
+                            }
+                        }
+                    }
+                } finally { changes.value++ }
+            }
+        }
 
     suspend fun clearRules() = mutate { command("sumh", "clear") }
     suspend fun retryUserHide(path: String) = mutate {
         Natives.sumhRetryUserHide(path.toByteArray(Charsets.UTF_8))
     }
     suspend fun addMapsRule(numbers: List<String>, path: String) = mutate {
-        require(numbers.size == 4 && numbers.all { it.toULongOrNull() != null } && path.startsWith('/'))
-        Natives.sumhAddMapsRule(numbers.map { it.toULong().toLong() }.toLongArray(), path.toByteArray(Charsets.UTF_8))
+        val parsed = numbers.map { parseSUMHMapsNumber(it) }
+        require(parsed.size == 4 && parsed.all { it != null } && validateSUMHMapsPath(path) == null)
+        Natives.sumhAddMapsRule(parsed.map { requireNotNull(it).toLong() }.toLongArray(), path.toByteArray(Charsets.UTF_8))
     }
     suspend fun clearMapsRules() = mutate { Natives.sumhClearMapsRules() }
     suspend fun resetRecovery() = mutate { command("recovery", "reset") }
