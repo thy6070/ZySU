@@ -7,6 +7,7 @@ on:
       - 'userspace/ksud/src/**'
       - 'userspace/ksud/tests/**'
       - 'userspace/ksud/scripts/**'
+      - 'userspace/ksud/third_party/MagiskbootAlone'
       - 'userspace/ksuinit/**'
       - 'userspace/common/**'
       - '.github/workflows/userspace-tests.yml'
@@ -15,6 +16,7 @@ on:
       - 'userspace/ksud/src/**'
       - 'userspace/ksud/tests/**'
       - 'userspace/ksud/scripts/**'
+      - 'userspace/ksud/third_party/MagiskbootAlone'
       - 'userspace/ksuinit/**'
       - 'userspace/common/**'
       - '.github/workflows/userspace-tests.yml'
@@ -32,8 +34,16 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - name: ELF, image copy and existing parsers
+      - name: Initialize magiskboot for repack regressions
+        run: git submodule update --init userspace/ksud/third_party/MagiskbootAlone
+      - name: ELF, boot images, bootstrap linking and existing parsers
         run: python3 userspace/ksud/tests/run_host_tests.py --cxx clang++ --sanitize
+      - name: Selected boot image patching and target KMI
+        run: python3 userspace/ksud/tests/run_boot_patch_host_tests.py --cxx clang++ --sanitize
+      - name: Boot and init_boot partial-write recovery
+        run: python3 userspace/ksud/tests/run_boot_patch_v2_flash_host_tests.py --cxx clang++ --sanitize
+      - name: Repack output integrity and I/O failures
+        run: python3 userspace/ksud/tests/run_repack_host_tests.py --cxx clang++ --sanitize
       - name: Module management and configuration
         run: python3 userspace/ksud/tests/run_module_host_tests.py --cxx clang++
       - name: Script deadlines and signal masks

@@ -244,7 +244,7 @@ class ExtractImage(
                             KERNEL_IMAGE_NAMES.firstNotNullOfOrNull { imageName ->
                                 zipFile.entries.asSequence()
                                     .firstOrNull { it.name.substringAfterLast('/') == imageName }
-                                    ?.let { readBootImageKmi(channel, it) }
+                                    ?.let { readBootImageKmi(zipFile, channel, it) }
                             }
                         } else {
                             null
@@ -270,8 +270,15 @@ class ExtractImage(
                 }
         }
 
-        private fun readBootImageKmi(channel: DataSourceChannel, entry: ZipArchiveEntry): String? {
+        private fun readBootImageKmi(
+            zipFile: ZipFile,
+            channel: DataSourceChannel,
+            entry: ZipArchiveEntry,
+        ): String? {
             if (entry.method != ZipMethod.STORED.code) return null
+            // Local headers were skipped when reading the central directory;
+            // opening the raw stream resolves this entry's dataOffset lazily.
+            zipFile.getRawInputStream(entry).use { }
             return channel.slice(entry.dataOffset, entry.size).use { entryChannel ->
                 BootKernelVersion.parseKmiFromBoot(entryChannel)
             }

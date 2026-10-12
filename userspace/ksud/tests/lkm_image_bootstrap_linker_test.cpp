@@ -27,21 +27,15 @@ std::vector<BootstrapDefinition> definitions(std::uint64_t base) {
     };
     return {
         at(kExtAsyncSynchronizeFull, 0x10000),
-        at(kExtCapable, 0x10020),
-        at(kExtModulesDisabled, 0x20000),
         at(kImageBase, 0),
         at(kExtKimageVoffset, 0x20008),
         at(kExtMemstartAddr, 0x20010),
-        at(kExtSecurityKernelLoadData, 0x10040),
         at(kExtVmalloc, 0x10060),
         at(kExtMemcpy, 0x10080),
-        at(kExtSecurityKernelPostLoadData, 0x100a0),
         at(kExtLoadModule, 0x100c0),
-        at(kExtVfree, 0x100e0),
         at(kExtMemblockReserve, 0x10100),
         at(kExtStrndupUser, 0x10120),
         at(kExtKstrdup, 0x10140),
-        {kCapSysModule, 16},
         {kCapsuleImageOffset, 0x200000},
         {kPageOffset, 0xffff000000000000ULL},
         {kCapsuleMagic, 0x314d4b4c55534bULL},
@@ -52,7 +46,6 @@ std::vector<BootstrapDefinition> definitions(std::uint64_t base) {
         {kModuleSize, 0x800},
         {kFixupCapsuleOffset, 0x900},
         {kFixupCount, 16},
-        {kLoadingModuleId, 2},
         {kLoadInfoSize, 256},
         {kLoadInfoHdrOffset, 16},
         {kLoadInfoLenOffset, 24},
@@ -91,6 +84,27 @@ int run(int argc, char** argv) {
         linked.reserve_wrapper_address <= code_address ||
         linked.strndup_adapter_address <= linked.reserve_wrapper_address) {
         std::cerr << "linked bootstrap metadata is inconsistent\n";
+        return 1;
+    }
+    constexpr std::uint64_t slide = 0x200000;
+    LinkedBootstrap relocated;
+    if (!ksud::boot::lkm_image::link_bootstrap(
+            object, code_address + slide, definitions(code_address + slide), &relocated, &error) ||
+        relocated.data != linked.data ||
+        relocated.entry_address != linked.entry_address + slide ||
+        relocated.reserve_wrapper_address != linked.reserve_wrapper_address + slide ||
+        relocated.strndup_adapter_address != linked.strndup_adapter_address + slide) {
+        std::cerr << "bootstrap changes under a page-aligned kernel slide: " << error << '\n';
+        return 1;
+    }
+    auto missing_definition = definitions(code_address);
+    missing_definition.erase(missing_definition.begin());
+    LinkedBootstrap rejected;
+    error.clear();
+    if (ksud::boot::lkm_image::link_bootstrap(object, code_address, missing_definition,
+                                             &rejected, &error) ||
+        error.find("undefined symbol") == std::string::npos) {
+        std::cerr << "bootstrap accepted a missing required kernel symbol\n";
         return 1;
     }
     std::cout << "lkm_image_bootstrap_linker_test: all tests passed\n";

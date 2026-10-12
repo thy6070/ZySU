@@ -397,6 +397,7 @@
     <string name="superkey_auth_subtitle">Enter your SuperKey to authenticate as manager</string>
     <string name="superkey_input_hint">SuperKey</string>
     <string name="superkey_input_placeholder">Enter your SuperKey</string>
+    <string name="superkey_invalid" tools:ignore="MissingTranslation">SuperKey must be valid text, contain no null characters, and use at most 64 UTF-8 bytes.</string>
     <string name="superkey_authenticate">Authenticate</string>
     <string name="superkey_auth_failed">Authentication failed</string>
     <string name="show_password">Show password</string>

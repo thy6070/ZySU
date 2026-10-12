@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cerrno>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -17,6 +18,7 @@ constexpr int O_CREAT = 4;
 constexpr int O_TRUNC = 8;
 constexpr int regular_mode = 1;
 constexpr int block_mode = 2;
+constexpr int BLKGETSIZE64 = 100;
 #define S_ISREG(mode) ((mode) == regular_mode)
 #define S_ISBLK(mode) ((mode) == block_mode)
 
@@ -25,6 +27,7 @@ struct stat {
     int st_ino = 1;
     int st_mode = regular_mode;
     int st_rdev = 0;
+    long long st_size = 0;
 };
 
 struct State {
@@ -44,6 +47,11 @@ struct State {
     bool fail_stat = false;
     bool fail_sync = false;
     bool fail_close = false;
+    bool fail_capacity = false;
+    bool fail_source_capacity = false;
+    bool interrupt_capacity = false;
+    std::uint64_t capacity = 4 * 1024 * 1024;
+    int capacity_queries = 0;
 };
 
 State state;
@@ -66,6 +74,24 @@ int fstat(int fd, struct stat* result) {
         return -1;
     }
     *result = fd == 10 ? state.source : state.destination;
+    if (fd == 10 && S_ISREG(result->st_mode))
+        result->st_size = static_cast<long long>(state.input.size());
+    return 0;
+}
+
+int ioctl(int fd, int command, std::uint64_t* size) {
+    assert(command == BLKGETSIZE64);
+    ++state.capacity_queries;
+    if (state.interrupt_capacity) {
+        state.interrupt_capacity = false;
+        errno = EINTR;
+        return -1;
+    }
+    if ((fd == 11 && state.fail_capacity) || (fd == 10 && state.fail_source_capacity)) {
+        errno = EIO;
+        return -1;
+    }
+    *size = fd == 10 ? state.input.size() : state.capacity;
     return 0;
 }
 
@@ -153,6 +179,38 @@ int main() {
     state = State{};
     state.destination.st_mode = block_mode;
     assert(copy() && state.truncations == 0 && state.output == state.input);
+    state = State{};
+    state.destination.st_mode = block_mode;
+    state.capacity = state.input.size();
+    state.interrupt_capacity = true;
+    assert(copy() && state.output == state.input && state.capacity_queries == 2);
+    for (int failure = 0; failure < 4; ++failure) {
+        state = State{};
+        state.destination.st_mode = block_mode;
+        if (failure == 0)
+            state.capacity = state.input.size() - 1;
+        else if (failure == 1)
+            state.fail_capacity = true;
+        else if (failure == 2)
+            state.source.st_mode = 3;  // Unknown-length input, such as a pipe.
+        else
+            state.input.clear();
+        const auto untouched = state.output;
+        assert(!copy());
+        assert(state.write_offset == 0 && state.read_offset == 0 && state.truncations == 0);
+        assert(state.output == untouched);
+    }
+    state = State{};
+    state.source.st_mode = state.destination.st_mode = block_mode;
+    state.source.st_rdev = 1;
+    state.destination.st_rdev = 2;
+    assert(copy() && state.capacity_queries == 2 && state.output == state.input);
+    state = State{};
+    state.source.st_mode = state.destination.st_mode = block_mode;
+    state.source.st_rdev = 1;
+    state.destination.st_rdev = 2;
+    state.fail_source_capacity = true;
+    assert(!copy() && state.write_offset == 0);
     state = State{};
     state.fail_stat = true;
     assert(!copy() && state.truncations == 0);

@@ -85,8 +85,16 @@ Other queries are `boot-info is-ab-device`, `boot-info slot-suffix [--ota]` and 
 | `--adb-debug-prop <FILE>` | Embed adb debug properties |
 | `--magiskboot <PATH>` | Compatibility argument; embedded tool is used |
 
+For file patching, KMI is detected from the selected boot image, or from the
+replacement kernel when `--kernel` is supplied. An `init_boot` image has no kernel;
+pass `--kmi` with the matching firmware's KMI. Also pass `--kmi` if a replacement
+kernel's version cannot be detected (for example, a compressed kernel).
+`--kernel` requires a boot image that contains a kernel; it cannot add one to
+`init_boot`. `--adb-debug-prop` reads the contents of the specified file.
+
 ```sh
-ksud boot-patch --boot /path/to/init_boot.img --out /path/to/output --out-name patched.img
+# Replace android15-6.6 with the KMI of the matching firmware's boot.img.
+ksud boot-patch --boot /path/to/init_boot.img --kmi android15-6.6 --out /path/to/output --out-name patched.img
 ```
 
 Select the image for the actual firmware and installation method. A manually supplied KMI does not make an arbitrary LKM compatible. See the [installation guide](guide/installation.md).

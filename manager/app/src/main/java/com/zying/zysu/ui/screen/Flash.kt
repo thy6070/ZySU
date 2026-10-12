@@ -347,7 +347,7 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
                 logContent.append(it).append("\n")
             }, onStderr = {
                 if (flashIt is FlashIt.FlashAk3 ||
-                    flashIt is FlashIt.FlashBoot && flashIt.embedLkmInBoot
+                    flashIt is FlashIt.FlashBoot || flashIt is FlashIt.DownloadBoot
                 ) {
                     text += "$it\n"
                 }

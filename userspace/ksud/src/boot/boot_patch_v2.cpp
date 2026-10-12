@@ -262,21 +262,17 @@ std::optional<bool> clean_legacy_ramdisks(const std::string& magiskboot, const f
         std::error_code error;
         if (!fs::is_regular_file(ramdisk, error) || error)
             continue;
-        bool has_legacy = false;
-        for (const char* entry : kLegacyRamdiskEntries) {
-            if (cpio_entry_exists(magiskboot, workdir, ramdisk, entry)) {
-                has_legacy = true;
-                break;
-            }
-        }
-        if (!has_legacy)
+        // Debug props and init.real also occur in non-KernelSU ramdisks.
+        // Match the legacy patcher's ownership marker before touching any
+        // entries or treating a reconstructed image as the stock backup.
+        const bool has_kernelsu = cpio_entry_exists(magiskboot, workdir, ramdisk, "kernelsu.ko");
+        if (!has_kernelsu)
             continue;
         if (ramdisk_is_magisk_patched(magiskboot, workdir, ramdisk)) {
             LOGE("boot-patch-v2: refusing to rewrite a Magisk-patched ramdisk");
             return std::nullopt;
         }
 
-        const bool has_kernelsu = cpio_entry_exists(magiskboot, workdir, ramdisk, "kernelsu.ko");
         const bool has_original_init = cpio_entry_exists(magiskboot, workdir, ramdisk, "init.real");
         if (has_original_init) {
             // magiskboot's cpio mv is fail-closed on destination collisions. The
@@ -289,7 +285,7 @@ std::optional<bool> clean_legacy_ramdisks(const std::string& magiskboot, const f
             if (!run_cpio_command(magiskboot, workdir, ramdisk, "mv init.real init")) {
                 return std::nullopt;
             }
-        } else if (has_kernelsu) {
+        } else {
             // The patch only skips the init backup when the image ships no
             // ramdisk, so this whole cpio is synthetic. Drop the file and let
             // repack restore ramdisk_size = 0 instead of leaving a stub behind.
@@ -371,6 +367,44 @@ bool flash_partition_image(const fs::path& image, const std::string& device) {
         return false;
     }
     return true;
+}
+
+struct PartitionImage {
+    fs::path patched;
+    fs::path original;
+    std::string device;
+};
+
+enum class PartitionFlashResult { kSuccess, kRolledBack, kRollbackFailed };
+
+PartitionFlashResult flash_partition_images(const std::vector<PartitionImage>& partitions) {
+    for (std::size_t index = 0; index < partitions.size(); ++index) {
+        const auto& partition = partitions[index];
+        if (flash_partition_image(partition.patched, partition.device))
+            continue;
+
+        // A failed write may already have changed the target. Restore it as
+        // well as every earlier partition, even if one restoration also fails.
+        LOGE("boot-patch-v2: write failed; restoring affected partitions");
+        bool rolled_back = true;
+        for (std::size_t attempted = index + 1; attempted > 0; --attempted) {
+            const auto& previous = partitions[attempted - 1];
+            if (!flash_partition_image(previous.original, previous.device)) {
+                rolled_back = false;
+                LOGE("boot-patch-v2: rollback failed for %s; original snapshot: %s",
+                     previous.device.c_str(), previous.original.string().c_str());
+            } else {
+                LOGW("boot-patch-v2: restored the original image to %s", previous.device.c_str());
+            }
+        }
+        if (rolled_back) {
+            LOGW("boot-patch-v2: patch failed; all affected partitions were restored");
+            return PartitionFlashResult::kRolledBack;
+        }
+        LOGE("boot-patch-v2: patch failed and rollback is incomplete");
+        return PartitionFlashResult::kRollbackFailed;
+    }
+    return PartitionFlashResult::kSuccess;
 }
 
 std::optional<std::vector<std::uint8_t>> load_module(const BootPatchV2Args& args,
@@ -478,7 +512,13 @@ int boot_patch_v2(const std::vector<std::string>& args) {
         return 1;
     }
     const fs::path& work = *workdir;
-    const auto cleanup = [&work]() {
+    bool preserve_recovery_snapshots = false;
+    const auto cleanup = [&work, &preserve_recovery_snapshots]() {
+        if (preserve_recovery_snapshots) {
+            LOGW("boot-patch-v2: preserving original partition snapshots in %s for recovery",
+                 work.string().c_str());
+            return;
+        }
         std::error_code cleanup_error;
         fs::remove_all(work, cleanup_error);
         if (cleanup_error)
@@ -769,16 +809,14 @@ int boot_patch_v2(const std::vector<std::string>& args) {
     }
 
     if (device_mode) {
-        if (!flash_partition_image(repacked, boot_device)) {
-            cleanup();
-            return 1;
-        }
         const bool init_boot_changed = cleaned_init_boot.has_value() && cleaned_init_boot->changed;
-        if (init_boot_changed &&
-            !flash_partition_image(cleaned_init_boot->repacked, init_boot_device)) {
-            LOGE("boot-patch-v2: init_boot cleanup flash failed; restoring boot");
-            if (!flash_partition_image(input_path, boot_device))
-                LOGE("boot-patch-v2: failed to restore boot after partial flash");
+        std::vector<PartitionImage> partitions{{repacked, input_path, boot_device}};
+        if (init_boot_changed)
+            partitions.push_back(
+                {cleaned_init_boot->repacked, work / "init_boot-input.img", init_boot_device});
+        const auto flash_result = flash_partition_images(partitions);
+        if (flash_result != PartitionFlashResult::kSuccess) {
+            preserve_recovery_snapshots = flash_result == PartitionFlashResult::kRollbackFailed;
             cleanup();
             return 1;
         }

@@ -10,6 +10,7 @@
 #include <array>
 #include <cerrno>
 #include <climits>
+#include <cstdint>
 #include <cstring>
 #include <vector>
 
@@ -73,6 +74,31 @@ bool exec_dd(const std::string& input, const std::string& output) {
         close(out_fd);
         close(in_fd);
         return false;
+    }
+    if (S_ISBLK(dst_st.st_mode)) {
+        const auto block_size = [](int fd, std::uint64_t* size) {
+            int result;
+            do {
+                result = ioctl(fd, BLKGETSIZE64, size);
+            } while (result < 0 && errno == EINTR);
+            return result == 0;
+        };
+        std::uint64_t capacity = 0;
+        std::uint64_t image_size = 0;
+        bool known_image_size = false;
+        if (S_ISREG(src_st.st_mode) && src_st.st_size >= 0) {
+            image_size = static_cast<std::uint64_t>(src_st.st_size);
+            known_image_size = true;
+        } else if (S_ISBLK(src_st.st_mode)) {
+            known_image_size = block_size(in_fd, &image_size);
+        }
+        if (!known_image_size || !block_size(out_fd, &capacity) || image_size == 0 ||
+            image_size > capacity) {
+            LOGE("dd: image size is unknown, empty, or exceeds the capacity of %s", output.c_str());
+            close(out_fd);
+            close(in_fd);
+            return false;
+        }
     }
     // Only regular images are truncated; partitions retain their capacity.
     if (S_ISREG(dst_st.st_mode) && ftruncate(out_fd, 0) != 0) {

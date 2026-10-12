@@ -561,16 +561,24 @@ NativeBridgeNP(getHookType, jstring) {
 }
 
 // SuperKey authentication
-NativeBridge(authenticateSuperKey, jboolean, jstring superKey) {
+NativeBridge(authenticateSuperKeyBytes, jboolean, jbyteArray superKey) {
   if (!superKey) {
     LogDebug("authenticateSuperKey: superKey is null");
     return false;
   }
 
-  const char *cSuperKey =
-      GetEnvironment()->GetStringUTFChars(env, superKey, nullptr);
-  bool result = authenticate_superkey(cSuperKey);
-  GetEnvironment()->ReleaseStringUTFChars(env, superKey, cSuperKey);
+  // Match the UTF-8 bytes hashed by ksud, including supplementary characters.
+  // GetStringUTFChars uses Modified UTF-8 and would change those keys.
+  char key[sizeof(((struct ksu_superkey_auth_cmd *)0)->superkey)] = {0};
+  const jsize length = GetEnvironment()->GetArrayLength(env, superKey);
+  if (length <= 0 || (size_t)length >= sizeof(key)) {
+    return false;
+  }
+  GetEnvironment()->GetByteArrayRegion(env, superKey, 0, length, (jbyte *)key);
+  if (GetEnvironment()->ExceptionCheck(env) || memchr(key, '\0', (size_t)length)) {
+    return false;
+  }
+  bool result = authenticate_superkey(key);
 
   LogDebug("authenticateSuperKey: result=%d", result);
   return result;

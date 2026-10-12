@@ -395,6 +395,7 @@
     <string name="superkey_auth_subtitle">输入您的超级密钥以认证为管理器</string>
     <string name="superkey_input_hint">超级密钥</string>
     <string name="superkey_input_placeholder">请输入超级密钥</string>
+    <string name="superkey_invalid">超级密钥必须是有效文本，不含空字符，且 UTF-8 编码长度不能超过 64 字节。</string>
     <string name="superkey_authenticate">认证</string>
     <string name="superkey_auth_failed">认证失败</string>
     <string name="show_password">显示密码</string>

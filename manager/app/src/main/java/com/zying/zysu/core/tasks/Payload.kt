@@ -86,7 +86,7 @@ class Payload(private val channel: DataSourceChannel) {
         val firstIndex = ranges.indexOfFirst { it.first == 0L }
         if (firstIndex < 0) return null
         val first = partition.operations[firstIndex]
-        if (first.dataLength <= 0 || first.type !in KMI_OPERATION_TYPES) return null
+        if (first.dataLength <= 0 || first.type !in REPLACE_OPERATION_TYPES) return null
 
         // Locate the kernel block from the first op's header.
         val header = channel.readFully(
@@ -105,7 +105,7 @@ class Payload(private val channel: DataSourceChannel) {
         // previous op.
         for (index in middleIndex downTo maxOf(0, middleIndex - 1)) {
             val operation = partition.operations[index]
-            if (operation.dataLength <= 0 || operation.type !in KMI_OPERATION_TYPES) continue
+            if (operation.dataLength <= 0 || operation.type !in REPLACE_OPERATION_TYPES) continue
             onProgress?.invoke("- Analyzing boot partition ${index + 1}/$count")
             val data = channel.readFully(
                 dataBase + operation.dataOffset,
@@ -130,7 +130,7 @@ class Payload(private val channel: DataSourceChannel) {
             }
             if (operation.dataLength <= 0 || operation.dstExtents.isEmpty()) continue
             val type = operation.type
-            if (type !in KMI_OPERATION_TYPES) continue
+            if (type !in REPLACE_OPERATION_TYPES) continue
 
             val readLength = minOf(operation.dataLength, KMI_PROBE_LIMIT)
             val data = channel.readFully(dataBase + operation.dataOffset, readLength) ?: return null
@@ -282,43 +282,85 @@ class Payload(private val channel: DataSourceChannel) {
             return
         }
 
-        val dataBuffer = ByteBuffer.allocate(operation.dataLength.toInt())
-        channel.read(dataBuffer, dataBase + operation.dataOffset)
-        dataBuffer.flip()
+        if (dataType !in REPLACE_OPERATION_TYPES) {
+            throw IOException("Unsupported operation type: $dataType")
+        }
+        val ranges = destinationRanges(operation, outChannel.size())
+        val dataOffset = try {
+            Math.addExact(dataBase, operation.dataOffset)
+        } catch (_: ArithmeticException) {
+            throw IOException("Invalid operation data offset")
+        }
+        if (operation.dataOffset < 0 || operation.dataLength <= 0 ||
+            dataOffset > channel.size() || operation.dataLength > channel.size() - dataOffset
+        ) {
+            throw IOException("Operation data is outside the payload")
+        }
 
-        val dstExtent = operation.dstExtents[0]
-        val outOffset = dstExtent.startBlock * manifest.blockSize
-
-        when (dataType) {
-            InstallOperationType.REPLACE -> {
-                outChannel.write(dataBuffer, outOffset)
+        channel.streamRead(dataOffset, operation.dataLength).use { source ->
+            val decoded = when (dataType) {
+                InstallOperationType.REPLACE -> source
+                InstallOperationType.REPLACE_BZ -> BZip2CompressorInputStream(source)
+                InstallOperationType.REPLACE_XZ -> XZCompressorInputStream(source)
+                else -> throw IOException("Unsupported operation type: $dataType")
             }
+            decoded.use { input -> writeExtents(outChannel, input, ranges) }
+        }
+    }
 
-            InstallOperationType.REPLACE_BZ, InstallOperationType.REPLACE_XZ -> {
-                val inputStream = dataBuffer.array().inputStream()
-                if (dataType == InstallOperationType.REPLACE_BZ) {
-                    BZip2CompressorInputStream(inputStream)
-                } else {
-                    XZCompressorInputStream(inputStream)
-                }.use { decompressor ->
-                    val bytes = ByteArray(8192)
-                    var bytesRead: Int
-                    var bytesWritten = 0
-                    while (decompressor.read(bytes).also { bytesRead = it } != -1) {
-                        val buffer = ByteBuffer.wrap(bytes, 0, bytesRead)
-                        bytesWritten += outChannel.write(buffer, outOffset + bytesWritten)
-                    }
+    private fun destinationRanges(
+        operation: InstallOperation,
+        partitionSize: Long,
+    ): List<Pair<Long, Long>> {
+        if (manifest.blockSize <= 0 || operation.dstExtents.isEmpty()) {
+            throw IOException("Operation has no valid destination extents")
+        }
+        return operation.dstExtents.map { extent ->
+            val offset: Long
+            val length: Long
+            try {
+                offset = Math.multiplyExact(extent.startBlock, manifest.blockSize)
+                length = Math.multiplyExact(extent.numBlocks, manifest.blockSize)
+            } catch (_: ArithmeticException) {
+                throw IOException("Destination extent overflows its partition")
+            }
+            if (offset < 0 || length <= 0 || offset > partitionSize ||
+                length > partitionSize - offset
+            ) {
+                throw IOException("Destination extent is outside its partition")
+            }
+            offset to length
+        }
+    }
+
+    private fun writeExtents(
+        outChannel: FileChannel,
+        input: InputStream,
+        ranges: List<Pair<Long, Long>>,
+    ) {
+        val bytes = ByteArray(8192)
+        for ((offset, length) in ranges) {
+            var written = 0L
+            while (written < length) {
+                val count = input.read(bytes, 0, minOf(bytes.size.toLong(), length - written).toInt())
+                if (count <= 0) throw IOException("Operation data is shorter than its destination extents")
+                val buffer = ByteBuffer.wrap(bytes, 0, count)
+                while (buffer.hasRemaining()) {
+                    val countWritten = outChannel.write(buffer, offset + written)
+                    if (countWritten <= 0) throw IOException("Failed to write operation data")
+                    written += countWritten
                 }
             }
-
-            else -> throw IOException("Unsupported operation type: $dataType")
+        }
+        if (input.read() != -1) {
+            throw IOException("Operation data is longer than its destination extents")
         }
     }
 
     companion object {
         // KMI comes from the kernel block; init_boot only carries the ramdisk.
         private val BOOT_PARTITION_NAMES = listOf("boot", "vendor_kernel_boot")
-        private val KMI_OPERATION_TYPES = setOf(
+        private val REPLACE_OPERATION_TYPES = setOf(
             InstallOperationType.REPLACE,
             InstallOperationType.REPLACE_BZ,
             InstallOperationType.REPLACE_XZ,

@@ -15,6 +15,8 @@ import tempfile
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cxx", default=os.environ.get("CXX", "c++"))
+    parser.add_argument("--clang", default="clang",
+                        help="Clang assembler for the ARM64 bootstrap (unused with --zig)")
     parser.add_argument("--zig", type=Path)
     parser.add_argument("--sanitize", action="store_true")
     args = parser.parse_args()
@@ -34,6 +36,20 @@ def main():
         begin = source.index("bool exec_dd(")
         end = source.index("\n// `blockdev", begin)
         (build / "boot_copy_under_test.inc").write_text(source[begin:end], encoding="utf-8")
+        # Link the production formatter without utils.cpp's Android-only dependencies.
+        source = (src / "utils.cpp").read_text(encoding="utf-8")
+        begin = source.index("void append_hex(")
+        end = source.index("\n}", begin) + len("\n}")
+        formatting = build / "image_formatting_under_test.cpp"
+        formatting.write_text(
+            "#include <array>\n#include <charconv>\n#include <cstdint>\n#include <string>\n"
+            "namespace ksud {\n" + source[begin:end] + "\n}\n", encoding="utf-8")
+        bootstrap = build / "lkm_image_bootstrap.o"
+        assembler = [str(args.zig), "cc"] if args.zig else [args.clang]
+        # Match the embedded object: Zig otherwise adds debug relocation sections.
+        subprocess.run([*assembler, "-target", "aarch64-linux-gnu", "-c", "-g0", "-nostdlib",
+                        str(src / "boot/lkm_image_bootstrap.S"), "-o", str(bootstrap)],
+                       check=True)
         cases = [
             ("elf_symbols_test", []),
             ("boot_copy_test", []),
@@ -42,6 +58,8 @@ def main():
             ("cli_args_test", [src / "cli_args.cpp", src / "terminal.cpp"]),
             ("xperm_parser_test", [src / "sepolicy/xperm_parser.cpp"]),
             ("boot_image_btf_test", [src / "boot/boot_image_btf.cpp"]),
+            ("lkm_image_core_test", [src / "boot/lkm_image_core.cpp", formatting]),
+            ("lkm_image_bootstrap_linker_test", [src / "boot/lkm_image_bootstrap_linker.cpp"]),
         ]
         for name, sources in cases:
             binary = build / (name + (".exe" if os.name == "nt" else ""))
@@ -50,12 +68,16 @@ def main():
             if name == "cli_args_test":
                 # The command table value-initializes omitted optional fields.
                 extra_flags.append("-Wno-missing-field-initializers")
+            if os.name == "nt" and name == "lkm_image_core_test":
+                # utils.hpp declares a POSIX reader unused by the image parser.
+                extra_flags.append("-DO_CLOEXEC=0")
             command = [*compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
                        *extra_flags,
                        "-I" + str(build), "-I" + str(src), str(tests / (name + ".cpp")),
                        *map(str, sources), "-o", str(binary)]
             subprocess.run(command, check=True)
-            subprocess.run([str(binary)], check=True, timeout=60)
+            arguments = [str(bootstrap)] if name == "lkm_image_bootstrap_linker_test" else []
+            subprocess.run([str(binary), *arguments], check=True, timeout=60)
             print(f"PASS {name}", flush=True)
 
 

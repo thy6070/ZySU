@@ -5,6 +5,7 @@ import androidx.annotation.Keep
 import androidx.compose.runtime.Immutable
 import kotlinx.parcelize.Parcelize
 import com.zying.zysu.ui.util.rootAvailable
+import com.zying.zysu.superkey.encodeSuperKey
 
 /**
  * @author weishu
@@ -190,7 +191,12 @@ object Natives {
      * @param superKey the secret key to authenticate
      * @return true if authentication successful, false otherwise
      */
-    external fun authenticateSuperKey(superKey: String): Boolean
+    fun authenticateSuperKey(superKey: String): Boolean {
+        val bytes = encodeSuperKey(superKey)?.takeIf { it.isNotEmpty() } ?: return false
+        return authenticateSuperKeyBytes(bytes)
+    }
+
+    private external fun authenticateSuperKeyBytes(superKey: ByteArray): Boolean
     
     /**
      * Check if KSU driver is present (without authentication)

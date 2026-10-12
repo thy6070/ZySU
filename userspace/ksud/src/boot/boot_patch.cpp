@@ -17,11 +17,13 @@
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <unistd.h>
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <cerrno>
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <filesystem>
@@ -52,6 +54,32 @@ namespace {
 constexpr std::array<unsigned char, 4> LZ4_LEGACY_MAGIC = {0x02, 0x21, 0x4c, 0x18};
 
 constexpr size_t SUPERKEY_SALT_LEN = 16;
+// uapi/supercall.h transports at most 64 key bytes plus the terminating NUL.
+constexpr size_t SUPERKEY_MAX_LEN = 64;
+
+std::optional<fs::path> create_boot_workdir() {
+    std::vector<fs::path> candidates;
+    const char* configured = std::getenv("TMPDIR");
+    if (configured != nullptr && *configured != '\0')
+        candidates.emplace_back(configured);
+    std::error_code error;
+    const fs::path current = fs::current_path(error);
+    if (!error)
+        candidates.push_back(current);
+    candidates.emplace_back("/data/local/tmp");
+    for (const auto& base : candidates) {
+        error.clear();
+        const fs::path absolute = fs::absolute(base, error);
+        if (error)
+            continue;
+        std::string pattern = (absolute / "KernelSU_XXXXXX").string();
+        // mkdtemp creates a private directory atomically; a failed candidate
+        // must not prevent an unprivileged caller trying its writable cwd.
+        if (mkdtemp(pattern.data()) != nullptr)
+            return fs::path(pattern);
+    }
+    return std::nullopt;
+}
 
 // SHA-256(salt || key), truncated to first 8 bytes (little-endian u64). Must
 // match the kernel-side hash_superkey() in kernel/superkey.c.
@@ -118,6 +146,10 @@ bool has_lz4_legacy_magic(const std::string& path) {
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) path then superkey
 bool inject_superkey_to_lkm(const std::string& lkm_path, const std::string& superkey,
                             bool signature_bypass) {
+    if (superkey.size() > SUPERKEY_MAX_LEN || superkey.find('\0') != std::string::npos) {
+        LOGE("SuperKey must contain at most 64 UTF-8 bytes and no NUL characters");
+        return false;
+    }
     std::array<uint8_t, SUPERKEY_SALT_LEN> salt{};
     if (!superkey.empty()) {
         if (!fill_random(salt.data(), salt.size())) {
@@ -368,13 +400,20 @@ std::string parse_kmi_from_kernel_file(const std::string& kernel_path) {
 
 std::string parse_kmi_from_boot(const std::string& magiskboot, const std::string& workdir,
                                 const std::string& boot_path) {
+    std::error_code path_error;
+    const auto absolute_boot = fs::absolute(boot_path, path_error);
+    if (path_error) {
+        LOGE("Failed to resolve target boot image: %s", boot_path.c_str());
+        return "";
+    }
     const std::string detect_dir = workdir + "/target_kmi";
     if (!ensure_clean_dir(detect_dir)) {
         LOGE("Failed to create target KMI detection directory");
         return "";
     }
 
-    auto unpack_result = exec_command_magiskboot(magiskboot, {"unpack", boot_path}, detect_dir);
+    auto unpack_result =
+        exec_command_magiskboot(magiskboot, {"unpack", absolute_boot.string()}, detect_dir);
     if (unpack_result.exit_code != 0) {
         // Kernel is extracted before ramdisk. Some legacy ramdisks can still make magiskboot
         // abort after a valid kernel file has already been written, so try that file first.
@@ -390,6 +429,63 @@ std::string parse_kmi_from_boot(const std::string& magiskboot, const std::string
         LOGE("Failed to get KMI from target boot image");
     }
     return kmi;
+}
+
+bool restore_legacy_ramdisk(const std::string& magiskboot, const std::string& workdir,
+                            const std::string& ramdisk) {
+    const auto exists = [&](const char* entry) {
+        return magiskboot_query({"cpio", ramdisk, "exists " + std::string(entry)}) == 0;
+    };
+    constexpr std::array<const char*, 8> payload = {
+        "kernelsu.ko", "sumh.ko", "ksuinit", "ksu_config", "ksu_allow_shell",
+        "force_debuggable", "adb_debug.prop", "stock_image.sha1",
+    };
+    if (exists("init.real")) {
+        // cpio mv refuses to overwrite an existing destination.
+        if (exists("init") && !do_cpio_cmd(magiskboot, workdir, ramdisk, "rm init"))
+            return false;
+        if (!do_cpio_cmd(magiskboot, workdir, ramdisk, "mv init.real init"))
+            return false;
+        for (const char* entry : payload) {
+            if (exists(entry) &&
+                !do_cpio_cmd(magiskboot, workdir, ramdisk, "rm " + std::string(entry)))
+                return false;
+        }
+        return true;
+    }
+
+    // A formerly ramdisk-free boot gets a synthetic ramdisk with no init.real.
+    // Remove it only if every entry belongs to the patch; otherwise stock init
+    // cannot be recovered safely without the full-image backup.
+    const auto listing = exec_command_magiskboot(magiskboot, {"cpio", ramdisk, "ls -r"}, workdir);
+    if (listing.exit_code != 0)
+        return false;
+    bool saw_entry = false;
+    for (size_t begin = 0; begin < listing.stdout_str.size();) {
+        const size_t end = listing.stdout_str.find('\n', begin);
+        const std::string line = listing.stdout_str.substr(begin, end - begin);
+        begin = end == std::string::npos ? listing.stdout_str.size() : end + 1;
+        if (line.empty())
+            continue;
+        const size_t separator = line.rfind('\t');
+        if (separator == std::string::npos)
+            return false;
+        std::string path = line.substr(separator + 1);
+        if (!path.empty() && path.back() == '\r')
+            path.pop_back();
+        if (path.empty())
+            return false;
+        saw_entry = true;
+        if (path == "." || path == "init" || path == ".backup" ||
+            path.rfind(".backup/", 0) == 0)
+            continue;
+        if (std::find(payload.begin(), payload.end(), path) == payload.end()) {
+            LOGE("Cannot restore init without init.real or a stock backup (entry: %s)", path.c_str());
+            return false;
+        }
+    }
+    std::error_code error;
+    return saw_entry && fs::remove(ramdisk, error) && !error;
 }
 
 }  // namespace
@@ -756,61 +852,21 @@ int boot_patch_impl(const std::vector<std::string>& args) {
     printf("  |_|   \\___/ |_|\\_\\|___||____/  \\___/ \n");
     printf("\n");
 
-    // Create temp working directory
-    // Try multiple locations in order of preference:
-    // 1. TMPDIR environment variable (set by manager app to its cache dir)
-    // 2. Current working directory (if writable)
-    // 3. /data/local/tmp (fallback, requires shell access)
-    std::string workdir;
-    const char* tmpdir = nullptr;
-
-    // Try TMPDIR env first (manager sets this to app cache dir)
-    const char* env_tmpdir = getenv("TMPDIR");
-    if (env_tmpdir && access(env_tmpdir, W_OK) == 0) {
-        std::string template_path = std::string(env_tmpdir) + "/KernelSU_XXXXXX";
-        std::vector<char> tmpdir_template(template_path.begin(), template_path.end());
-        tmpdir_template.push_back('\0');
-        tmpdir = mkdtemp(tmpdir_template.data());
-        if (tmpdir) {
-            workdir = tmpdir;
-            printf("- Using TMPDIR: %s\n", env_tmpdir);
-        }
-    }
-
-    // Try current directory
-    if (workdir.empty()) {
-        std::array<char, PATH_MAX> cwd{};
-        if (getcwd(cwd.data(), cwd.size()) && access(cwd.data(), W_OK) == 0) {
-            std::string template_path = std::string(cwd.data()) + "/KernelSU_XXXXXX";
-            std::vector<char> tmpdir_template(template_path.begin(), template_path.end());
-            tmpdir_template.push_back('\0');
-            tmpdir = mkdtemp(tmpdir_template.data());
-            if (tmpdir) {
-                workdir = tmpdir;
-                printf("- Using current directory: %s\n", cwd.data());
-            }
-        }
-    }
-
-    // Fallback to /data/local/tmp
-    if (workdir.empty()) {
-        std::array<char, 32> tmpdir_buf{};
-        (void)strncpy(tmpdir_buf.data(), "/data/local/tmp/KernelSU_XXXXXX", tmpdir_buf.size() - 1);
-        tmpdir_buf[tmpdir_buf.size() - 1] = '\0';
-        tmpdir = mkdtemp(tmpdir_buf.data());
-        if (tmpdir) {
-            workdir = tmpdir;
-        }
-    }
-
-    if (workdir.empty()) {
+    const auto temporary = create_boot_workdir();
+    if (!temporary) {
         LOGE("Failed to create temp directory");
         LOGE("Try setting TMPDIR environment variable to a writable directory");
         return 1;
     }
+    const std::string workdir = temporary->string();
 
-    // Cleanup function
-    auto cleanup = [&workdir]() {
+    // Keep the original partition snapshots if a rollback cannot finish.
+    bool preserve_workdir = false;
+    auto cleanup = [&workdir, &preserve_workdir]() {
+        if (preserve_workdir) {
+            LOGE("Recovery images retained in %s", workdir.c_str());
+            return;
+        }
         std::error_code ec;
         fs::remove_all(workdir, ec);
         if (ec) {
@@ -829,7 +885,18 @@ int boot_patch_impl(const std::vector<std::string>& args) {
 
     // Get or detect KMI
     std::string kmi = parsed.kmi;
-    if (kmi.empty() && parsed.ota) {
+    if (kmi.empty() && (!parsed.kernel.empty() || !parsed.boot_image.empty())) {
+        // Asset selection must follow the kernel that will actually boot.
+        kmi = !parsed.kernel.empty()
+                  ? parse_kmi_from_kernel_file(parsed.kernel)
+                  : parse_kmi_from_boot(magiskboot, workdir, parsed.boot_image);
+        if (kmi.empty()) {
+            LOGE("Cannot detect the selected kernel KMI; specify the target KMI with --kmi "
+                 "(required for an init_boot image without a kernel)");
+            cleanup();
+            return 1;
+        }
+    } else if (kmi.empty() && parsed.ota) {
         const std::string target_boot = "/dev/block/by-name/boot" + ota_slot;
         printf("- Trying to auto detect KMI version from %s\n", target_boot.c_str());
         kmi = parse_kmi_from_boot(magiskboot, workdir, target_boot);
@@ -860,7 +927,13 @@ int boot_patch_impl(const std::vector<std::string>& args) {
     const bool patch_file = !parsed.boot_image.empty();
 
     if (patch_file) {
-        bootimage = parsed.boot_image;
+        std::error_code path_error;
+        bootimage = fs::absolute(parsed.boot_image, path_error).string();
+        if (path_error) {
+            LOGE("Failed to resolve boot image path");
+            cleanup();
+            return 1;
+        }
         if (access(bootimage.c_str(), R_OK) != 0) {
             LOGE("Boot image not found: %s", bootimage.c_str());
             cleanup();
@@ -972,7 +1045,11 @@ int boot_patch_impl(const std::vector<std::string>& args) {
     } else if (parsed.signature_bypass) {
         printf("- Warning: signature_bypass requires superkey to be set, ignoring\n");
     }
-    inject_superkey_to_lkm(kmod_file, parsed.superkey, parsed.signature_bypass);
+    if (!inject_superkey_to_lkm(kmod_file, parsed.superkey, parsed.signature_bypass)) {
+        LOGE("Failed to inject SuperKey data into LKM");
+        cleanup();
+        return 1;
+    }
 
     // Prepare init if specified
     const std::string init_file = workdir + "/init";
@@ -1081,6 +1158,27 @@ int boot_patch_impl(const std::vector<std::string>& args) {
             cleanup();
             return 1;
         }
+    }
+
+    // Replace only after reconstructing the stock backup, so that restoration
+    // keeps the original kernel rather than the user-supplied replacement.
+    if (!parsed.kernel.empty()) {
+        const std::string kernel_file = workdir + "/kernel";
+        std::error_code kernel_error;
+        if (!fs::is_regular_file(kernel_file, kernel_error) || kernel_error ||
+            fs::file_size(kernel_file, kernel_error) == 0 || kernel_error) {
+            LOGE("The selected image has no kernel to replace; use a boot image");
+            cleanup();
+            return 1;
+        }
+        if (!fs::is_regular_file(parsed.kernel, kernel_error) || kernel_error ||
+            fs::file_size(parsed.kernel, kernel_error) == 0 || kernel_error ||
+            !copy_file_data(parsed.kernel, kernel_file)) {
+            LOGE("Failed to copy replacement kernel from %s", parsed.kernel.c_str());
+            cleanup();
+            return 1;
+        }
+        printf("- Replaced kernel from %s\n", parsed.kernel.c_str());
     }
 
     // Find ramdisk
@@ -1199,8 +1297,14 @@ int boot_patch_impl(const std::vector<std::string>& args) {
         }
         if (!parsed.adb_debug_prop.empty()) {
             printf("- Appending custom adb props\n");
-            adb_props += parsed.adb_debug_prop;
-            if (parsed.adb_debug_prop.back() != '\n')
+            const auto custom_props = read_file(parsed.adb_debug_prop);
+            if (!custom_props) {
+                LOGE("Failed to read adb debug properties from %s", parsed.adb_debug_prop.c_str());
+                cleanup();
+                return 1;
+            }
+            adb_props += *custom_props;
+            if (!adb_props.empty() && adb_props.back() != '\n')
                 adb_props += '\n';
         }
         if (!write_file(workdir + "/adb_debug.prop", adb_props)) {
@@ -1268,8 +1372,9 @@ int boot_patch_impl(const std::vector<std::string>& args) {
         return 1;
     }
     std::error_code output_error;
-    if (!fs::exists(new_boot, output_error) || output_error) {
-        LOGE("magiskboot repack reported success but output not found: %s", new_boot.c_str());
+    if (!fs::is_regular_file(new_boot, output_error) || output_error ||
+        fs::file_size(new_boot, output_error) == 0 || output_error) {
+        LOGE("magiskboot repack reported success but output is missing or empty: %s", new_boot.c_str());
         LOGE("Current magiskboot may be an incomplete build (unpack/repack stubs).");
         LOGE("Please use a full magiskboot implementation from upstream Magisk.");
         cleanup();
@@ -1325,19 +1430,29 @@ int boot_patch_impl(const std::vector<std::string>& args) {
     if (parsed.flash && !bootdevice.empty()) {
         printf("- Flashing new boot image\n");
         if (!flash_boot(bootdevice, new_boot)) {
-            LOGE("Failed to flash boot image");
+            LOGE("Failed to flash boot image; restoring the original image");
+            const std::string& rollback_image =
+                rollback_bootimage.empty() ? bootimage : rollback_bootimage;
+            if (!flash_boot(bootdevice, rollback_image)) {
+                LOGE("Rollback failed; original image: %s", rollback_image.c_str());
+                preserve_workdir = true;
+            }
             cleanup();
             return 1;
         }
         if (companion_boot_restore &&
             !flash_boot(companion_boot_restore->device, companion_boot_restore->restored_image)) {
             LOGE("Failed to restore direct-LKM boot image; rolling back both partitions");
-            if (!flash_boot(companion_boot_restore->device, companion_boot_restore->original_image))
+            if (!flash_boot(companion_boot_restore->device, companion_boot_restore->original_image)) {
                 LOGE("Failed to roll back direct-LKM boot image");
+                preserve_workdir = true;
+            }
             const std::string& rollback_image =
                 rollback_bootimage.empty() ? bootimage : rollback_bootimage;
-            if (!flash_boot(bootdevice, rollback_image))
+            if (!flash_boot(bootdevice, rollback_image)) {
                 LOGE("Failed to roll back traditional boot patch");
+                preserve_workdir = true;
+            }
             cleanup();
             return 1;
         }
@@ -1460,7 +1575,12 @@ int boot_restore(const std::vector<std::string>& args) {
     }
     std::string workdir = tmpdir;
 
-    auto cleanup = [&workdir]() {
+    bool preserve_workdir = false;
+    auto cleanup = [&workdir, &preserve_workdir]() {
+        if (preserve_workdir) {
+            LOGE("Recovery images retained in %s", workdir.c_str());
+            return;
+        }
         std::error_code ec;
         fs::remove_all(workdir, ec);
         if (ec) {
@@ -1501,7 +1621,13 @@ int boot_restore(const std::vector<std::string>& args) {
     std::string bootdevice;
 
     if (!parsed.boot_image.empty()) {
-        bootimage = parsed.boot_image;
+        std::error_code path_error;
+        bootimage = fs::absolute(parsed.boot_image, path_error).string();
+        if (path_error) {
+            LOGE("Failed to resolve boot image path");
+            cleanup();
+            return 1;
+        }
         if (access(bootimage.c_str(), R_OK) != 0) {
             LOGE("Boot image not found: %s", bootimage.c_str());
             cleanup();
@@ -1669,17 +1795,10 @@ int boot_restore(const std::vector<std::string>& args) {
 
         // If no backup, manually remove KernelSU
         if (!from_backup) {
-            // Remove kernelsu.ko
-            do_cpio_cmd(magiskboot, workdir, ramdisk, "rm kernelsu.ko");
-
-            // Remove the legacy embedded module if present.
-            if (magiskboot_query({"cpio", ramdisk, "exists sumh.ko"}) == 0) {
-                do_cpio_cmd(magiskboot, workdir, ramdisk, "rm sumh.ko");
-            }
-
-            // Restore init if init.real exists
-            if (magiskboot_query({"cpio", ramdisk, "exists init.real"}) == 0) {
-                do_cpio_cmd(magiskboot, workdir, ramdisk, "mv init.real init");
+            if (!restore_legacy_ramdisk(magiskboot, workdir, ramdisk)) {
+                LOGE("Failed to restore the original ramdisk; no image will be flashed");
+                cleanup();
+                return 1;
             }
 
             // Repack (must run in workdir where unpack output files are)
@@ -1730,7 +1849,11 @@ int boot_restore(const std::vector<std::string>& args) {
             printf("- Flashing new boot image\n");
         }
         if (!flash_boot(bootdevice, new_boot)) {
-            LOGE("Failed to flash boot image");
+            LOGE("Failed to flash restored boot image; rolling back");
+            if (!flash_boot(bootdevice, bootimage)) {
+                LOGE("Rollback failed; original image: %s", bootimage.c_str());
+                preserve_workdir = true;
+            }
             cleanup();
             return 1;
         }
@@ -1837,16 +1960,13 @@ int boot_info_target_kmi(bool ota, const std::string& boot_image) {
         target_boot = "/dev/block/by-name/boot" + slot;
     }
 
-    std::array<char, 32> tmpdir_buf{};
-    (void)strncpy(tmpdir_buf.data(), "/data/local/tmp/KernelSU_XXXXXX", tmpdir_buf.size() - 1);
-    tmpdir_buf[tmpdir_buf.size() - 1] = '\0';
-    const char* tmpdir = mkdtemp(tmpdir_buf.data());
-    if (!tmpdir) {
+    const auto temporary = create_boot_workdir();
+    if (!temporary) {
         LOGE("Failed to create temp directory for target KMI detection");
         return 1;
     }
 
-    const std::string workdir = tmpdir;
+    const std::string workdir = temporary->string();
     const std::string magiskboot = find_magiskboot("", workdir);
     std::string kmi;
     if (!magiskboot.empty()) {

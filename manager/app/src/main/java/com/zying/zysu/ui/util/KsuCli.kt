@@ -575,78 +575,76 @@ private fun patchBootImage(
     onStdout: (String) -> Unit,
     onStderr: (String) -> Unit,
 ): Boolean {
-    if (!targetKmi.matches(kmiPattern)) {
-        onStderr("Invalid target KMI: $targetKmi")
+    var lkmFile: File? = null
+    val result = try {
+        if (!targetKmi.matches(kmiPattern)) {
+            onStderr("Invalid target KMI: $targetKmi")
+            onFinish(false, 1)
+            return false
+        }
+        var cmd = "boot-patch"
+
+        cmd += if (bootFile == null) {
+            // no boot.img, use -f to force install
+            " -f"
+        } else {
+            " -b ${shellArg(bootFile.absolutePath)}"
+        }
+
+        if (ota) {
+            cmd += " -u"
+        }
+
+        if (forceBackup) {
+            cmd += " --backup"
+        }
+
+        // Add superkey if specified
+        if (!superKey.isNullOrBlank()) {
+            cmd += " --superkey=${shellArg(superKey)}"
+            // Add signature bypass flag if enabled
+            if (signatureBypass) {
+                cmd += " --signature-bypass"
+            }
+        }
+
+        when (lkm) {
+            is LkmSelection.LkmUri -> {
+                lkmFile = copyUriToTemporaryFile(lkm.uri, "lkm-", ".ko")
+                cmd += " -m ${shellArg(lkmFile.absolutePath)}"
+            }
+
+            LkmSelection.KmiNone -> Unit
+        }
+        cmd += " --kmi ${shellArg(targetKmi)}"
+
+        // output dir
+        val downloadsDir =
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        cmd += " -o ${shellArg(downloadsDir.absolutePath)}"
+
+        partition?.let { part ->
+            cmd += " --partition ${shellArg(part)}"
+        }
+
+        if (allowShell) {
+            cmd += " --allow-shell"
+        }
+
+        if (enableAdb) {
+            cmd += " --enable-adbd"
+        }
+
+        flashWithIO(ksudCmd(cmd), onStdout, onStderr)
+    } catch (error: Exception) {
+        onStderr(error.message ?: "Failed to patch boot image")
         onFinish(false, 1)
         return false
+    } finally {
+        bootFile?.delete()
+        lkmFile?.delete()
     }
-    var cmd = "boot-patch"
-
-    cmd += if (bootFile == null) {
-        // no boot.img, use -f to force install
-        " -f"
-    } else {
-        " -b ${shellArg(bootFile.absolutePath)}"
-    }
-
-    if (ota) {
-        cmd += " -u"
-    }
-
-    if (forceBackup) {
-        cmd += " --backup"
-    }
-
-    // Add superkey if specified
-    if (!superKey.isNullOrBlank()) {
-        cmd += " --superkey=${shellArg(superKey)}"
-        // Add signature bypass flag if enabled
-        if (signatureBypass) {
-            cmd += " --signature-bypass"
-        }
-    }
-
-    var lkmFile: File? = null
-    when (lkm) {
-        is LkmSelection.LkmUri -> {
-            lkmFile = with(ksuApp.contentResolver.openInputStream(lkm.uri)) {
-                val file = File(ksuApp.cacheDir, "kernelsu-tmp-lkm.ko")
-                file.outputStream().use { output ->
-                    this?.copyTo(output)
-                }
-
-                file
-            }
-            cmd += " -m ${shellArg(lkmFile.absolutePath)}"
-        }
-
-        LkmSelection.KmiNone -> {
-            // do nothing
-        }
-    }
-    cmd += " --kmi ${shellArg(targetKmi)}"
-
-    // output dir
-    val downloadsDir =
-        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-    cmd += " -o ${shellArg(downloadsDir.absolutePath)}"
-
-    partition?.let { part ->
-        cmd += " --partition ${shellArg(part)}"
-    }
-
-    if (allowShell) {
-        cmd += " --allow-shell"
-    }
-
-    if (enableAdb) {
-        cmd += " --enable-adbd"
-    }
-
-    val result = flashWithIO(ksudCmd(cmd), onStdout, onStderr)
     Log.i("KernelSU", "install boot result: ${result.isSuccess}")
-    bootFile?.delete()
-    lkmFile?.delete()
     // if boot uri is empty, it is direct install, when success, we should show reboot button
     onFinish(directInstall && result.isSuccess, result.code)
 
@@ -658,20 +656,8 @@ private fun patchBootImage(
 }
 
 private fun copyUriToTemporaryFile(uri: Uri, prefix: String, suffix: String): File {
-    val destination = File.createTempFile(prefix, suffix, ksuApp.cacheDir)
-    try {
-        val input = ksuApp.contentResolver.openInputStream(uri)
-            ?: throw IOException("Cannot open the selected file")
-        input.use { source ->
-            destination.outputStream().use(source::copyTo)
-        }
-        if (destination.length() == 0L) {
-            throw IOException("The selected file is empty")
-        }
-        return destination
-    } catch (error: Exception) {
-        destination.delete()
-        throw error
+    return copyPatchInputToTemporaryFile(ksuApp.cacheDir, prefix, suffix) {
+        ksuApp.contentResolver.openInputStream(uri)
     }
 }
 
@@ -788,12 +774,12 @@ fun installBoot(
             onStderr = onStderr,
         )
     }
-    val bootFile = bootUri?.let { uri ->
-        val file = File(ksuApp.cacheDir, "boot.img")
-        ksuApp.contentResolver.openInputStream(uri).use { input ->
-            file.outputStream().use { output -> input?.copyTo(output) }
-        }
-        file
+    val bootFile = try {
+        bootUri?.let { copyUriToTemporaryFile(it, "boot-", ".img") }
+    } catch (error: Exception) {
+        onStderr(error.message ?: "Failed to prepare boot image")
+        onFinish(false, 1)
+        return false
     }
     return patchBootImage(
         bootFile = bootFile,
@@ -923,18 +909,16 @@ suspend fun getTargetKmi(ota: Boolean, bootUri: Uri?): String = withContext(Disp
         val args = when {
             ota -> "boot-info target-kmi --ota"
             bootUri != null -> {
-                val input = ksuApp.contentResolver.openInputStream(bootUri)
-                    ?: return@withContext ""
-                val targetFile = File(ksuApp.cacheDir, "target-kmi.img")
+                val targetFile = copyUriToTemporaryFile(bootUri, "target-kmi-", ".img")
                 bootFile = targetFile
-                input.use { source ->
-                    targetFile.outputStream().use { output -> source.copyTo(output) }
-                }
                 "boot-info target-kmi --boot ${shellArg(targetFile.absolutePath)}"
             }
             else -> "boot-info target-kmi"
         }
-        parseDetectedKmi(ksudReadLines(args))
+        val command = "TMPDIR=${shellArg(ksuApp.cacheDir.absolutePath)} ${ksudCmd(args)}"
+        val lines = getRootShell().newJob().add(command).to(ArrayList(), null).exec().out
+            .filter { it.isNotBlank() }.map { it.trim() }
+        parseDetectedKmi(lines)
     } finally {
         bootFile?.delete()
     }

@@ -62,6 +62,7 @@ import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import com.zying.zysu.Natives
 import com.zying.zysu.R
 import com.zying.zysu.superkey.SuperKeyHelper
+import com.zying.zysu.superkey.encodeSuperKey
 import com.zying.zysu.ui.component.DialogHandle
 import com.zying.zysu.ui.component.SuperDropdown
 import com.zying.zysu.ui.component.YukiIcon
@@ -141,6 +142,7 @@ fun InstallScreen(
     var usingSavedKey by remember { mutableStateOf(savedSuperKey != null) }
     var superKey by remember { mutableStateOf("") }
     val effectiveSuperKey = if (usingSavedKey) savedSuperKey.orEmpty() else superKey
+    val isSuperKeyValid = encodeSuperKey(effectiveSuperKey) != null
     var showSuperKeyInput by remember { mutableStateOf(false) }
     // Signature bypass - when enabled, only SuperKey authentication works
     var signatureBypass by remember { mutableStateOf(false) }
@@ -165,6 +167,10 @@ fun InstallScreen(
 
     val onInstall: (InstallMethod, LkmSelection, String) -> Unit =
         onInstall@ { method, selectedLkm, targetKmi ->
+            if (!isSuperKeyValid) {
+                Toast.makeText(context, R.string.superkey_invalid, Toast.LENGTH_LONG).show()
+                return@onInstall
+            }
             val isOta = method is InstallMethod.DirectInstallToInactiveSlot
             if (embedLkmInBoot &&
                 (method is InstallMethod.SelectFile ||
@@ -237,7 +243,7 @@ fun InstallScreen(
 
     val onClickNext = onClickNext@{
         val method = installMethod
-        if (method != null && !isResolvingKmi) {
+        if (method != null && !isResolvingKmi && isSuperKeyValid) {
             if (embedLkmInBoot && directKernelMethod) {
                 onInstall(method, lkmSelection, "")
                 return@onClickNext
@@ -616,6 +622,10 @@ fun InstallScreen(
                                 },
                                 label = { Text(stringResource(id = R.string.superkey_input_hint)) },
                                 placeholder = { Text(stringResource(id = R.string.superkey_input_placeholder)) },
+                                isError = !isSuperKeyValid,
+                                supportingText = if (!isSuperKeyValid) {
+                                    { Text(stringResource(R.string.superkey_invalid)) }
+                                } else null,
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true
                             )
@@ -882,7 +892,7 @@ fun InstallScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .defaultMinSize(minHeight = if (isExpressiveUi) 56.dp else 0.dp),
-                    enabled = installMethod != null && !isResolvingKmi,
+                    enabled = installMethod != null && !isResolvingKmi && isSuperKeyValid,
                     onClick = onClickNext,
                     shape = if (isExpressiveUi) {
                         MaterialTheme.shapes.extraLarge
@@ -1052,7 +1062,6 @@ private fun SelectInstallMethod(
     }
 
     var selectedOption by remember { mutableStateOf<InstallMethod?>(null) }
-    var currentSelectingMethod by remember { mutableStateOf<InstallMethod?>(null) }
 
     LaunchedEffect(selectedMethod) {
         selectedOption = selectedMethod
@@ -1063,17 +1072,11 @@ private fun SelectInstallMethod(
     ) {
         if (it.resultCode == Activity.RESULT_OK) {
             it.data?.data?.let { uri ->
-                val option = when (currentSelectingMethod) {
-                    is InstallMethod.SelectFile -> InstallMethod.SelectFile(
-                        uri,
-                        summary = selectFileTip
-                    )
-                    else -> null
-                }
-                option?.let { opt ->
-                    selectedOption = opt
-                    onSelected(opt)
-                }
+                // This launcher only selects boot images. Its result must also work
+                // after Activity recreation, when transient selection state is gone.
+                val option = InstallMethod.SelectFile(uri, summary = selectFileTip)
+                selectedOption = option
+                onSelected(option)
             }
         }
     }
@@ -1090,7 +1093,6 @@ private fun SelectInstallMethod(
     val dialogContent = stringResource(id = R.string.install_inactive_slot_warning)
 
     val onClick = { option: InstallMethod ->
-        currentSelectingMethod = option
         when (option) {
             is InstallMethod.SelectFile -> {
                 selectImageLauncher.launch(Intent(Intent.ACTION_GET_CONTENT).apply {
