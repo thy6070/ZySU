@@ -261,10 +261,7 @@
     <string name="module_failed_count">%d yeni modul quraşdırıla bilmədi</string>
     <string name="module_download_error">Modul yüklənməsi alınmadı</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Hamısı</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Fərdi</string>
-    <string name="category_default_apps">Standart</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Ada görə artan sıra</string>
     <string name="sort_name_desc">Ada görə azalan sıra</string>

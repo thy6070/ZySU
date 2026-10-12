@@ -261,10 +261,7 @@
     <string name="module_failed_count">%d nyt modul kunne ikke installeres</string>
     <string name="module_download_error">Modul-download mislykkedes</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Alle</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Brugerdefineret</string>
-    <string name="category_default_apps">Standard</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Stigende efter navn</string>
     <string name="sort_name_desc">Faldende efter navn</string>

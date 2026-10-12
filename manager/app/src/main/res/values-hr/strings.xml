@@ -261,10 +261,7 @@
     <string name="module_failed_count">%d novi modul nije instaliran</string>
     <string name="module_download_error">Preuzimanje modula nije uspjelo</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Sve</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Prilagođeno</string>
-    <string name="category_default_apps">Zadano</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Naziv uzlazno</string>
     <string name="sort_name_desc">Naziv silazno</string>

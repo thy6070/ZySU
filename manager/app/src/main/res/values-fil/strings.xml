@@ -261,10 +261,7 @@
     <string name="module_failed_count">%d Nabigong mag-install ng bagong module</string>
     <string name="module_download_error">Nabigo ang pag-download ng module</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Lahat</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Custom</string>
-    <string name="category_default_apps">Default</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Pataas na ayos ng pangalan</string>
     <string name="sort_name_desc">Pababa ng pangalan</string>

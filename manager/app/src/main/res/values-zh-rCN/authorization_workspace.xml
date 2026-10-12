@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="authorization_overview">应用授权概览</string>
-    <string name="authorization_scope_user">用户应用与 Shell · 按 UID 分组</string>
-    <string name="authorization_scope_all">包含系统应用 · 按 UID 分组</string>
     <string name="authorization_search_hint">应用名称、包名或 UID</string>
     <string name="authorization_options">应用管理选项</string>
-    <string name="authorization_system_hint">在应用列表和统计中包含系统应用</string>
+    <string name="authorization_system_hint">在应用列表中包含系统应用</string>
     <string name="authorization_result_count">%1$d 个应用组</string>
     <string name="authorization_manage_hint">点击应用管理授权与应用信息</string>
     <string name="authorization_selection_hint">操作将应用于所选 UID 下的全部应用</string>
@@ -35,7 +32,7 @@
     <string name="authorization_load_failed">无法加载应用。请检查 Root 权限及应用服务后重试。</string>
     <string name="authorization_retry">重试</string>
     <string name="authorization_loading">正在加载应用…</string>
-    <string name="authorization_empty_filtered">请尝试其他应用名称、包名或 UID，或清除搜索与分类筛选。</string>
+    <string name="authorization_empty_filtered">请尝试其他应用名称、包名或 UID，或清除搜索。</string>
     <string name="authorization_empty">请刷新列表，或在应用管理选项中显示系统应用。</string>
-    <string name="authorization_reset_filters">清除筛选</string>
+    <string name="authorization_reset_filters">清除搜索</string>
 </resources>

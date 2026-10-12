@@ -261,10 +261,7 @@
     <string name="module_failed_count">Не вдалося встановити %d новий модуль</string>
     <string name="module_download_error">Не вдалося завантажити модуль</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Всі</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Власні</string>
-    <string name="category_default_apps">За замовчуванням</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Назва за зростанням</string>
     <string name="sort_name_desc">Назва за спаданням</string>

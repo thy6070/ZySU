@@ -263,10 +263,7 @@
     <string name="module_failed_count">%d jaunā moduļa instalēšana neizdevās</string>
     <string name="module_download_error">Moduļa lejupielāde neizdevās</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Visas</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Pielāgots</string>
-    <string name="category_default_apps">Noklusējums</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Nosaukums augošā secībā</string>
     <string name="sort_name_desc">Nosaukums dilstošā secībā</string>

@@ -263,10 +263,7 @@
     <string name="module_failed_count">%d modul nou nu a fost instalat</string>
     <string name="module_download_error">Descărcarea modulului a eșuat</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Toate</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Personalizat</string>
-    <string name="category_default_apps">Implicit</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Nume crescător</string>
     <string name="sort_name_desc">Nume descrescător</string>

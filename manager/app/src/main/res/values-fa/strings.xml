@@ -261,10 +261,7 @@
     <string name="module_failed_count">‏%d نصب ماژول جدید انجام نشد</string>
     <string name="module_download_error">دانلود ماژول انجام نشد</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">همه</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">سفارشی</string>
-    <string name="category_default_apps">پیش‌فرض</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">ترتیب صعودی نام</string>
     <string name="sort_name_desc">ترتیب نزولی نام</string>

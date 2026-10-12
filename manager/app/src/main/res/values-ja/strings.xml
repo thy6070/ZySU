@@ -263,10 +263,7 @@
     <string name="module_failed_count">%d モジュールのインストールに失敗しました</string>
     <string name="module_download_error">モデルのダウンロードに失敗しました</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">すべて</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">カスタム</string>
-    <string name="category_default_apps">デフォルト</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">名前の昇順</string>
     <string name="sort_name_desc">名前の降順</string>

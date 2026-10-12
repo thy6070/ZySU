@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation,PluralsCandidate">
-    <string name="authorization_overview">Application access</string>
-    <string name="authorization_scope_user">User apps and Shell · grouped by UID</string>
-    <string name="authorization_scope_all">Including system apps · grouped by UID</string>
     <string name="authorization_search_hint">App name, package or UID</string>
     <string name="authorization_options">App management options</string>
-    <string name="authorization_system_hint">Include system applications in the list and counts</string>
+    <string name="authorization_system_hint">Include system applications in the app list</string>
     <string name="authorization_result_count">%1$d app groups</string>
     <string name="authorization_manage_hint">Tap an app to manage access and details</string>
     <string name="authorization_selection_hint">Actions apply to every app sharing the selected UIDs</string>
@@ -35,7 +32,7 @@
     <string name="authorization_load_failed">Could not load applications. Check Root access and the package service, then retry.</string>
     <string name="authorization_retry">Retry</string>
     <string name="authorization_loading">Loading applications…</string>
-    <string name="authorization_empty_filtered">Try another name, package or UID, or clear the search and category filter.</string>
+    <string name="authorization_empty_filtered">Try another app name, package or UID, or clear the search.</string>
     <string name="authorization_empty">Refresh the list or enable system apps in app management options.</string>
-    <string name="authorization_reset_filters">Clear filters</string>
+    <string name="authorization_reset_filters">Clear search</string>
 </resources>

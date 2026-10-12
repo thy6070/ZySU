@@ -261,10 +261,7 @@
     <string name="module_failed_count">%d नवीन मॉड्यूल इंस्टॉल करण्यात अयशस्वी</string>
     <string name="module_download_error">मॉड्यूल डाउनलोड अयशस्वी</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">सर्व</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">कस्टम</string>
-    <string name="category_default_apps">डीफॉल्ट</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">नावाचा चढता क्रम</string>
     <string name="sort_name_desc">नाव उतरता</string>

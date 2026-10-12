@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -58,9 +57,9 @@ import com.zying.zysu.ui.theme.CardConfig
 import com.zying.zysu.ui.theme.getCardBorder
 import com.zying.zysu.ui.util.module.ModuleModify
 import com.zying.zysu.ui.util.rememberSnackbarController
-import com.zying.zysu.ui.viewmodel.AppCategory
 import com.zying.zysu.ui.viewmodel.SortType
 import com.zying.zysu.ui.viewmodel.SuperUserViewModel
+import com.zying.zysu.ui.viewmodel.sortAuthorizationApps
 import kotlinx.coroutines.launch
 
 private data class AuthorizationChange(
@@ -91,17 +90,8 @@ internal fun SuperUserPage(navigator: DestinationsNavigator) {
     var pendingChange by remember { mutableStateOf<AuthorizationChange?>(null) }
     val busy = viewModel.isUpdatingPermissions
     val visibleGroups = viewModel.appGroupList
-    val appCounts = remember(visibleGroups) {
-        AppCategory.entries.associateWith { category -> visibleGroups.count { it.matches(category) } }
-    }
-    val displayedGroups = remember(visibleGroups, viewModel.selectedCategory, viewModel.currentSortType) {
-        val comparator: Comparator<SuperUserViewModel.AppGroup> = when (viewModel.currentSortType) {
-            SortType.NAME_ASC -> compareBy { it.mainApp.label.lowercase() }
-            SortType.NAME_DESC -> compareByDescending { it.mainApp.label.lowercase() }
-            SortType.INSTALL_TIME_NEW -> compareByDescending { it.mainApp.packageInfo.firstInstallTime }
-            SortType.INSTALL_TIME_OLD -> compareBy { it.mainApp.packageInfo.firstInstallTime }
-        }
-        visibleGroups.filter { it.matches(viewModel.selectedCategory) }.sortedWith(comparator.thenBy { it.uid })
+    val displayedGroups = remember(visibleGroups, viewModel.currentSortType) {
+        sortAuthorizationApps(visibleGroups, viewModel.currentSortType)
     }
     val backupLauncher = ModuleModify.rememberAllowlistBackupLauncher(context, snackbar, viewModel)
     val restoreLauncher = ModuleModify.rememberAllowlistRestoreLauncher(context, snackbar, viewModel)
@@ -183,23 +173,6 @@ internal fun SuperUserPage(navigator: DestinationsNavigator) {
                         },
                         scrollBehavior = scrollBehavior,
                     )
-                    LazyRow(
-                        modifier = Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(AppCategory.entries, key = { it.persistKey }) { category ->
-                            FilterChip(
-                                selected = viewModel.selectedCategory == category,
-                                onClick = {
-                                    viewModel.updateSelectedCategory(category)
-                                    scope.launch { listState.scrollToItem(0) }
-                                },
-                                label = { Text("${stringResource(category.displayNameRes)} · ${appCounts[category] ?: 0}") },
-                                modifier = Modifier.heightIn(min = 48.dp),
-                            )
-                        }
-                    }
                 }
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             }
@@ -225,9 +198,6 @@ internal fun SuperUserPage(navigator: DestinationsNavigator) {
                 ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if (!viewModel.showBatchActions && viewModel.search.isBlank() && visibleGroups.isNotEmpty()) {
-                    item(key = "overview") { AuthorizationOverview(appCounts, viewModel.showSystemApps) }
-                }
                 if (viewModel.loadError != null) {
                     item(key = "load-error") {
                         AuthorizationLoadError(viewModel.isRefreshing || busy) { scope.launch { viewModel.fetchAppList(forceRefresh = true) } }
@@ -268,8 +238,8 @@ internal fun SuperUserPage(navigator: DestinationsNavigator) {
                     item(key = "empty") {
                         AuthorizationEmptyState(
                             loading = viewModel.isRefreshing || !viewModel.hasLoaded,
-                            filtered = viewModel.search.isNotBlank() || viewModel.selectedCategory != AppCategory.ALL,
-                            onReset = { viewModel.search = ""; viewModel.updateSelectedCategory(AppCategory.ALL) },
+                            filtered = viewModel.search.isNotBlank(),
+                            onReset = { viewModel.search = "" },
                             onRefresh = { scope.launch { viewModel.fetchAppList(forceRefresh = true) } },
                         )
                     }
@@ -299,13 +269,6 @@ internal fun SuperUserPage(navigator: DestinationsNavigator) {
     }
 }
 
-private fun SuperUserViewModel.AppGroup.matches(category: AppCategory) = when (category) {
-    AppCategory.ALL -> true
-    AppCategory.ROOT -> allowSu
-    AppCategory.CUSTOM -> !allowSu && hasCustomProfile
-    AppCategory.DEFAULT -> !allowSu && !hasCustomProfile
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AuthorizationShortcut(icon: ImageVector, label: String, enabled: Boolean = true, onClick: () -> Unit) {
@@ -313,32 +276,6 @@ private fun AuthorizationShortcut(icon: ImageVector, label: String, enabled: Boo
         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
         tooltip = { PlainTooltip { Text(label) } }, state = rememberTooltipState(),
     ) { IconButton(onClick = onClick, enabled = enabled) { YukiIcon(icon, label) } }
-}
-
-@Composable
-private fun AuthorizationOverview(counts: Map<AppCategory, Int>, showSystemApps: Boolean) {
-    Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                YukiIcon(Icons.Filled.Security, null)
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.authorization_overview), style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        stringResource(if (showSystemApps) R.string.authorization_scope_all else R.string.authorization_scope_user),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                listOf(AppCategory.ALL, AppCategory.ROOT, AppCategory.CUSTOM).forEach { category ->
-                    Column(Modifier.weight(1f)) {
-                        Text((counts[category] ?: 0).toString(), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
-                        Text(stringResource(category.displayNameRes), style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-            }
-        }
-    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)

@@ -263,10 +263,7 @@
     <string name="module_failed_count">%d nieuwe module niet geïnstalleerd</string>
     <string name="module_download_error">Downloaden van module mislukt</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Alle</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Aangepast</string>
-    <string name="category_default_apps">Standaard</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Naam oplopend</string>
     <string name="sort_name_desc">Naam aflopend</string>

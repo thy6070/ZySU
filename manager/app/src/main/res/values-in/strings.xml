@@ -263,10 +263,7 @@
     <string name="module_failed_count">%d Gagal memasang modul baru</string>
     <string name="module_download_error">Download modul gagal</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Semua</string>
-    <string name="category_root_apps">Akar</string>
     <string name="category_custom_apps">Kostum</string>
-    <string name="category_default_apps">Bawaan</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Urutan naik nama</string>
     <string name="sort_name_desc">Urutan turun nama</string>

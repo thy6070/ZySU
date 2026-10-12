@@ -261,10 +261,7 @@
     <string name="module_failed_count">%d ಹೊಸ ಮಾಡ್ಯೂಲ್ ಸ್ಥಾಪಿಸಲು ವಿಫಲವಾಗಿದೆ</string>
     <string name="module_download_error">ಮಾಡ್ಯೂಲ್ ಡೌನ್‌ಲೋಡ್ ವಿಫಲವಾಗಿದೆ</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">ಎಲ್ಲಾ</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">ಕಸ್ಟಮ್</string>
-    <string name="category_default_apps">ಡೀಫಾಲ್ಟ್</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">ಹೆಸರಿನ ಆರೋಹಣ ಕ್ರಮ</string>
     <string name="sort_name_desc">ಹೆಸರು ಅವರೋಹಣ</string>

@@ -21,8 +21,6 @@ import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.text.Collator
-import java.util.*
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -32,17 +30,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
-
-enum class AppCategory(val displayNameRes: Int, val persistKey: String) {
-    ALL(com.zying.zysu.R.string.category_all_apps, "ALL"),
-    ROOT(com.zying.zysu.R.string.category_root_apps, "ROOT"),
-    CUSTOM(com.zying.zysu.R.string.category_custom_apps, "CUSTOM"),
-    DEFAULT(com.zying.zysu.R.string.category_default_apps, "DEFAULT");
-
-    companion object {
-        fun fromPersistKey(key: String): AppCategory = entries.find { it.persistKey == key } ?: ALL
-    }
-}
 
 enum class SortType(val displayNameRes: Int, val persistKey: String) {
     NAME_ASC(com.zying.zysu.R.string.sort_name_asc, "NAME_ASC"),
@@ -75,7 +62,6 @@ class SuperUserViewModel : ViewModel() {
 
         private const val PREFS_NAME = "settings"
         private const val KEY_SHOW_SYSTEM_APPS = "show_system_apps"
-        private const val KEY_SELECTED_CATEGORY = "selected_category"
         private const val KEY_CURRENT_SORT_TYPE = "current_sort_type"
         private const val CORE_POOL_SIZE = 8
         private const val MAX_POOL_SIZE = 16
@@ -201,8 +187,6 @@ class SuperUserViewModel : ViewModel() {
     var search by mutableStateOf("")
     var showSystemApps by mutableStateOf(prefs.getBoolean(KEY_SHOW_SYSTEM_APPS, false))
         private set
-    var selectedCategory by mutableStateOf(loadSelectedCategory())
-        private set
     var currentSortType by mutableStateOf(loadCurrentSortType())
         private set
     val isRefreshing: Boolean get() = sharedIsRefreshing
@@ -246,12 +230,6 @@ class SuperUserViewModel : ViewModel() {
         override fun write(profile: Natives.Profile): Boolean = Natives.setAppProfile(profile)
     }
 
-    private fun loadSelectedCategory(): AppCategory {
-        val categoryKey = prefs.getString(KEY_SELECTED_CATEGORY, AppCategory.ALL.persistKey)
-            ?: AppCategory.ALL.persistKey
-        return AppCategory.fromPersistKey(categoryKey)
-    }
-
     private fun loadCurrentSortType(): SortType {
         val sortKey = prefs.getString(KEY_CURRENT_SORT_TYPE, SortType.NAME_ASC.persistKey)
             ?: SortType.NAME_ASC.persistKey
@@ -261,11 +239,6 @@ class SuperUserViewModel : ViewModel() {
     fun updateShowSystemApps(newValue: Boolean) {
         showSystemApps = newValue
         prefs.edit { putBoolean(KEY_SHOW_SYSTEM_APPS, newValue) }
-    }
-
-    fun updateSelectedCategory(newCategory: AppCategory) {
-        selectedCategory = newCategory
-        prefs.edit { putString(KEY_SELECTED_CATEGORY, newCategory.persistKey) }
     }
 
     fun updateCurrentSortType(newSortType: SortType) {
@@ -691,18 +664,7 @@ class SuperUserViewModel : ViewModel() {
                     profile = profile,
                 )
             }
-            .sortedWith(
-                compareBy<AppGroup> {
-                    when {
-                        it.uid == SHELL_UID -> 0
-                        it.allowSu -> 1
-                        it.hasCustomProfile -> 2
-                        else -> 3
-                    }
-                }.thenBy(Collator.getInstance(Locale.getDefault())) {
-                    it.userName?.takeIf { name -> name.isNotBlank() } ?: it.uid.toString()
-                }.thenBy(Collator.getInstance(Locale.getDefault())) { it.mainApp.label }
-            )
+            .sortedBy { it.uid }
     }
 
     private fun loadUidProfile(uidApps: Collection<AppInfo>): Natives.Profile {

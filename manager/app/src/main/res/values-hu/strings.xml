@@ -262,10 +262,7 @@ A</string>
     <string name="module_failed_count">%d új modul telepítése sikertelen</string>
     <string name="module_download_error">A modul letöltése sikertelen</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Összes</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Egyéni</string>
-    <string name="category_default_apps">Alapértelmezett</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Név növekvő</string>
     <string name="sort_name_desc">Név csökkenő</string>

@@ -263,10 +263,7 @@
     <string name="module_failed_count">%d nowy moduł nie został zainstalowany</string>
     <string name="module_download_error">Pobieranie modułu nie powiodło się</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Wszystkie</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Niestandardowe</string>
-    <string name="category_default_apps">Domyślne</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Nazwa rosnąco</string>
     <string name="sort_name_desc">Nazwa malejąco</string>

@@ -261,10 +261,7 @@
     <string name="module_failed_count">%d uue mooduli installimine ebaõnnestus</string>
     <string name="module_download_error">Mooduli allalaadimine ebaõnnestus</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Kõik</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Kohandatud</string>
-    <string name="category_default_apps">Vaikimisi</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Nimi kasvavalt</string>
     <string name="sort_name_desc">Nimi kahanevalt</string>

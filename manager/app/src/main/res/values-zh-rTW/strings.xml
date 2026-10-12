@@ -268,10 +268,7 @@
     <string name="module_failed_count">%d 個模組安裝失敗</string>
     <string name="module_download_error">模組下載失敗</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">全部</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">自訂</string>
-    <string name="category_default_apps">預設</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">名稱升序</string>
     <string name="sort_name_desc">名稱降序</string>

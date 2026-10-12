@@ -261,10 +261,7 @@
     <string name="module_failed_count">%d falló al instalar un nuevo módulo</string>
     <string name="module_download_error">La descarga del modelo falló</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Todas</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Personalizado</string>
-    <string name="category_default_apps">Predeterminado</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Nombre ascendente</string>
     <string name="sort_name_desc">Nombre descendente</string>

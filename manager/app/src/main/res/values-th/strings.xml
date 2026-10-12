@@ -263,10 +263,7 @@
     <string name="module_failed_count">ติดตั้งโมดูลใหม่ %d รายการไม่สำเร็จ</string>
     <string name="module_download_error">ดาวน์โหลดโมดูลไม่สำเร็จ</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">ทั้งหมด</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">กำหนดเอง</string>
-    <string name="category_default_apps">ค่าเริ่มต้น</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">ชื่อจากน้อยไปมาก</string>
     <string name="sort_name_desc">ชื่อจากมากไปน้อย</string>

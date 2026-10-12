@@ -263,10 +263,7 @@
     <string name="module_failed_count">%d a échoué à installer un nouveau module</string>
     <string name="module_download_error">Le téléchargement du modèle a échoué</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Toutes</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Personnalisé</string>
-    <string name="category_default_apps">Par défaut</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Nom croissant</string>
     <string name="sort_name_desc">Nom décroissant</string>

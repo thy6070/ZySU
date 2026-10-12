@@ -261,10 +261,7 @@
     <string name="module_failed_count">%d Инсталација новог модула није успела</string>
     <string name="module_download_error">Преузимање модула није успело</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Све</string>
-    <string name="category_root_apps">Роот</string>
     <string name="category_custom_apps">Прилагођено</string>
-    <string name="category_default_apps">Подразумевано</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Узлазни редослед имена</string>
     <string name="sort_name_desc">Име опадајуће</string>

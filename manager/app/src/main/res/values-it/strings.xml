@@ -263,10 +263,7 @@
     <string name="module_failed_count">%d nuovo modulo non installato</string>
     <string name="module_download_error">Download del modulo non riuscito</string>
     <!-- 分类相关 -->
-    <string name="category_all_apps">Tutte</string>
-    <string name="category_root_apps">Root</string>
     <string name="category_custom_apps">Personalizzato</string>
-    <string name="category_default_apps">Predefinito</string>
     <!-- 排序相关 -->
     <string name="sort_name_asc">Nome crescente</string>
     <string name="sort_name_desc">Nome decrescente</string>
