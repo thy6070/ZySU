@@ -16,6 +16,7 @@
 #include "feature/kernel_umount.h"
 #include "klog.h" // IWYU pragma: keep
 #include "manager/manager_identity.h"
+#include "manager/throne_tracker.h"
 #include "infra/seccomp_cache.h"
 #include "selinux/selinux.h"
 #include "hook/setuid_hook.h"
@@ -94,6 +95,11 @@ int ksu_handle_setresuid(uid_t old_uid, uid_t new_uid)
 						__NR_reboot);
 			spin_unlock_irq(&current->sighand->siglock);
 		}
+		ksu_set_task_tracepoint_flag(current);
+	} else if (ksu_is_manager_auth_candidate(new_uid)) {
+		/* The pinned package must be able to reach prctl before it has
+		 * authenticated. This grants neither an fd nor reboot access.
+		 */
 		ksu_set_task_tracepoint_flag(current);
 	} else {
 		ksu_clear_task_tracepoint_flag_if_needed(current);

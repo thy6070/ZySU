@@ -70,10 +70,12 @@ config KSU_SUPERKEY
 	default y
 	help
 	  Enable APatch-style SuperKey authentication.
-	  This allows the manager app to authenticate using a password
-	  instead of APK signature verification.
+	  This allows the manager app to authenticate using a password.
+	  APK signature verification remains required unless signature
+	  bypass is explicitly enabled when patching the LKM.
 	  
 	  The SuperKey can be set at compile time via KSU_SUPERKEY="your_key"
-	  or patched into the LKM binary by ksud.
+	  or patched into the LKM binary by ksud. Explicit LKM settings
+	  take precedence over the compile-time key.
 
 endmenu

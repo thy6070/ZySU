@@ -4,24 +4,25 @@
 #include "manager/manager_identity.h"
 #include "manager/throne_tracker.h"
 #include <crypto/hash.h>
-#include <linux/delay.h>
 #include <linux/err.h>
+#include <linux/jiffies.h>
 #include <linux/module.h>
-#include <linux/sched/signal.h>
+#include <linux/random.h>
 #include <linux/slab.h>
 #include <linux/string.h>
-#include <linux/reboot.h>
 
-#define SUPERKEY_KILL_THRESHOLD 3
-#define SUPERKEY_REBOOT_THRESHOLD 10
+#define SUPERKEY_AUTH_SLOTS 16
+#define SUPERKEY_AUTH_ATTEMPTS 5
+#define SUPERKEY_AUTH_WINDOW (30 * HZ)
 #define SUPERKEY_MAGIC 0x5355504552ULL // "SUPER"
+#define SUPERKEY_UNPATCHED (~0ULL)
 
 struct superkey_data {
 	volatile u64 magic;
 	volatile u8 salt[SUPERKEY_SALT_LEN]; // +8: random salt injected by ksud
 					     // LKM patcher
 	volatile u64 hash; // +24: first 8 bytes of SHA-256(salt || key)
-	volatile u64 flags; // +32: bit 0 = signature bypass
+	volatile u64 flags; // +32: mode 0/1/2; all ones means unpatched
 } __attribute__((packed, aligned(8)));
 
 static volatile struct superkey_data
@@ -29,7 +30,7 @@ static volatile struct superkey_data
 	.magic = SUPERKEY_MAGIC,
 	.salt = {0},
 	.hash = 0,
-	.flags = 0,
+	.flags = SUPERKEY_UNPATCHED,
 };
 
 u64 ksu_superkey_hash __read_mostly = 0;
@@ -85,15 +86,19 @@ u64 hash_superkey(const char *key)
  * SuperKey verification mode (injected from userspace LKM patch).
  *
  * 0: signature-only (no superkey configured)
- * 1: signature + superkey (default)
+ * 1: signature authentication, or SuperKey with a trusted signature
  * 2: superkey-only (signature bypass)
  */
 static u64 ksu_superkey_verification_mode __read_mostly = 0;
 
 static uid_t authenticated_manager_uid = -1;
 static DEFINE_SPINLOCK(superkey_lock);
-static atomic_t superkey_fail_count = ATOMIC_INIT(0);
-static atomic_t superkey_total_fail_count = ATOMIC_INIT(0);
+struct superkey_auth_limit {
+	uid_t uid;
+	unsigned long expires;
+	unsigned int attempts;
+};
+static struct superkey_auth_limit superkey_auth_limits[SUPERKEY_AUTH_SLOTS];
 
 #ifdef KSU_SUPERKEY
 #define COMPILE_TIME_SUPERKEY KSU_SUPERKEY
@@ -103,17 +108,21 @@ static atomic_t superkey_total_fail_count = ATOMIC_INIT(0);
 
 void superkey_init(void)
 {
-	if (superkey_store.magic == SUPERKEY_MAGIC) {
+	const char *compile_key = COMPILE_TIME_SUPERKEY;
+
+	if (superkey_store.magic == SUPERKEY_MAGIC &&
+	    superkey_store.flags != SUPERKEY_UNPATCHED) {
 		/*
 		 * flags encoding (must match userspace):
 		 * 0: signature-only
-		 * 1: signature + superkey
+		 * 1: signature, or SuperKey with a trusted signature
 		 * 2: superkey-only (signature bypass)
 		 */
 		ksu_superkey_verification_mode = superkey_store.flags;
 
 		if (superkey_store.hash != 0 &&
-		    ksu_superkey_verification_mode != 0) {
+		    (ksu_superkey_verification_mode == 1 ||
+		     ksu_superkey_verification_mode == 2)) {
 			/* SuperKey is configured (modes 1 or 2). */
 			ksu_superkey_hash = superkey_store.hash;
 			memcpy(ksu_superkey_salt,
@@ -121,9 +130,8 @@ void superkey_init(void)
 			       SUPERKEY_SALT_LEN);
 			ksu_signature_bypass =
 			    (ksu_superkey_verification_mode == 2);
-			pr_info("superkey: loaded from LKM patch: hash=0x%llx, "
+			pr_info("superkey: loaded from LKM patch: "
 				"mode=%llu, bypass=%d\n",
-				ksu_superkey_hash,
 				ksu_superkey_verification_mode,
 				ksu_signature_bypass ? 1 : 0);
 			return;
@@ -139,17 +147,70 @@ void superkey_init(void)
 		return;
 	}
 
-	pr_info("superkey: no superkey configured\n");
+	if (compile_key && compile_key[0]) {
+		if (strlen(compile_key) > SUPERKEY_MAX_LEN) {
+			pr_err("superkey: compile-time key exceeds maximum "
+			       "length\n");
+			return;
+		}
+		get_random_bytes(ksu_superkey_salt, SUPERKEY_SALT_LEN);
+		ksu_superkey_hash = hash_superkey(compile_key);
+		ksu_superkey_verification_mode = 1;
+		pr_info("superkey: using compile-time key with signature "
+			"verification\n");
+	}
+}
+
+/* Reserve an attempt before hashing. Full tables fail closed until a slot
+ * expires; callers cannot evict another identity's active limit. */
+static bool superkey_auth_allowed(uid_t uid)
+{
+	struct superkey_auth_limit *slot = NULL;
+	unsigned long now = jiffies;
+	bool allowed = false;
+	int i;
+
+	spin_lock(&superkey_lock);
+	for (i = 0; i < SUPERKEY_AUTH_SLOTS; i++) {
+		struct superkey_auth_limit *entry = &superkey_auth_limits[i];
+
+		if (entry->attempts && entry->uid == uid) {
+			slot = entry;
+			break;
+		}
+		if (!slot &&
+		    (!entry->attempts || time_after_eq(now, entry->expires)))
+			slot = entry;
+	}
+	if (slot) {
+		if (!slot->attempts || slot->uid != uid ||
+		    time_after_eq(now, slot->expires)) {
+			slot->uid = uid;
+			slot->attempts = 0;
+			slot->expires = now + SUPERKEY_AUTH_WINDOW;
+		}
+		if (slot->attempts < SUPERKEY_AUTH_ATTEMPTS) {
+			slot->attempts++;
+			allowed = true;
+		}
+	}
+	spin_unlock(&superkey_lock);
+	return allowed;
 }
 
 int superkey_authenticate(const char *key)
 {
-	/* The ioctl dispatcher has already copied and terminated this key. */
-	if (!verify_superkey(key)) {
-		superkey_on_auth_fail();
+	uid_t uid = current_uid().val;
+
+	/* All transports share this gate; foreign packages cannot consume the
+	 * manager's quota or cause package scans and password hashing. */
+	if (!superkey_is_set() || !ksu_is_manager_package_uid(uid))
 		return -EACCES;
-	}
-	return superkey_on_auth_success(current_uid().val) ? 0 : -EACCES;
+	if (!superkey_auth_allowed(uid))
+		return -EAGAIN;
+	if (!verify_superkey(key))
+		return -EACCES;
+	return superkey_on_auth_success(uid) ? 0 : -EACCES;
 }
 
 bool superkey_is_manager(void)
@@ -186,31 +247,19 @@ uid_t superkey_get_manager_uid(void)
 		   : KSU_INVALID_UID;
 }
 
-void superkey_on_auth_fail(void)
-{
-	int count = atomic_inc_return(&superkey_fail_count);
-	int total = atomic_inc_return(&superkey_total_fail_count);
-
-	if (total >= SUPERKEY_REBOOT_THRESHOLD) {
-		pr_err("superkey: too many total failures, rebooting!\n");
-		msleep(100);
-		kernel_restart("superkey_auth_failed");
-	}
-
-	if (count >= SUPERKEY_KILL_THRESHOLD) {
-		atomic_set(&superkey_fail_count, 0);
-		send_sig(SIGKILL, current, 0);
-	}
-}
-
 bool superkey_on_auth_success(uid_t uid)
 {
+	int i;
+
 	/* A valid password never authorizes a different installed package. */
-	if (!ksu_refresh_manager_package(uid))
+	if (!ksu_refresh_manager_package(uid, !ksu_signature_bypass))
 		return false;
 	spin_lock(&superkey_lock);
 	authenticated_manager_uid = uid;
+	for (i = 0; i < SUPERKEY_AUTH_SLOTS; i++) {
+		if (superkey_auth_limits[i].uid == uid)
+			superkey_auth_limits[i].attempts = 0;
+	}
 	spin_unlock(&superkey_lock);
-	atomic_set(&superkey_fail_count, 0);
 	return true;
 }

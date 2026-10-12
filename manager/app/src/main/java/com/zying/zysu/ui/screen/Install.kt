@@ -137,9 +137,9 @@ fun InstallScreen(
     // placeholder so the user can re-patch with the same key by just hitting
     // next; any keystroke clears it and falls back to manual input.
     val savedSuperKey = remember {
-        SuperKeyHelper.getSavedSuperKey(context)
+        SuperKeyHelper.getSavedPatchSuperKey(context)
     }
-    var usingSavedKey by remember { mutableStateOf(savedSuperKey != null) }
+    var usingSavedKey by remember { mutableStateOf(!savedSuperKey.isNullOrEmpty()) }
     var superKey by remember { mutableStateOf("") }
     val effectiveSuperKey = if (usingSavedKey) savedSuperKey.orEmpty() else superKey
     val isSuperKeyValid = encodeSuperKey(effectiveSuperKey) != null
@@ -192,7 +192,7 @@ fun InstallScreen(
                             allowShell = allowShell,
                             enableAdb = enableAdb,
                             backup = false,
-                            superKey = effectiveSuperKey.ifBlank { null },
+                            superKey = effectiveSuperKey.ifEmpty { null },
                             signatureBypass = signatureBypass,
                             embedLkmInBoot = true,
                         )
@@ -212,7 +212,7 @@ fun InstallScreen(
                     allowShell = allowShell,
                     enableAdb = enableAdb,
                     backup = forceBackup,
-                    superKey = effectiveSuperKey.ifBlank { null },
+                    superKey = effectiveSuperKey.ifEmpty { null },
                     signatureBypass = signatureBypass,
                 )
             } else FlashIt.FlashBoot(
@@ -228,7 +228,7 @@ fun InstallScreen(
                 allowShell = allowShell,
                 enableAdb = enableAdb,
                 backup = method is InstallMethod.SelectFile && forceBackup,
-                superKey = effectiveSuperKey.ifBlank { null },
+                superKey = effectiveSuperKey.ifEmpty { null },
                 signatureBypass = signatureBypass
             )
             navigator.navigate(FlashScreenDestination(flashIt))
@@ -653,7 +653,7 @@ fun InstallScreen(
                                 YukiSwitch(
                                     checked = signatureBypass,
                                     onCheckedChange = { signatureBypass = it },
-                                    enabled = effectiveSuperKey.isNotBlank()
+                                    enabled = effectiveSuperKey.isNotEmpty() && isSuperKeyValid
                                 )
                             }
                         }

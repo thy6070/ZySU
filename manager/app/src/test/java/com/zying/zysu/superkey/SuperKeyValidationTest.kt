@@ -39,4 +39,12 @@ class SuperKeyValidationTest {
     fun emptyKeyRemainsAvailableForSignatureOnlyPatching() {
         assertContentEquals(byteArrayOf(), encodeSuperKey(""))
     }
+
+    @Test
+    fun whitespaceOnlyKeysAreNonemptyKernelCredentials() {
+        assertContentEquals(
+            byteArrayOf(0x20, 0x09, 0xe3.toByte(), 0x80.toByte(), 0x80.toByte()),
+            encodeSuperKey(" \t\u3000"),
+        )
+    }
 }

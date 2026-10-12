@@ -355,13 +355,46 @@ void get_hook_type(char *buff) {
   }
 }
 
-// SuperKey authentication using prctl syscall (SECCOMP-safe)
+// Use one authentication transport per attempt whenever the driver supports it.
 bool authenticate_superkey(const char *superkey) {
   if (!superkey) {
     LogDebug("authenticate_superkey: superkey is null");
     return false;
   }
 
+  // An inherited or GET_FD descriptor lets ioctl report a definitive rejection.
+  // In particular, EACCES/EAGAIN must not retry the same key through
+  // prctl/reboot and consume another rate-limit slot for a single UI
+  // submission.
+  struct ksu_superkey_auth_cmd ioctl_cmd = {};
+  strncpy(ioctl_cmd.superkey, superkey, sizeof(ioctl_cmd.superkey) - 1);
+  ioctl_cmd.superkey[sizeof(ioctl_cmd.superkey) - 1] = '\0';
+  ioctl_cmd.result = 0xFFFFFFFF;
+  int ioctl_ret = ksuctl(KSU_IOCTL_SUPERKEY_AUTH, &ioctl_cmd);
+  int ioctl_error = errno;
+  if (ioctl_ret == 0) {
+    if (ioctl_cmd.result != 0) {
+      return false;
+    }
+    reset_cached_info();
+    for (int retry = 0; retry < 5; retry++) {
+      struct ksu_get_info_cmd verify_cmd = {};
+      if (ioctl(fd, KSU_IOCTL_GET_INFO, &verify_cmd) == 0 &&
+          verify_cmd.version > 0 && (verify_cmd.flags & 0x2)) {
+        LogDebug("authenticate_superkey: ioctl auth success, flags=0x%x",
+                 verify_cmd.flags);
+        return true;
+      }
+      usleep(20000 << retry);
+    }
+    return false;
+  }
+  if (fd >= 0 && (ioctl_cmd.result != 0xFFFFFFFF || ioctl_error != ENOTTY)) {
+    LogDebug("authenticate_superkey: ioctl rejected, errno=%d", ioctl_error);
+    return false;
+  }
+
+  // First login has no descriptor. Older kernels may lack the auth ioctl.
   // Method 1: Use prctl (SECCOMP-safe, recommended)
   struct ksu_superkey_prctl_cmd prctl_cmd = {};
   strncpy(prctl_cmd.superkey, superkey, sizeof(prctl_cmd.superkey) - 1);
@@ -421,6 +454,7 @@ bool authenticate_superkey(const char *superkey) {
       return true;
     }
     LogDebug("authenticate_superkey: failed to become manager after retries");
+    return false;
   }
 
   // Method 2: Fallback to reboot syscall (only if we already have fd)
@@ -467,34 +501,6 @@ bool authenticate_superkey(const char *superkey) {
   } else {
     LogDebug("authenticate_superkey: skipping reboot method (no fd, would "
              "crash due to SECCOMP)");
-  }
-
-  // Method 3: Fallback - try ioctl if we already have an fd
-  if (fd >= 0) {
-    struct ksu_superkey_auth_cmd ioctl_cmd = {};
-    strncpy(ioctl_cmd.superkey, superkey, sizeof(ioctl_cmd.superkey) - 1);
-    ioctl_cmd.superkey[sizeof(ioctl_cmd.superkey) - 1] = '\0';
-    ioctl_cmd.result = 0xFFFFFFFF;
-
-    if (ksuctl(KSU_IOCTL_SUPERKEY_AUTH, &ioctl_cmd) == 0) {
-      LogDebug("authenticate_superkey: ioctl success, result=%u",
-               ioctl_cmd.result);
-      if (ioctl_cmd.result == 0) {
-        reset_cached_info(); // Clear cached info on success
-        // Verify is_manager flag with retries
-        for (int retry = 0; retry < 5; retry++) {
-          struct ksu_get_info_cmd verify_cmd = {};
-          if (ioctl(fd, KSU_IOCTL_GET_INFO, &verify_cmd) == 0 &&
-              verify_cmd.version > 0 && (verify_cmd.flags & 0x2)) {
-            LogDebug("authenticate_superkey: ioctl auth success, flags=0x%x",
-                     verify_cmd.flags);
-            return true;
-          }
-          usleep(20000 << retry);
-        }
-        LogDebug("authenticate_superkey: ioctl auth ok but not manager");
-      }
-    }
   }
 
   LogDebug("authenticate_superkey: all methods failed (kernel may not have "

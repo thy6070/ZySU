@@ -22,7 +22,13 @@ static inline bool ksu_is_manager_package_uid(uid_t uid)
 	return false;
 }
 
-static inline bool ksu_refresh_manager_package(uid_t uid)
+static inline bool ksu_is_manager_auth_candidate(uid_t uid)
+{
+	return false;
+}
+
+static inline bool ksu_refresh_manager_package(uid_t uid,
+					       bool require_signature)
 {
 	return false;
 }
@@ -37,7 +43,8 @@ void ksu_throne_tracker_exit(void);
 
 void track_throne(bool prune_only);
 bool ksu_is_manager_package_uid(uid_t uid);
-bool ksu_refresh_manager_package(uid_t uid);
+bool ksu_is_manager_auth_candidate(uid_t uid);
+bool ksu_refresh_manager_package(uid_t uid, bool require_signature);
 void ksu_schedule_manager_scan(void);
 #endif // #ifdef CONFIG_KSU_DISABLE_MANAGER
 

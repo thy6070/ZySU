@@ -16,6 +16,7 @@
 #include "manager/throne_tracker.h"
 #include "ksu.h"
 #include "util.h"
+#include "hook/tp_marker.h"
 
 uid_t ksu_manager_uid = KSU_INVALID_UID;
 uid_t ksu_manager_appid = KSU_INVALID_UID;
@@ -39,6 +40,9 @@ static void crown_manager(struct list_head *uid_list)
 			pr_info("Crowning manager: %s (appid=%u)\n",
 				KSU_MANAGER_PACKAGE, entry->appid);
 			ksu_set_manager_appid(entry->appid);
+			/* A process may already be running during late
+			 * discovery. */
+			ksu_mark_running_process();
 			break;
 		}
 	}
@@ -463,6 +467,10 @@ static bool track_throne_locked(bool prune_only)
 		WRITE_ONCE(ksu_manager_package_appid, package_appid);
 		ksu_invalidate_manager_appid();
 		clear_apk_scan_cache();
+		/* Also cover a manager that started before packages.list was
+		 * ready. The marker's clear path rechecks this identity under
+		 * its lock. */
+		ksu_mark_running_process();
 	}
 	/* Check the package as well as its uid, including after a reinstall. */
 	if (ksu_manager_appid != KSU_INVALID_UID &&
@@ -471,12 +479,6 @@ static bool track_throne_locked(bool prune_only)
 	if (prune_only)
 		goto prune;
 
-#ifdef CONFIG_KSU_SUPERKEY
-	if (!ksu_is_manager_uid_valid()) {
-		extern void ksu_superkey_register_prctl_hook(void);
-		ksu_superkey_register_prctl_hook();
-	}
-#endif
 	if (package_appid != KSU_INVALID_UID &&
 	    ksu_manager_appid == KSU_INVALID_UID) {
 		pr_info("Searching manager " KSU_MANAGER_PACKAGE "...\n");
@@ -537,14 +539,33 @@ bool ksu_is_manager_package_uid(uid_t uid)
 	return appid != KSU_INVALID_UID && uid % PER_USER_RANGE == appid;
 }
 
-bool ksu_refresh_manager_package(uid_t uid)
+bool ksu_is_manager_auth_candidate(uid_t uid)
+{
+#ifdef CONFIG_KSU_SUPERKEY
+	return superkey_is_set() && ksu_is_manager_package_uid(uid);
+#else
+	return false;
+#endif
+}
+
+bool ksu_refresh_manager_package(uid_t uid, bool require_signature)
 {
 	bool allowed;
 
 	/* Authentication must not reuse a stale identity after a failed read.
 	 */
 	mutex_lock(&throne_scan_lock);
-	allowed = track_throne_locked(true) && ksu_is_manager_package_uid(uid);
+	if (require_signature) {
+		/* Re-read the installed APK at the password authorization
+		 * boundary. Do not reuse a prior signature verdict across APK
+		 * replacement. */
+		ksu_invalidate_manager_appid();
+		clear_apk_scan_cache();
+	}
+	allowed =
+	    track_throne_locked(!require_signature) &&
+	    ksu_is_manager_package_uid(uid) &&
+	    (!require_signature || ksu_manager_appid == uid % PER_USER_RANGE);
 	mutex_unlock(&throne_scan_lock);
 	return allowed;
 }

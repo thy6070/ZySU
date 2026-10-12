@@ -59,6 +59,12 @@ typedef long long loff_t;
 #define pr_info(...) ((void)0)
 #define pr_err(...) ((void)0)
 #define EACCES 13
+#define EAGAIN 11
+#define HZ 100
+#define SUPERKEY_AUTH_SLOTS 16
+#define SUPERKEY_AUTH_ATTEMPTS 5
+#define SUPERKEY_AUTH_WINDOW (30 * HZ)
+#define time_after_eq(a, b) ((long)((a) - (b)) >= 0)
 #define IS_ERR(value) ((value) == NULL)
 #define PTR_ERR(value) (-1L)
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
@@ -160,23 +166,26 @@ static uid_t ksu_manager_appid = KSU_INVALID_UID;
 static uid_t ksu_manager_package_appid = KSU_INVALID_UID;
 static uid_t authenticated_manager_uid = KSU_INVALID_UID;
 static int superkey_lock, superkey_spin_depth, superkey_spin_errors;
-static int superkey_fail_count, password_failures;
+static int password_failures, mark_refreshes;
+static unsigned long jiffies;
 static bool superkey_set, superkey_bypassed;
+#define ksu_signature_bypass superkey_bypassed
 static uid_t test_current_uid;
 struct kuid { uid_t val; };
 static struct kuid current_uid(void) { return (struct kuid){ test_current_uid }; }
 static void spin_lock(int *lock) { (void)lock; if (superkey_spin_depth++) superkey_spin_errors++; }
 static void spin_unlock(int *lock) { (void)lock; if (--superkey_spin_depth) superkey_spin_errors++; }
-static void atomic_set(int *value, int next) { *value = next; }
 static bool superkey_is_set(void) { return superkey_set; }
 static bool superkey_is_signature_bypassed(void) { return superkey_bypassed; }
-static bool verify_superkey(const char *key) { return key && !strcmp(key, "correct-key"); }
-static void superkey_on_auth_fail(void) { password_failures++; }
+static bool verify_superkey(const char *key) {
+    bool valid = key && !strcmp(key, "correct-key");
+    if (!valid) password_failures++;
+    return valid;
+}
+void ksu_mark_running_process(void) { mark_refreshes++; }
 void superkey_invalidate(void);
 uid_t superkey_get_manager_uid(void);
 static int granted, pruned;
-static int superkey_hook_calls;
-void ksu_superkey_register_prctl_hook(void) { superkey_hook_calls++; }
 static void ksu_set_manager_appid(uid_t appid) {
     granted++; ksu_manager_uid = ksu_manager_appid = appid;
 }
@@ -340,9 +349,13 @@ static ssize_t kernel_read(struct file *file, void *out, size_t size, loff_t *po
         "static bool track_throne_locked",
         "void track_throne(bool",
         "bool ksu_is_manager_package_uid",
+        "bool ksu_is_manager_auth_candidate",
         "bool ksu_refresh_manager_package",
     ))
+    helpers += function("kernel/manager/superkey.c", "struct superkey_auth_limit {") + ";\n"
+    helpers += "static struct superkey_auth_limit superkey_auth_limits[SUPERKEY_AUTH_SLOTS];\n"
     helpers += "\n".join(function("kernel/manager/superkey.c", marker) for marker in (
+        "static bool superkey_auth_allowed",
         "void superkey_invalidate", "uid_t superkey_get_manager_uid",
         "bool superkey_on_auth_success", "int superkey_authenticate", "bool superkey_is_manager",
     )) + "\n"
@@ -352,7 +365,7 @@ static LIST_HEAD(uid_list);
 static void reset_counts(void) {
     directory_opens = package_opens = signatures = metadata_reads = file_closes = 0;
     apk_io_during_iteration = apk_io_before_directory_close = bad_directory_flags = 0;
-    granted = pruned = superkey_hook_calls = 0;
+    granted = pruned = 0;
 }
 static void init_fixture(void) {
     clear_apk_scan_cache();
@@ -378,7 +391,9 @@ static void init_fixture(void) {
     fail_alloc_size = fail_alloc_count = 0;
     ksu_manager_appid = ksu_manager_uid = ksu_manager_package_appid = authenticated_manager_uid = KSU_INVALID_UID;
     superkey_set = superkey_bypassed = false;
-    password_failures = superkey_fail_count = 0;
+    password_failures = mark_refreshes = 0;
+    jiffies = 1;
+    memset(superkey_auth_limits, 0, sizeof(superkey_auth_limits));
     reset_counts();
 }
 static void run_scan(void) { reset_counts(); search_manager("/data/app", 2, &uid_list); }
@@ -758,35 +773,35 @@ int main(void) {
     init_fixture();
     /* Password authentication refreshes package identity without treating an
      * unsigned APK as a signature-authorized manager or doing APK I/O. */
-    CHECK(ksu_refresh_manager_package(110001));
+    CHECK(ksu_refresh_manager_package(110001, false));
     CHECK(ksu_manager_package_appid == 10001 && ksu_manager_appid == KSU_INVALID_UID);
     CHECK(!directory_opens && !signatures && !granted && pruned == 1);
-    CHECK(!ksu_refresh_manager_package(10002));
+    CHECK(!ksu_refresh_manager_package(10002, false));
     CHECK(ksu_is_manager_package_uid(210001));
 
     /* Authentication fails closed on a failed snapshot even if the cached
      * package identity matches. The prior snapshot is retained for observers. */
     list_read_short = 1;
-    CHECK(!ksu_refresh_manager_package(110001));
+    CHECK(!ksu_refresh_manager_package(110001, false));
     CHECK(ksu_manager_package_appid == 10001);
     list_read_short = 0;
     list_open_error = 1;
-    CHECK(!ksu_refresh_manager_package(110001));
+    CHECK(!ksu_refresh_manager_package(110001, false));
     list_open_error = 0;
     strscpy(packages_text, "com.example.one 10001\nbroken-row\n", sizeof(packages_text));
-    CHECK(!ksu_refresh_manager_package(110001));
+    CHECK(!ksu_refresh_manager_package(110001, false));
     strscpy(packages_text, "com.example.one 10001\ncom.example.two 10002\n", sizeof(packages_text));
     fail_alloc_size = sizeof(struct uid_data); fail_alloc_count = 2;
-    CHECK(!ksu_refresh_manager_package(110001));
+    CHECK(!ksu_refresh_manager_package(110001, false));
     CHECK(ksu_manager_package_appid == 10001);
 
     /* A reassigned UID or a prefix collision cannot pass the password gate. */
     strscpy(packages_text, "com.example.two 10001\ncom.example.one 10003\n", sizeof(packages_text));
-    CHECK(!ksu_refresh_manager_package(110001));
-    CHECK(ksu_refresh_manager_package(210003));
+    CHECK(!ksu_refresh_manager_package(110001, false));
+    CHECK(ksu_refresh_manager_package(210003, false));
     CHECK(!ksu_is_manager_package_uid(10001));
     strscpy(packages_text, "com.example.one.extra 10003\n", sizeof(packages_text));
-    CHECK(!ksu_refresh_manager_package(110003));
+    CHECK(!ksu_refresh_manager_package(110003, false));
     CHECK(ksu_manager_package_appid == KSU_INVALID_UID);
     CHECK(!directory_opens && !signatures && !granted);
     CHECK(!live_allocations && !allocation_errors && !creds_depth && !lock_depth && !bad_lock);
@@ -801,6 +816,7 @@ def superkey_auth_source():
 int main(void) {
     init_fixture();
     superkey_set = superkey_bypassed = true;
+    track_throne(true);
     test_current_uid = 10002;
     CHECK(superkey_authenticate("correct-key") == -EACCES);
     CHECK(superkey_get_manager_uid() == KSU_INVALID_UID && !superkey_is_manager());

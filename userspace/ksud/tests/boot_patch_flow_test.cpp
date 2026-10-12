@@ -75,20 +75,37 @@ std::uint64_t hash_superkey(const std::array<std::uint8_t, 16>&, const std::stri
 
 #include "boot_patch_config_under_test.inc"
 
-int configure_legacy_module(const std::string& key, std::size_t* cleanup_count) {
+int configure_legacy_module(const std::string& key, std::size_t* cleanup_count,
+                            bool signature_bypass = false) {
     struct {
         std::string superkey;
         bool signature_bypass = false;
-    } parsed{key, false};
+    } parsed{key, signature_bypass};
     const std::string kmod_file = "module.ko";
     const auto cleanup = [cleanup_count]() { ++*cleanup_count; };
 #include "boot_patch_legacy_config_under_test.inc"
     return 0;
 }
 
+int configure_direct_module(const std::string& key, std::size_t* cleanup_count,
+                            bool signature_bypass = false) {
+    struct {
+        std::string superkey;
+        bool signature_bypass = false;
+    } parsed{key, signature_bypass};
+    const fs::path module_for_injection = "module.ko";
+    const auto cleanup = [cleanup_count]() { ++*cleanup_count; };
+#include "boot_patch_direct_config_under_test.inc"
+    return 0;
+}
+
 void reset_module() {
     module_bytes.assign(48, 0x56);
     std::memcpy(module_bytes.data() + 4, &SUPERKEY_MAGIC, sizeof(SUPERKEY_MAGIC));
+    // The unpatched kernel uses this sentinel to select its compile-time key.
+    // Every explicit image configuration, including no key, must replace it.
+    const std::uint64_t unpatched_mode = ~std::uint64_t{0};
+    std::memcpy(module_bytes.data() + 4 + 32, &unpatched_mode, sizeof(unpatched_mode));
     read_count = write_count = hash_count = 0;
     hashed_key.clear();
     entropy_succeeds = write_succeeds = true;
@@ -103,6 +120,7 @@ std::uint64_t module_field(std::size_t offset) {
 void test_superkey_transport_boundaries() {
     const std::vector<std::string> accepted = {
         "",
+        " \t ",
         std::string(64, 'a'),
         std::string(60, 'a') + "\xf0\x9f\x94\x91",
     };
@@ -139,6 +157,36 @@ void test_superkey_transport_boundaries() {
     entropy_succeeds = false;
     assert(configure_legacy_module("valid", &cleaned) != 0 && cleaned == 2);
     assert(read_count == 0 && write_count == 0);
+}
+
+void test_superkey_requires_supported_module() {
+    using ConfigureModule = int (*)(const std::string&, std::size_t*, bool);
+    const std::array<ConfigureModule, 2> configure_paths = {
+        configure_legacy_module,
+        configure_direct_module,
+    };
+    for (const auto configure : configure_paths) {
+        for (const bool signature_bypass : {false, true}) {
+            for (const bool truncated : {false, true}) {
+                reset_module();
+                if (truncated)
+                    module_bytes.resize(4 + 39);  // Marker present, incomplete data block.
+                else
+                    std::fill(module_bytes.begin(), module_bytes.end(), 0x56);
+                const auto original = module_bytes;
+                std::size_t cleaned = 0;
+                assert(configure("valid", &cleaned, signature_bypass) != 0);
+                assert(cleaned == 1 && read_count == 1 && write_count == 0);
+                assert(module_bytes == original);
+
+                // Modules without SuperKey remain usable when no key is requested;
+                // --signature-bypass without a key retains its ignored behavior.
+                cleaned = 0;
+                assert(configure("", &cleaned, signature_bypass) == 0);
+                assert(cleaned == 0 && write_count == 0 && module_bytes == original);
+            }
+        }
+    }
 }
 
 void set_tmpdir(const std::string& value) {
@@ -312,6 +360,7 @@ int main(int argc, char** argv) {
     assert(argc == 2);
     const fs::path base = fs::absolute(argv[1]);
     test_superkey_transport_boundaries();
+    test_superkey_requires_supported_module();
     test_target_kmi_temporary_directories(base);
     test_ramdisk_ownership_and_conversion(base);
     std::cout << "boot_patch_flow_test: all tests passed\n";

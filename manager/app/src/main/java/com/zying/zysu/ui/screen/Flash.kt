@@ -270,13 +270,12 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
                         )
                     }
                 } else {
-                    val configuredSuperKey = when (flashIt) {
-                        is FlashIt.FlashBoot -> flashIt.superKey
-                        is FlashIt.DownloadBoot -> flashIt.superKey
-                        else -> null
-                    }
-                    configuredSuperKey?.takeIf(String::isNotBlank)?.let { superKey ->
-                        SuperKeyHelper.saveSuperKey(context, superKey)
+                    when (flashIt) {
+                        is FlashIt.FlashBoot ->
+                            SuperKeyHelper.savePatchSuperKey(context, flashIt.superKey)
+                        is FlashIt.DownloadBoot ->
+                            SuperKeyHelper.savePatchSuperKey(context, flashIt.superKey)
+                        else -> Unit
                     }
                     setFlashingStatus(FlashingStatus.SUCCESS)
                     viewModel.markNeedRefresh()

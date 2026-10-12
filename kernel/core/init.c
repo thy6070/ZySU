@@ -144,12 +144,10 @@ static int __init kernelsu_init(void)
 	ksu_adb_root_init();
 	ksu_selinux_hide_init();
 
-	ksu_supercalls_init();
-	ksu_app_profile_init();
-
 #ifdef CONFIG_KSU_SUPERKEY
 	superkey_init();
 #endif // #ifdef CONFIG_KSU_SUPERKEY
+	ksu_app_profile_init();
 
 	zysu_custom_config_init();
 
@@ -184,6 +182,9 @@ static int __init kernelsu_init(void)
 
 	ksu_sumh_init();
 	ksu_hook_init();
+	/* The dispatcher initializes its route table before SuperKey adds
+	 * prctl. */
+	ksu_supercalls_init();
 
 	if (ksu_late_loaded) {
 		ksu_throne_tracker_init();

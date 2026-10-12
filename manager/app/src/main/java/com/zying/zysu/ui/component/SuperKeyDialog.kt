@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.zying.zysu.R
+import com.zying.zysu.superkey.encodeSuperKey
 import com.zying.zysu.ui.theme.ThemeConfig
 import com.zying.zysu.ui.theme.ThemeColors
 import com.zying.zysu.ui.theme.ThemeManager
@@ -114,6 +115,7 @@ fun SuperKeyDialog(
     
     val authFailedMessage = stringResource(id = R.string.superkey_auth_failed)
     val emptyKeyMessage = stringResource(id = R.string.superkey_input_hint)
+    val invalidKeyMessage = stringResource(id = R.string.superkey_invalid)
     
     fun checkEasterEgg(input: String): Boolean {
         if (input.equals("transright", ignoreCase = true) && !ThemeConfig.isTransPrideUnlocked) {
@@ -282,8 +284,12 @@ fun SuperKeyDialog(
 
                         Button(
                             onClick = {
-                                if (superKeyInput.isBlank()) {
+                                if (superKeyInput.isEmpty()) {
                                     errorMessage = emptyKeyMessage
+                                    return@Button
+                                }
+                                if (encodeSuperKey(superKeyInput) == null) {
+                                    errorMessage = invalidKeyMessage
                                     return@Button
                                 }
                                 
@@ -305,7 +311,7 @@ fun SuperKeyDialog(
                                     }
                                 }
                             },
-                            enabled = !isLoading && superKeyInput.isNotBlank()
+                            enabled = !isLoading && superKeyInput.isNotEmpty()
                         ) {
                             if (isLoading) {
                                 CircularProgressIndicator(

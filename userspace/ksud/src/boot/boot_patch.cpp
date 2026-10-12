@@ -41,9 +41,9 @@ namespace ksud {
 constexpr uint64_t SUPERKEY_MAGIC = 0x5355504552;  // "SUPER" in hex
 
 // SuperKey verification mode definitions (must match kernel)
-// 0: signature-only (no superkey)      - do not register prctl kprobe
-// 1: signature + superkey (default)    - register prctl kprobe, require both
-// 2: superkey-only (signature bypass)  - register prctl kprobe, bypass signature
+// 0: signature-only (no superkey)
+// 1: signature authentication, or SuperKey with a trusted signature
+// 2: superkey-only (signature bypass)
 constexpr uint64_t SUPERKEY_VERIFICATION_SIGNATURE_ONLY = 0;
 constexpr uint64_t SUPERKEY_VERIFICATION_SIGN_AND_KEY = 1;
 constexpr uint64_t SUPERKEY_VERIFICATION_KEY_ONLY = 2;
@@ -203,6 +203,10 @@ bool inject_superkey_to_lkm(const std::string& lkm_path, const std::string& supe
     }
 
     if (!found) {
+        if (!superkey.empty()) {
+            LOGE("Selected LKM does not support SuperKey; requested key was not applied");
+            return false;
+        }
         printf("- Warning: SUPERKEY_MAGIC not found in LKM, SuperKey may not work\n");
         printf("- Make sure the kernel module is compiled with SuperKey support\n");
     } else if (!write_file_bytes(lkm_path, content.data(), content.size())) {

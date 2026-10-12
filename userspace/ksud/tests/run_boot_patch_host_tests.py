@@ -37,9 +37,12 @@ def main():
                 between(legacy, "constexpr uint64_t SUPERKEY_MAGIC", "namespace {"),
                 between(legacy, "constexpr size_t SUPERKEY_SALT_LEN", "// SHA-256(salt || key)"),
                 between(legacy, "bool inject_superkey_to_lkm(", "bool inject_imgpatch_config_to_lkm("),
+                between(legacy, "bool inject_superkey_into_lkm(", "bool inject_imgpatch_config_into_lkm("),
             ]),
             "boot_patch_legacy_config_under_test.inc": between(
                 legacy, "    // Always inject verification mode", "    // Prepare init if specified"),
+            "boot_patch_direct_config_under_test.inc": between(
+                direct, "    if (!parsed.superkey.empty())", "    if (!inject_imgpatch_config_into_lkm("),
             "boot_patch_target_kmi_under_test.inc": between(
                 legacy, "int boot_info_target_kmi(", "int boot_info_supported_kmis("),
             "boot_patch_cleanup_under_test.inc": between(

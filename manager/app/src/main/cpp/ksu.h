@@ -87,7 +87,7 @@ int64_t query_feature(uint32_t feature_id);
 // KSU_IOCTL_SUPERKEY_AUTH, KSU_IOCTL_SUPERKEY_STATUS are all provided by
 // uapi/supercall.h included above.
 
-// SuperKey authentication function (uses reboot syscall)
+// SuperKey authentication via ioctl, with prctl/reboot compatibility fallbacks.
 bool authenticate_superkey(const char *superkey);
 
 // Check if SuperKey is configured in kernel

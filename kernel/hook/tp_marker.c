@@ -18,6 +18,8 @@
 #include "policy/allowlist.h"
 #include "klog.h" // IWYU pragma: keep
 #include "hook/tp_marker.h"
+#include "manager/throne_tracker.h"
+#include "manager/manager_identity.h"
 
 // Tracepoint registration count management
 // == 1: just us
@@ -30,7 +32,11 @@ void ksu_clear_task_tracepoint_flag_if_needed(struct task_struct *t)
 	unsigned long flags;
 	spin_lock_irqsave(&tracepoint_reg_lock, flags);
 	if (tracepoint_reg_count <= 1) {
-		ksu_clear_task_tracepoint_flag(t);
+		if (ksu_is_uid_manager(task_uid(t).val) ||
+		    ksu_is_manager_auth_candidate(task_uid(t).val))
+			ksu_set_task_tracepoint_flag(t);
+		else
+			ksu_clear_task_tracepoint_flag(t);
 	}
 	spin_unlock_irqrestore(&tracepoint_reg_lock, flags);
 }
@@ -81,7 +87,8 @@ static void ksu_mark_running_process_locked(void)
 		// before boot completed, we shall mark init for marking zygote
 		bool is_init = t->pid == 1;
 		if (ksu_root_process || is_zygote_process || is_shell ||
-		    is_init || ksu_is_allow_uid(uid)) {
+		    is_init || ksu_is_allow_uid(uid) ||
+		    ksu_is_manager_auth_candidate(uid)) {
 			ksu_set_task_tracepoint_flag(t);
 			pr_info("tp_marker: mark process: pid:%d, uid: %d, "
 				"comm:%s\n",

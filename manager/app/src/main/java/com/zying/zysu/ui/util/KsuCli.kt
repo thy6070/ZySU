@@ -600,7 +600,7 @@ private fun patchBootImage(
         }
 
         // Add superkey if specified
-        if (!superKey.isNullOrBlank()) {
+        if (!superKey.isNullOrEmpty()) {
             cmd += " --superkey=${shellArg(superKey)}"
             // Add signature bypass flag if enabled
             if (signatureBypass) {
@@ -708,7 +708,7 @@ fun patchBootImageV2(
                 append(" --module ")
                 append(shellArg(module.absolutePath))
             }
-            if (!superKey.isNullOrBlank()) {
+            if (!superKey.isNullOrEmpty()) {
                 append(" --superkey=")
                 append(shellArg(superKey))
                 if (signatureBypass) {

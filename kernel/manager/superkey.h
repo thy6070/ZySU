@@ -42,7 +42,6 @@ int superkey_authenticate(const char *key);
 bool superkey_is_manager(void);
 void superkey_invalidate(void);
 uid_t superkey_get_manager_uid(void);
-void superkey_on_auth_fail(void);
 bool superkey_on_auth_success(uid_t uid);
 
 #endif // #ifndef __KSU_SUPERKEY_H

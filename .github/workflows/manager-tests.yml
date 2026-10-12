@@ -6,20 +6,28 @@ on:
     paths:
       - 'kernel/Kbuild'
       - 'kernel/manager/**'
+      - 'kernel/core/init.c'
+      - 'kernel/hook/**'
       - 'kernel/supercall/**'
       - 'uapi/supercall.h'
       - 'kernel/include/util.h'
       - 'scripts/ci/test_manager_scan.py'
+      - 'scripts/ci/test_superkey.py'
+      - 'manager/app/src/main/cpp/ksu.c'
       - 'scripts/ci/test_sumh_vfs_helpers.py'
       - '.github/workflows/manager-tests.yml'
   pull_request:
     paths:
       - 'kernel/Kbuild'
       - 'kernel/manager/**'
+      - 'kernel/core/init.c'
+      - 'kernel/hook/**'
       - 'kernel/supercall/**'
       - 'uapi/supercall.h'
       - 'kernel/include/util.h'
       - 'scripts/ci/test_manager_scan.py'
+      - 'scripts/ci/test_superkey.py'
+      - 'manager/app/src/main/cpp/ksu.c'
       - 'scripts/ci/test_sumh_vfs_helpers.py'
       - '.github/workflows/manager-tests.yml'
   workflow_dispatch:
@@ -38,3 +46,5 @@ jobs:
       - uses: actions/checkout@v7
       - name: Pinned manager discovery and authentication
         run: python3 scripts/ci/test_manager_scan.py --cc clang
+      - name: SuperKey configuration and first authentication
+        run: python3 scripts/ci/test_superkey.py --cc clang

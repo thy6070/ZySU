@@ -28,6 +28,8 @@ class SuperKeyAuthenticationService : Service() {
                         SuperKeyHelper.isAutoAuthenticationEnabled(this) && superKey != null
                     ) {
                         // One logical authentication attempt. The key never leaves this process.
+                        // Keep this secondary process read-only: SharedPreferences
+                        // cannot merge concurrent writes from the main process.
                         Natives.authenticateSuperKey(superKey)
                     } else {
                         false

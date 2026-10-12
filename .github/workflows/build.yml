@@ -255,7 +255,7 @@ jobs:
           packages: platform-tools
 
       - name: Build with Gradle
-        run: ./gradlew :app:testDebugUnitTest --tests 'com.zying.zysu.update.*' lintDebug lintRelease assembleRelease --build-cache --parallel --no-daemon -PABI=arm64-v8a
+        run: ./gradlew :app:testDebugUnitTest --tests 'com.zying.zysu.update.*' --tests 'com.zying.zysu.superkey.*' lintDebug lintRelease assembleRelease --build-cache --parallel --no-daemon -PABI=arm64-v8a
 
       - name: Upload lint reports on failure
         if: failure()

@@ -7,7 +7,7 @@ import com.zying.zysu.boot.BootCompletedReceiver as BaseBootCompletedReceiver
 /** Starts exactly one saved-SuperKey authentication attempt after user unlock. */
 class BootCompletedReceiver : BaseBootCompletedReceiver() {
     override fun acceptsAction(action: String): Boolean {
-        // saved_superkey lives in credential-encrypted storage.
+        // Saved credentials live in credential-encrypted storage.
         return action == Intent.ACTION_BOOT_COMPLETED
     }
 

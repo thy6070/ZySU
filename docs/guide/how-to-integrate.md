@@ -50,6 +50,8 @@ A separately built module does not automatically trust a custom APK signing key.
 
 The module recognizes one Manager package, `com.zying.zysu`, and one configured signing certificate. SuperKey authentication, including signature-bypass mode, is also limited to that package. If a fork changes Manager's `applicationId`, pass the same value as `KSU_MANAGER_PACKAGE` when building its module; an empty value is rejected. This replaces the single allowed package at build time. Changing the package name does not replace the certificate check.
 
+With `CONFIG_KSU_SUPERKEY=y`, `KSU_SUPERKEY="your_key"` supplies a default key for an unpatched module. The default retains the Manager certificate check. Explicit image-patcher configuration takes precedence, including signature-only configuration with no key. Use 1–64 UTF-8 bytes without NUL characters; spaces are part of the key. Password authentication with signature bypass disabled also requires the configured certificate; ordinary signature authentication remains available.
+
 Kernel version overrides use `ZYSU_KERNEL_VERSION_NAME` and `ZYSU_KERNEL_VERSION_CODE`, validated with Python 3. Without overrides, Kbuild uses Git and may query GitHub.
 
 For a complete local APK build, [build.sh](../../scripts/build.sh) and [build.bat](../../scripts/build.bat), which invokes [build.ps1](../../scripts/build.ps1), build DDK modules, ksuinit, ksud and Manager in sequence. This differs from building only a module against your own kernel tree.

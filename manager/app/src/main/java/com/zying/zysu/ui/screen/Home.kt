@@ -190,7 +190,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     val success = Natives.authenticateSuperKey(superKey)
                     if (success) {
-                        SuperKeyHelper.saveSuperKey(context, superKey)
+                        SuperKeyHelper.saveAuthenticatedSuperKey(context, superKey)
                     }
                     success
                 }
@@ -232,12 +232,13 @@ fun HomeScreen(navigator: DestinationsNavigator) {
     LaunchedEffect(viewModel.isCoreDataLoaded) {
         if (viewModel.isCoreDataLoaded && !viewModel.systemStatus.isManager) {
             val savedKey = SuperKeyHelper.getSavedSuperKey(context)
-            if (!savedKey.isNullOrBlank()) {
+            if (savedKey != null) {
                 try {
                     // 在 IO 线程执行 Native 调用和 Shell 刷新
                     val success = withContext(Dispatchers.IO) {
                         val authSuccess = Natives.authenticateSuperKey(savedKey)
                         if (authSuccess) {
+                            SuperKeyHelper.saveAuthenticatedSuperKey(context, savedKey)
                             // 重新创建 Shell（之前的 Shell 没有 root 权限）
                             KsuCli.refreshShells()
                         }

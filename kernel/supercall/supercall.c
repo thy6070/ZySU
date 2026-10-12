@@ -26,6 +26,7 @@
 #include "klog.h" // IWYU pragma: keep
 #include "runtime/ksud.h"
 #include "manager/manager_identity.h"
+#include "manager/throne_tracker.h"
 #include "infra/seccomp_cache.h"
 #include "selinux/selinux.h"
 #include "sulog/event.h"
@@ -90,8 +91,7 @@ static void ksu_superkey_auth_tw_func(struct callback_head *cb)
 	cmd.superkey[sizeof(cmd.superkey) - 1] = '\0';
 
 	// Authenticate with SuperKey
-	if (verify_superkey(cmd.superkey) &&
-	    superkey_on_auth_success(current_uid().val)) {
+	if (superkey_authenticate(cmd.superkey) == 0) {
 		// Authentication successful
 		uid_t uid = current_uid().val;
 
@@ -107,7 +107,6 @@ static void ksu_superkey_auth_tw_func(struct callback_head *cb)
 		}
 	} else {
 		// Silent fail - don't reveal KSU existence
-		superkey_on_auth_fail();
 		kfree(tw);
 		return;
 	}
@@ -228,8 +227,7 @@ static void ksu_superkey_prctl_tw_func(struct callback_head *cb)
 	/*
 	 * Replay window: only accept timestamps within the last 30 seconds, and
 	 * never accept future timestamps. Outside the window is treated as a
-	 * verification failure and goes through the same SIGKILL / reboot
-	 * threshold path; the silent-fail semantics are preserved.
+	 * verification failure; the silent-fail semantics are preserved.
 	 */
 	now = ktime_get_real_seconds();
 	delta = now - (s64)cmd.timestamp;
@@ -237,18 +235,13 @@ static void ksu_superkey_prctl_tw_func(struct callback_head *cb)
 		pr_info("superkey prctl auth: timestamp out of window "
 			"(delta=%lld)\n",
 			delta);
-		superkey_on_auth_fail();
 		kfree(tw);
 		return;
 	}
 
-	if (verify_superkey(cmd.superkey) &&
-	    superkey_on_auth_success(current_uid().val)) {
+	if (superkey_authenticate(cmd.superkey) == 0) {
 		// Authentication successful
 		uid_t uid = current_uid().val;
-
-		// Unregister the prctl TSR hook after successful authentication
-		ksu_superkey_unregister_prctl_hook();
 
 		// Allow reboot syscall for this process
 		if (current->seccomp.mode == SECCOMP_MODE_FILTER &&
@@ -273,7 +266,6 @@ static void ksu_superkey_prctl_tw_func(struct callback_head *cb)
 		}
 	} else {
 		// Silent fail - don't reveal KSU existence
-		superkey_on_auth_fail();
 		kfree(tw);
 		return;
 	}
@@ -342,6 +334,9 @@ static int ksu_handle_prctl_superkey(int option, unsigned long arg2)
 
 	if (option != KSU_PRCTL_SUPERKEY_AUTH)
 		return 0;
+	if (!superkey_is_set() ||
+	    !ksu_is_manager_package_uid(current_uid().val))
+		return 0;
 
 	pr_info("prctl superkey auth request from uid %d, pid %d\n",
 		current_uid().val, current->pid);
@@ -379,28 +374,17 @@ static long __nocfi ksu_hook_prctl(int orig_nr, const struct pt_regs *regs)
 
 static bool prctl_hook_registered = false;
 
-void ksu_superkey_unregister_prctl_hook(void)
-{
-	if (prctl_hook_registered) {
-		ksu_unregister_syscall_hook(__NR_prctl);
-		prctl_hook_registered = false;
-		pr_info("SuperKey: prctl TSR hook unregistered after "
-			"authentication\n");
-	}
-}
-
-void ksu_superkey_register_prctl_hook(void)
+static void ksu_superkey_register_prctl_hook(void)
 {
 	int rc;
 	if (!prctl_hook_registered) {
 		rc = ksu_register_syscall_hook(__NR_prctl, ksu_hook_prctl);
 		if (rc) {
-			pr_err(
-			    "SuperKey: prctl TSR hook re-register failed: %d\n",
-			    rc);
+			pr_err("SuperKey: prctl TSR hook register failed: %d\n",
+			       rc);
 		} else {
 			prctl_hook_registered = true;
-			pr_info("SuperKey: prctl TSR hook re-registered\n");
+			pr_info("SuperKey: prctl TSR hook registered\n");
 		}
 	}
 }
@@ -418,22 +402,10 @@ void ksu_supercalls_init(void)
 		pr_info("reboot kprobe registered successfully\n");
 	}
 
-	// SuperKey prctl TSR hook - only register when SuperKey is configured.
+	/* GET_FD must remain available in signature-only mode and after auth.
+	 */
 #ifdef CONFIG_KSU_SUPERKEY
-	if (superkey_is_set()) {
-		rc = ksu_register_syscall_hook(__NR_prctl, ksu_hook_prctl);
-		if (rc) {
-			pr_err("prctl TSR hook failed: %d\n", rc);
-			prctl_hook_registered = false;
-		} else {
-			pr_info(
-			    "prctl TSR hook registered for SuperKey auth\n");
-			prctl_hook_registered = true;
-		}
-	} else {
-		pr_info("SuperKey: no SuperKey configured, prctl TSR hook not "
-			"registered (signature-only mode)\n");
-	}
+	ksu_superkey_register_prctl_hook();
 #endif // #ifdef CONFIG_KSU_SUPERKEY
 }
 

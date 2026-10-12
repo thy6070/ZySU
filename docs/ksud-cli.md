@@ -112,6 +112,8 @@ File mode requires `--boot` (`-b`) and `--output` (`-o`, or `--out`); here the o
 
 Additional options are `--module` / `-m`, `--superkey`, `--signature-bypass`, `--allow-shell`, `--enable-adbd`, `--magiskboot`, `--force` and `--no-reuse`. `--force` permits replacing an existing output, never an input. `--no-reuse` forces full kernel analysis instead of reusing compatible injection metadata. In both patch paths, `--signature-bypass` selects SuperKey-only authentication for the configured Manager package, normally `com.zying.zysu`; without `--superkey`, it emits a warning and is ignored. It does not bypass the package restriction or Linux module-signature verification.
 
+When a nonempty SuperKey is requested, a module without a complete SuperKey configuration block causes patching to fail before output or flashing. Keys use 1–64 UTF-8 bytes without NUL characters; whitespace is preserved. Omitting the key writes signature-only configuration and overrides any compile-time key in a module that supports SuperKey.
+
 `boot-restore` accepts `--boot` / `-b`, `--flash` / `-f`, `--out-name` and `--magiskboot`. It uses available restore data; retain the original firmware image for recovery.
 
 `ramdisk-editor <CPIO>` and `boot-ramdisk-editor <SOURCE> <OUTPUT>` are binary protocol sessions, not shell editors. See [Ramdisk editor protocol](ramdisk-editor-protocol.md) for image and wire-format limits.
