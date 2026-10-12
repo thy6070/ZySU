@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Nakopya ang Update JSON URL</string>
     <string name="refresh">I-refresh</string>
     <string name="show_system_apps">Ipakita ang mga application ng system</string>
-    <string name="hide_system_apps">Itago ang mga application ng system</string>
     <string name="send_log">Magpadala ng Log</string>
     <string name="safe_mode">Safe mode</string>
     <string name="reboot_to_apply">I-reboot para umepekto</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">Pababa ng pangalan</string>
     <string name="sort_install_time_new">Oras ng pag-install (pinakabago muna)</string>
     <string name="sort_install_time_old">Oras ng pag-install (pinakaluma muna)</string>
-    <string name="sort_size_desc">Sukat (pinakamalaki muna)</string>
-    <string name="sort_size_asc">Pataas na pagkakasunod-sunod ng laki</string>
-    <string name="sort_usage_freq">Pinakamadalas na ginagamit</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Walang application sa kategoryang ito</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Tanggihan ang awtorisasyon</string>
     <string name="grant_authorization">Mga awtorisasyon</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">Itago ang menu</string>
     <string name="scroll_to_top">Itaas</string>
     <string name="scroll_to_bottom">Ibaba</string>
-    <string name="selected">Napili</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Mga Opsyon ng Menu</string>
     <string name="sort_options">Ayusin ayon sa</string>
-    <string name="app_categories">Pagpili ng Uri ng Application</string>
     <string name="show_more_module_info">Ipakita ang Higit Pang Module Info</string>
     <string name="show_more_module_info_summary">Ipakita ang karagdagang impormasyon ng module tulad ng mga update JSON URL</string>
     <string name="kernel_simple_kernel">Concise Mode ng Bersyon ng Kernel</string>

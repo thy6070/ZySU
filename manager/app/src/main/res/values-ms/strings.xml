@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">URL Update JSON disalin</string>
     <string name="refresh">Muat semula</string>
     <string name="show_system_apps">Tunjukkan aplikasi sistem</string>
-    <string name="hide_system_apps">Sembunyikan aplikasi sistem</string>
     <string name="send_log">Hantar log</string>
     <string name="safe_mode">Mod selamat</string>
     <string name="reboot_to_apply">But semula untuk berkuat kuasa</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">Nama menurun</string>
     <string name="sort_install_time_new">Masa pemasangan (terbaharu dahulu)</string>
     <string name="sort_install_time_old">Masa pemasangan (paling lama dahulu)</string>
-    <string name="sort_size_desc">Saiz (terbesar dahulu)</string>
-    <string name="sort_size_asc">Tertib saiz menaik</string>
-    <string name="sort_usage_freq">Paling kerap digunakan</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Tiada aplikasi dalam kategori ini</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Tolak kebenaran</string>
     <string name="grant_authorization">Berikan kebenaran</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">Kuncupkan menu</string>
     <string name="scroll_to_top">Atas</string>
     <string name="scroll_to_bottom">Bawah</string>
-    <string name="selected">Dipilih</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Pilihan Menu</string>
     <string name="sort_options">Isih mengikut</string>
-    <string name="app_categories">Pemilihan Jenis Aplikasi</string>
     <string name="show_more_module_info">Tunjukkan Lebih Banyak Maklumat Modul</string>
     <string name="show_more_module_info_summary">Paparkan maklumat modul tambahan seperti URL Update JSON</string>
     <string name="kernel_simple_kernel">Mod Ringkas Versi Kernel</string>

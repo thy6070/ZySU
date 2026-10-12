@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">คัดลอก URL ของ Update JSON แล้ว</string>
     <string name="refresh">รีเฟรช</string>
     <string name="show_system_apps">แสดงแอประบบ</string>
-    <string name="hide_system_apps">ซ่อนแอประบบ</string>
     <string name="send_log">ส่ง logs</string>
     <string name="safe_mode">โหมดปลอดภัย</string>
     <string name="reboot_to_apply">รีบูตเพื่อให้มีผล</string>
@@ -273,11 +272,7 @@
     <string name="sort_name_desc">ชื่อจากมากไปน้อย</string>
     <string name="sort_install_time_new">เวลาติดตั้ง (ใหม่สุดก่อน)</string>
     <string name="sort_install_time_old">เวลาติดตั้ง (เก่าที่สุดก่อน)</string>
-    <string name="sort_size_desc">ขนาด (ใหญ่ที่สุดก่อน)</string>
-    <string name="sort_size_asc">เรียงลำดับขนาดจากน้อยไปหามาก</string>
-    <string name="sort_usage_freq">ใช้บ่อยที่สุด</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">ไม่มีแอปพลิเคชันในหมวดหมู่นี้</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">เพิกถอนการอนุญาต</string>
     <string name="grant_authorization">อนุญาต</string>
@@ -287,12 +282,8 @@
     <string name="collapse_menu">ยุบเมนู</string>
     <string name="scroll_to_top">บนสุด</string>
     <string name="scroll_to_bottom">ล่างสุด</string>
-    <string name="selected">เลือกแล้ว</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">ตัวเลือกเมนู</string>
     <string name="sort_options">เรียงตาม</string>
-    <string name="app_categories">เลือกประเภทแอปพลิเคชัน</string>
     <string name="show_more_module_info">แสดงข้อมูลโมดูลเพิ่มเติม</string>
     <string name="show_more_module_info_summary">แสดงข้อมูลโมดูลเพิ่มเติม เช่น URL ของ Update JSON</string>
     <string name="kernel_simple_kernel">โหมดย่อของเวอร์ชันเคอร์เนล</string>

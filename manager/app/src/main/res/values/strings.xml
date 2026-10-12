@@ -47,7 +47,6 @@
     <string name="module_update_json_copied">Update JSON URL copied</string>
     <string name="refresh">Refresh</string>
     <string name="show_system_apps">Show system apps</string>
-    <string name="hide_system_apps">Hide system apps</string>
     <string name="send_log">Send logs</string>
     <string name="safe_mode">Safe mode</string>
     <string name="reboot_to_apply">Reboot to take effect</string>
@@ -305,11 +304,7 @@
     <string name="sort_name_desc">Name descending</string>
     <string name="sort_install_time_new">Installation time (New)</string>
     <string name="sort_install_time_old">Installation time (Old)</string>
-    <string name="sort_size_desc">Descending order of size</string>
-    <string name="sort_size_asc">Ascending order of size</string>
-    <string name="sort_usage_freq">Frequency of use</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">No application in this category</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Delegation of authority</string>
     <string name="grant_authorization">Authorizations</string>
@@ -319,12 +314,8 @@
     <string name="collapse_menu">Put away the menu</string>
     <string name="scroll_to_top">Top</string>
     <string name="scroll_to_bottom">Bottom</string>
-    <string name="selected">Selected</string>
-    <string name="select">Select</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Menu Options</string>
     <string name="sort_options">Sort by</string>
-    <string name="app_categories">Application Type Selection</string>
     <string name="show_more_module_info">Show More Module Info</string>
     <string name="show_more_module_info_summary">Display additional module information like update JSON URLs</string>
     <string name="settings_module_description_max_lines" tools:ignore="MissingTranslation">Module description max lines</string>

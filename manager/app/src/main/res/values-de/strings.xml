@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Update-JSON-URL kopiert</string>
     <string name="refresh">Aktualisieren</string>
     <string name="show_system_apps">System-Apps anzeigen</string>
-    <string name="hide_system_apps">System-Apps ausblenden</string>
     <string name="send_log">Protokoll senden</string>
     <string name="safe_mode">Sicherer Modus</string>
     <string name="reboot_to_apply">Neustarten, damit Änderungen wirksam werden</string>
@@ -273,11 +272,7 @@
     <string name="sort_name_desc">Name absteigend</string>
     <string name="sort_install_time_new">Installationszeit (neu)</string>
     <string name="sort_install_time_old">Installationszeit (alt)</string>
-    <string name="sort_size_desc">Größe absteigend</string>
-    <string name="sort_size_asc">Größe aufsteigend</string>
-    <string name="sort_usage_freq">Nutzungshäufigkeit</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Keine App in dieser Kategorie</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Autorisierung entziehen</string>
     <string name="grant_authorization">Autorisieren</string>
@@ -287,12 +282,8 @@
     <string name="collapse_menu">Menü einklappen</string>
     <string name="scroll_to_top">Anfang</string>
     <string name="scroll_to_bottom">Ende</string>
-    <string name="selected">Ausgewählt</string>
-    <string name="select">Auswählen</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Menüoptionen</string>
     <string name="sort_options">Sortieren nach</string>
-    <string name="app_categories">App-Typ-Auswahl</string>
     <string name="show_more_module_info">Mehr Modulinfos anzeigen</string>
     <string name="show_more_module_info_summary">Zusätzliche Modulinformationen wie Update-JSON-URLs anzeigen</string>
     <string name="kernel_simple_kernel">Kompakter Modus für Kernel-Version</string>

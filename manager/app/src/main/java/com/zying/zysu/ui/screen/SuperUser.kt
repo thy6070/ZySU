@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -81,6 +82,7 @@ internal fun SuperUserPage(navigator: DestinationsNavigator) {
     val viewModel = viewModel<SuperUserViewModel>()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val snackbar = rememberSnackbarController()
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -114,14 +116,14 @@ internal fun SuperUserPage(navigator: DestinationsNavigator) {
         scope.launch {
             if (change.batch) {
                 val result = viewModel.updateBatchPermissions(change.allowSu, change.umountModules, change.groups)
-                snackbar.showSnackbar(context.getString(
+                snackbar.showSnackbar(resources.getString(
                     if (result.failureCount == 0) R.string.authorization_batch_success else R.string.authorization_batch_partial,
                     result.successCount, result.failureCount,
                 ))
             } else {
                 val group = change.groups.single()
                 val success = viewModel.updateGroupPermission(group, change.allowSu, change.umountModules)
-                snackbar.showSnackbar(context.getString(
+                snackbar.showSnackbar(resources.getString(
                     if (success) R.string.authorization_updated else R.string.authorization_update_failed,
                     group.mainApp.label,
                 ))

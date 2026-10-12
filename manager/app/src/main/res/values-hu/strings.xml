@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Update JSON URL másolva</string>
     <string name="refresh">Frissítés</string>
     <string name="show_system_apps">Rendszeralkalmazások megjelenítése</string>
-    <string name="hide_system_apps">Rendszeralkalmazások elrejtése</string>
     <string name="send_log">Naplók küldése</string>
     <string name="safe_mode">Biztonságos mód</string>
     <string name="reboot_to_apply">Indítsa újra a készüléket a változások érvényesítéséhez</string>
@@ -272,11 +271,7 @@ A</string>
     <string name="sort_name_desc">Név csökkenő</string>
     <string name="sort_install_time_new">Telepítési idő (legújabb elöl)</string>
     <string name="sort_install_time_old">Telepítési idő (legrégebbi elöl)</string>
-    <string name="sort_size_desc">Méret (a legnagyobb először)</string>
-    <string name="sort_size_asc">Méret szerint növekvő sorrendben</string>
-    <string name="sort_usage_freq">Leggyakrabban használt</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Nincs alkalmazás ebben a kategóriában</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Engedélyezés visszavonása</string>
     <string name="grant_authorization">Engedélyezés</string>
@@ -286,12 +281,8 @@ A</string>
     <string name="collapse_menu">Menü összecsukása</string>
     <string name="scroll_to_top">Tetejére</string>
     <string name="scroll_to_bottom">Aljára</string>
-    <string name="selected">Kiválasztva</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Menü beállításai</string>
     <string name="sort_options">Rendezés szerint</string>
-    <string name="app_categories">Alkalmazástípus kiválasztása</string>
     <string name="show_more_module_info">További modulinformációk megjelenítése</string>
     <string name="show_more_module_info_summary">További modulinformációk megjelenítése, például Update JSON URL-ek</string>
     <string name="kernel_simple_kernel">Kernel verzió tömör mód</string>

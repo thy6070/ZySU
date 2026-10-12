@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">URL Update JSON copiée</string>
     <string name="refresh">Rafraîchir</string>
     <string name="show_system_apps">Afficher les applications système</string>
-    <string name="hide_system_apps">Masquer les applications système</string>
     <string name="send_log">Envoyer les journaux</string>
     <string name="safe_mode">Mode sans échec</string>
     <string name="reboot_to_apply">Redémarrez pour appliquer les modifications</string>
@@ -273,11 +272,7 @@
     <string name="sort_name_desc">Nom décroissant</string>
     <string name="sort_install_time_new">Temps d\'installation (le plus récent en premier)</string>
     <string name="sort_install_time_old">Temps d\'installation (le plus ancien en premier)</string>
-    <string name="sort_size_desc">Taille (la plus grande en premier)</string>
-    <string name="sort_size_asc">Ordre croissant de taille</string>
-    <string name="sort_usage_freq">Le plus fréquemment utilisé</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Aucune application dans cette catégorie</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Révoquer l\'autorisation</string>
     <string name="grant_authorization">Autoriser</string>
@@ -287,12 +282,8 @@
     <string name="collapse_menu">Réduire le menu</string>
     <string name="scroll_to_top">En haut</string>
     <string name="scroll_to_bottom">En Bas</string>
-    <string name="selected">Sélectionné</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Options du menu</string>
     <string name="sort_options">Trier par</string>
-    <string name="app_categories">Sélection du type d\'application</string>
     <string name="show_more_module_info">Afficher plus d\'infos sur le module</string>
     <string name="show_more_module_info_summary">Afficher des informations supplémentaires sur le module, comme les URL Update JSON</string>
     <string name="kernel_simple_kernel">Mode concis de la version du noyau</string>

@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Update JSON URL kopeeritud</string>
     <string name="refresh">Värskenda</string>
     <string name="show_system_apps">Kuva süsteemirakendused</string>
-    <string name="hide_system_apps">Peida süsteemirakendused</string>
     <string name="send_log">Saada logid</string>
     <string name="safe_mode">Turvarežiim</string>
     <string name="reboot_to_apply">Muudatuste rakendamiseks taaskäivita</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">Nimi kahanevalt</string>
     <string name="sort_install_time_new">Paigaldusaeg (uusimad enne)</string>
     <string name="sort_install_time_old">Paigaldusaeg (vanim enne)</string>
-    <string name="sort_size_desc">Suurus (suurem enne)</string>
-    <string name="sort_size_asc">Suuruse kasvav järjestus</string>
-    <string name="sort_usage_freq">Kõige sagedamini kasutatav</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Selles kategoorias pole rakendusi</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Tühista volitus</string>
     <string name="grant_authorization">Volita</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">Ahenda menüü</string>
     <string name="scroll_to_top">Üles</string>
     <string name="scroll_to_bottom">Alla</string>
-    <string name="selected">Valitud</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Menüü valikud</string>
     <string name="sort_options">Sortimise alus</string>
-    <string name="app_categories">Rakenduse tüübi valik</string>
     <string name="show_more_module_info">Kuva rohkem mooduli teavet</string>
     <string name="show_more_module_info_summary">Kuva mooduli lisateavet, näiteks Update JSON URL-e</string>
     <string name="kernel_simple_kernel">Kerneli versiooni lühirežiim</string>

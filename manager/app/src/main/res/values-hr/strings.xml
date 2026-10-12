@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">URL za Update JSON kopiran</string>
     <string name="refresh">Osvježi</string>
     <string name="show_system_apps">Prikažite sistemske aplikacije</string>
-    <string name="hide_system_apps">Sakrijte sistemske aplikacije</string>
     <string name="send_log">Pošaljite Izvještaj</string>
     <string name="safe_mode">Sigurnosni mod</string>
     <string name="reboot_to_apply">Ponovno pokrenite da bi proradilo</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">Naziv silazno</string>
     <string name="sort_install_time_new">Vrijeme instalacije (prvo najnovije)</string>
     <string name="sort_install_time_old">Vrijeme instalacije (prvo najstarije)</string>
-    <string name="sort_size_desc">Veličina (prvo najveća)</string>
-    <string name="sort_size_asc">Uzlazni redoslijed veličine</string>
-    <string name="sort_usage_freq">Najčešće korišten</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Nema aplikacija u ovoj kategoriji</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Opozovi autorizaciju</string>
     <string name="grant_authorization">Autoriziraj</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">Sažmi izbornik</string>
     <string name="scroll_to_top">Na vrh</string>
     <string name="scroll_to_bottom">Na dno</string>
-    <string name="selected">Odabrano</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Opcije izbornika</string>
     <string name="sort_options">Sortiraj prema</string>
-    <string name="app_categories">Odabir vrste aplikacije</string>
     <string name="show_more_module_info">Prikaži više informacija o modulu</string>
     <string name="show_more_module_info_summary">Prikaži dodatne informacije o modulu, poput URL-ova Update JSON</string>
     <string name="kernel_simple_kernel">Sažeti način verzije jezgre</string>

@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">URL Update JSON copiat</string>
     <string name="refresh">Reîmprospătează</string>
     <string name="show_system_apps">Arată aplicațiile de sistem</string>
-    <string name="hide_system_apps">Ascunde aplicațiile de sistem</string>
     <string name="send_log">Raportează jurnal</string>
     <string name="safe_mode">Mod sigur</string>
     <string name="reboot_to_apply">Repornește pentru ca modificările să intre în vigoare</string>
@@ -273,11 +272,7 @@
     <string name="sort_name_desc">Nume descrescător</string>
     <string name="sort_install_time_new">Timp de instalare (cel mai nou primul)</string>
     <string name="sort_install_time_old">Timp de instalare (cel mai vechi mai întâi)</string>
-    <string name="sort_size_desc">Dimensiune (mai mare mai întâi)</string>
-    <string name="sort_size_asc">Ordinea crescătoare a mărimii</string>
-    <string name="sort_usage_freq">Cel mai des folosit</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Nicio aplicație în această categorie</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Revocă autorizarea</string>
     <string name="grant_authorization">Autorizează</string>
@@ -287,12 +282,8 @@
     <string name="collapse_menu">Restrânge meniul</string>
     <string name="scroll_to_top">Sus</string>
     <string name="scroll_to_bottom">Jos</string>
-    <string name="selected">Selectat</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Opțiuni meniu</string>
     <string name="sort_options">Sortează după</string>
-    <string name="app_categories">Selectarea tipului de aplicație</string>
     <string name="show_more_module_info">Afișează mai multe informații despre modul</string>
     <string name="show_more_module_info_summary">Afișează informații suplimentare despre modul, precum URL-urile Update JSON</string>
     <string name="kernel_simple_kernel">Mod concis pentru versiunea kernelului</string>

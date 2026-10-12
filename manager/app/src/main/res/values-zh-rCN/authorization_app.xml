@@ -2,7 +2,6 @@
 <resources>
     <string name="auth_app_title">应用管理</string>
     <string name="auth_app_uid">UID：%1$d</string>
-    <string name="auth_app_package">包名：%1$s</string>
     <string name="auth_app_status_granted">已允许 Root</string>
     <string name="auth_app_status_denied">未允许 Root</string>
     <string name="auth_app_grant_root">允许 Root</string>
@@ -20,6 +19,5 @@
     <string name="auth_app_umount_revokes_root">修改此设置也会撤销此 UID 的 Root 权限。</string>
     <string name="auth_app_copy_done">已复制包名</string>
     <string name="auth_app_busy">正在保存授权…</string>
-    <string name="auth_app_unknown">未知</string>
     <string name="auth_app_close">关闭应用管理</string>
 </resources>

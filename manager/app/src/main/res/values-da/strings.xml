@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Update JSON-URL kopieret</string>
     <string name="refresh">Opdater</string>
     <string name="show_system_apps">Vis system-apps</string>
-    <string name="hide_system_apps">Gem system-apps</string>
     <string name="send_log">Send Log</string>
     <string name="safe_mode">Sikker tilstand</string>
     <string name="reboot_to_apply">Genstart for at tage effekt</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">Faldende efter navn</string>
     <string name="sort_install_time_new">Installationstid (nyeste først)</string>
     <string name="sort_install_time_old">Installationstid (ældste først)</string>
-    <string name="sort_size_desc">Størrelse (størst først)</string>
-    <string name="sort_size_asc">Stigende størrelsesrækkefølge</string>
-    <string name="sort_usage_freq">Oftest brugt</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Ingen app i denne kategori</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Nægt autorisation</string>
     <string name="grant_authorization">Giv autorisation</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">Skjul menuen</string>
     <string name="scroll_to_top">Top</string>
     <string name="scroll_to_bottom">Bund</string>
-    <string name="selected">Valgt</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Menuindstillinger</string>
     <string name="sort_options">Sortér efter</string>
-    <string name="app_categories">Valg af apptype</string>
     <string name="show_more_module_info">Vis mere modulinfo</string>
     <string name="show_more_module_info_summary">Vis yderligere modulinfo såsom update JSON-URL\'er</string>
     <string name="kernel_simple_kernel">Kortfattet tilstand for kerneversion</string>

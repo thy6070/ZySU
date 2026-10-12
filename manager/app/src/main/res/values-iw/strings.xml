@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">כתובת ה-Update JSON הועתקה</string>
     <string name="refresh">רענון</string>
     <string name="show_system_apps">הצג אפליקציות מערכת</string>
-    <string name="hide_system_apps">הסתר אפליקציות מערכת</string>
     <string name="send_log">שלח לוג</string>
     <string name="safe_mode">מצב בטוח</string>
     <string name="reboot_to_apply">הפעל מחדש כדי להכניס לתוקף</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">סדר יורד לפי שם</string>
     <string name="sort_install_time_new">זמן התקנה (חדש)</string>
     <string name="sort_install_time_old">זמן התקנה (ישן)</string>
-    <string name="sort_size_desc">סדר יורד לפי גודל</string>
-    <string name="sort_size_asc">סדר עולה לפי גודל</string>
-    <string name="sort_usage_freq">תדירות שימוש</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">אין אפליקציה בקטגוריה זו</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">דחיית הרשאה</string>
     <string name="grant_authorization">הרשאות</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">כווץ את התפריט</string>
     <string name="scroll_to_top">למעלה</string>
     <string name="scroll_to_bottom">למטה</string>
-    <string name="selected">נבחר</string>
-    <string name="select">בחר</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">אפשרויות תפריט</string>
     <string name="sort_options">מיין לפי</string>
-    <string name="app_categories">בחירת סוג אפליקציה</string>
     <string name="show_more_module_info">הצג מידע נוסף על המודול</string>
     <string name="show_more_module_info_summary">הצג מידע נוסף על המודול כגון כתובות Update JSON</string>
     <string name="kernel_simple_kernel">מצב תמציתי של גרסת הליבה</string>

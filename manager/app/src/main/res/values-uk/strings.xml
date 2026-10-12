@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">URL-адресу Update JSON скопійовано</string>
     <string name="refresh">Оновити</string>
     <string name="show_system_apps">Показати системні додатки</string>
-    <string name="hide_system_apps">Сховати системні додатки</string>
     <string name="send_log">Надіслати логи</string>
     <string name="safe_mode">Безпечний режим</string>
     <string name="reboot_to_apply">Перезавантажте, щоб застосувати</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">Назва за спаданням</string>
     <string name="sort_install_time_new">Час встановлення (нові)</string>
     <string name="sort_install_time_old">Час встановлення (старі)</string>
-    <string name="sort_size_desc">Розмір за спаданням</string>
-    <string name="sort_size_asc">Розмір за зростанням</string>
-    <string name="sort_usage_freq">Частота використання</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Немає додатків у цій категорії</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Заборонити права</string>
     <string name="grant_authorization">Надати права</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">Згорнути меню</string>
     <string name="scroll_to_top">Вгору</string>
     <string name="scroll_to_bottom">Вниз</string>
-    <string name="selected">Вибрано</string>
-    <string name="select">Вибрати</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Опції меню</string>
     <string name="sort_options">Сортувати за</string>
-    <string name="app_categories">Вибір типу додатку</string>
     <string name="show_more_module_info">Показувати більше інформації про модуль</string>
     <string name="show_more_module_info_summary">Відображати додаткову інформацію про модуль, як-от URL-адреси для оновлення JSON</string>
     <string name="kernel_simple_kernel">Спрощений режим версії ядра</string>

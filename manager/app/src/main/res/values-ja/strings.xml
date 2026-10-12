@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Update JSON の URL をコピーしました</string>
     <string name="refresh">更新</string>
     <string name="show_system_apps">システムアプリを表示</string>
-    <string name="hide_system_apps">システムアプリを非表示</string>
     <string name="send_log">ログを送信する</string>
     <string name="safe_mode">セーフモード</string>
     <string name="reboot_to_apply">再起動すると有効化されます</string>
@@ -273,11 +272,7 @@
     <string name="sort_name_desc">名前の降順</string>
     <string name="sort_install_time_new">インストール日時 (新しい)</string>
     <string name="sort_install_time_old">インストール日時 (古い)</string>
-    <string name="sort_size_desc">サイズの降順</string>
-    <string name="sort_size_asc">サイズの昇順</string>
-    <string name="sort_usage_freq">使用頻度</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">このカテゴリーにアプリはありません</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">権限の認証</string>
     <string name="grant_authorization">認証</string>
@@ -287,12 +282,8 @@
     <string name="collapse_menu">メニューを収納</string>
     <string name="scroll_to_top">上詰め</string>
     <string name="scroll_to_bottom">画面下</string>
-    <string name="selected">選択中</string>
-    <string name="select">オプション</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">メニューのオプション</string>
     <string name="sort_options">並べ替え</string>
-    <string name="app_categories">アプリタイプを選択</string>
     <string name="show_more_module_info">モジュール情報の詳細を表示</string>
     <string name="show_more_module_info_summary">更新用 JSON の URL など追加の情報を表示します。</string>
     <string name="kernel_simple_kernel">簡潔モードなカーネル バージョン</string>

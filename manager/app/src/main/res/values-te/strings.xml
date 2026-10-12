@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Update JSON URL కాపీ చేయబడింది</string>
     <string name="refresh">రిఫ్రెష్ చేయండి</string>
     <string name="show_system_apps">సిస్టమ్ యాప్‌లను చూపించు</string>
-    <string name="hide_system_apps">సిస్టమ్ యాప్‌లను దాచు</string>
     <string name="send_log">లాగ్ పంపండి</string>
     <string name="safe_mode">సురక్షిత మోడ్</string>
     <string name="reboot_to_apply">అమలులోకి రావడానికి రీబూట్ చేయండి</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">పేరు అవరోహణ</string>
     <string name="sort_install_time_new">ఇన్‌స్టాలేషన్ సమయం (కొత్తది)</string>
     <string name="sort_install_time_old">ఇన్‌స్టాలేషన్ సమయం (పాతది)</string>
-    <string name="sort_size_desc">పరిమాణం అవరోహణ క్రమం</string>
-    <string name="sort_size_asc">పరిమాణం ఆరోహణ క్రమం</string>
-    <string name="sort_usage_freq">వాడుక తరచుదనం</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">ఈ వర్గంలో అప్లికేషన్ లేదు</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">అధికారాన్ని తిరస్కరించండి</string>
     <string name="grant_authorization">అధికారాలు</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">మెనూను మూసివేయండి</string>
     <string name="scroll_to_top">పైన</string>
     <string name="scroll_to_bottom">క్రింద</string>
-    <string name="selected">ఎంచుకోబడింది</string>
-    <string name="select">ఎంచుకోండి</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">మెనూ ఎంపికలు</string>
     <string name="sort_options">దీని ప్రకారం క్రమబద్ధీకరించండి</string>
-    <string name="app_categories">అప్లికేషన్ రకం ఎంపిక</string>
     <string name="show_more_module_info">మరిన్ని మాడ్యూల్ సమాచారాన్ని చూపించు</string>
     <string name="show_more_module_info_summary">అప్‌డేట్ JSON URLల వంటి అదనపు మాడ్యూల్ సమాచారాన్ని ప్రదర్శించండి</string>
     <string name="kernel_simple_kernel">కెర్నల్ వెర్షన్ సంక్షిప్త మోడ్</string>

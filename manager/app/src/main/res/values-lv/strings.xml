@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Update JSON URL kopēts</string>
     <string name="refresh">Atjaunot</string>
     <string name="show_system_apps">Rādīt sistēmas lietotnes</string>
-    <string name="hide_system_apps">Slēpt sistēmas lietotnes</string>
     <string name="send_log">Ziņot žurnālu</string>
     <string name="safe_mode">Drošais režīms</string>
     <string name="reboot_to_apply">Restartējiet, lai stātos spēkā</string>
@@ -273,11 +272,7 @@
     <string name="sort_name_desc">Nosaukums dilstošā secībā</string>
     <string name="sort_install_time_new">Uzstādīšanas laiks (jaunākie vispirms)</string>
     <string name="sort_install_time_old">Uzstādīšanas laiks (vecākais vispirms)</string>
-    <string name="sort_size_desc">Izmērs (vispirms lielākais)</string>
-    <string name="sort_size_asc">Lieluma augošā secībā</string>
-    <string name="sort_usage_freq">Visbiežāk lietots</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Šajā kategorijā nav lietotņu</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Atsaukt autorizāciju</string>
     <string name="grant_authorization">Autorizēt</string>
@@ -287,12 +282,8 @@
     <string name="collapse_menu">Sakļaut izvēlni</string>
     <string name="scroll_to_top">Augšā</string>
     <string name="scroll_to_bottom">Apakšā</string>
-    <string name="selected">Atlasīts</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Izvēlnes opcijas</string>
     <string name="sort_options">Kārtot pēc</string>
-    <string name="app_categories">Lietotnes veida izvēle</string>
     <string name="show_more_module_info">Rādīt vairāk moduļa informācijas</string>
     <string name="show_more_module_info_summary">Rādīt papildu moduļa informāciju, piemēram, Update JSON URL</string>
     <string name="kernel_simple_kernel">Kodola versijas kompaktais režīms</string>

@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">URL van Update JSON gekopieerd</string>
     <string name="refresh">Vernieuwen</string>
     <string name="show_system_apps">Toon systeem apps</string>
-    <string name="hide_system_apps">Verberg systeem apps</string>
     <string name="send_log">Verzenden Logs</string>
     <string name="safe_mode">Veilige modus</string>
     <string name="reboot_to_apply">Herstart om effect te hebben</string>
@@ -273,11 +272,7 @@
     <string name="sort_name_desc">Naam aflopend</string>
     <string name="sort_install_time_new">Installatietijd (nieuwste eerst)</string>
     <string name="sort_install_time_old">Installatietijd (oudste eerst)</string>
-    <string name="sort_size_desc">Grootte (grootste eerst)</string>
-    <string name="sort_size_asc">Oplopende volgorde van grootte</string>
-    <string name="sort_usage_freq">Meest gebruikt</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Geen applicatie in deze categorie</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Autorisatie intrekken</string>
     <string name="grant_authorization">Autoriseren</string>
@@ -287,12 +282,8 @@
     <string name="collapse_menu">Menu samenvouwen</string>
     <string name="scroll_to_top">Boven</string>
     <string name="scroll_to_bottom">Onder</string>
-    <string name="selected">Geselecteerd</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Menuopties</string>
     <string name="sort_options">Sorteren op</string>
-    <string name="app_categories">Selectie van applicatietype</string>
     <string name="show_more_module_info">Meer module-info weergeven</string>
     <string name="show_more_module_info_summary">Toon aanvullende module-informatie, zoals Update JSON-URL\'s</string>
     <string name="kernel_simple_kernel">Beknopte modus voor kernelversie</string>

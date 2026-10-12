@@ -40,7 +40,6 @@
     <string name="module_update_json_copied">更新 JSON 連結已複製</string>
     <string name="refresh">刷新</string>
     <string name="show_system_apps">顯示系統應用</string>
-    <string name="hide_system_apps">隱藏系統應用</string>
     <string name="send_log">發送日誌</string>
     <string name="safe_mode">安全模式</string>
     <string name="reboot_to_apply">重新啟動後生效</string>
@@ -276,11 +275,7 @@
     <string name="sort_name_desc">名稱降序</string>
     <string name="sort_install_time_new">安裝時間(新)</string>
     <string name="sort_install_time_old">安裝時間(舊)</string>
-    <string name="sort_size_desc">大小降序</string>
-    <string name="sort_size_asc">大小升序</string>
-    <string name="sort_usage_freq">使用頻率</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">此分類中冇應用</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">取消授權</string>
     <string name="grant_authorization">授權</string>
@@ -290,12 +285,8 @@
     <string name="collapse_menu">收起菜單</string>
     <string name="scroll_to_top">頂部</string>
     <string name="scroll_to_bottom">底部</string>
-    <string name="selected">已選擇</string>
-    <string name="select">選擇</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">選項菜單</string>
     <string name="sort_options">排序方式</string>
-    <string name="app_categories">應用類型選擇</string>
     <string name="show_more_module_info">顯示更多模組信息</string>
     <string name="show_more_module_info_summary">顯示額外嘅模組信息，如更新配置 URL 等</string>
     <string name="settings_module_description_max_lines">模組描述最大行數</string>

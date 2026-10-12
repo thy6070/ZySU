@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Update JSON URL ನಕಲಿಸಲಾಗಿದೆ</string>
     <string name="refresh">ರಿಫ್ರೆಶ್</string>
     <string name="show_system_apps">ಸಿಸ್ಟಮ್ ಅಪ್ಲಿಕೇಶನ್‌ಗಳನ್ನು ತೋರಿಸಿ</string>
-    <string name="hide_system_apps">ಸಿಸ್ಟಮ್ ಅಪ್ಲಿಕೇಶನ್‌ಗಳನ್ನು ಮರೆಮಾಡಿ</string>
     <string name="send_log">ಲಾಗ್ ಕಳುಹಿಸಿ</string>
     <string name="safe_mode">ಸುರಕ್ಷಿತ ಮೋಡ್</string>
     <string name="reboot_to_apply">ಪರಿಣಾಮ ಬೀರಲು ರೀಬೂಟ್ ಮಾಡಿ</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">ಹೆಸರು ಅವರೋಹಣ</string>
     <string name="sort_install_time_new">ಅನುಸ್ಥಾಪನಾ ಸಮಯ (ಹೊಸತು ಮೊದಲ)</string>
     <string name="sort_install_time_old">ಅನುಸ್ಥಾಪನಾ ಸಮಯ (ಹಳೆಯ ಮೊದಲ)</string>
-    <string name="sort_size_desc">ಗಾತ್ರ (ಮೊದಲು ದೊಡ್ಡದು)</string>
-    <string name="sort_size_asc">ಗಾತ್ರದ ಆರೋಹಣ ಕ್ರಮ</string>
-    <string name="sort_usage_freq">ಹೆಚ್ಚಾಗಿ ಬಳಸಲಾಗುತ್ತದೆ</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">ಈ ವರ್ಗದಲ್ಲಿ ಯಾವುದೇ ಅಪ್ಲಿಕೇಶನ್ ಇಲ್ಲ</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">ಅಧಿಕಾರ ನಿರಾಕರಿಸಿ</string>
     <string name="grant_authorization">ಅಧಿಕಾರಗಳು</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">ಮೆನು ಮುಚ್ಚಿ</string>
     <string name="scroll_to_top">ಮೇಲೆ</string>
     <string name="scroll_to_bottom">ಕೆಳಗೆ</string>
-    <string name="selected">ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">ಮೆನು ಆಯ್ಕೆಗಳು</string>
     <string name="sort_options">ಇದರ ಪ್ರಕಾರ ವಿಂಗಡಿಸಿ</string>
-    <string name="app_categories">ಅಪ್ಲಿಕೇಶನ್ ಪ್ರಕಾರ ಆಯ್ಕೆ</string>
     <string name="show_more_module_info">ಹೆಚ್ಚಿನ ಮಾಡ್ಯೂಲ್ ಮಾಹಿತಿ ತೋರಿಸಿ</string>
     <string name="show_more_module_info_summary">ಅಪ್‌ಡೇಟ್ JSON URL ನಂತಹ ಹೆಚ್ಚುವರಿ ಮಾಡ್ಯೂಲ್ ಮಾಹಿತಿಯನ್ನು ಪ್ರದರ್ಶಿಸಿ</string>
     <string name="kernel_simple_kernel">ಕರ್ನಲ್ ಆವೃತ್ತಿ ಸಂಕ್ಷಿಪ್ತ ಮೋಡ್</string>

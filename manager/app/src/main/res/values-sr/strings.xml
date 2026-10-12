@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Ажурирање ЈСОН УРЛ адресе је копирано</string>
     <string name="refresh">Освежи</string>
     <string name="show_system_apps">Прикажи системске апликације</string>
-    <string name="hide_system_apps">Сакриј системске апликације</string>
     <string name="send_log">Пошаљи дневнике</string>
     <string name="safe_mode">Безбедан режим</string>
     <string name="reboot_to_apply">Поново покрените да бисте ступили на снагу</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">Име опадајуће</string>
     <string name="sort_install_time_new">Време уградње (Ново)</string>
     <string name="sort_install_time_old">Време инсталације (старо)</string>
-    <string name="sort_size_desc">Опадајући редослед величине</string>
-    <string name="sort_size_asc">Узлазни редослед величине</string>
-    <string name="sort_usage_freq">Учесталост коришћења</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Нема апликација у овој категорији</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Делегирање овлашћења</string>
     <string name="grant_authorization">Овлашћења</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">Одложите мени</string>
     <string name="scroll_to_top">Врх</string>
     <string name="scroll_to_bottom">Дно</string>
-    <string name="selected">Изабрано</string>
-    <string name="select">Изаберите</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Опције менија</string>
     <string name="sort_options">Сортирај по</string>
-    <string name="app_categories">Избор типа апликације</string>
     <string name="show_more_module_info">Прикажи више информација о модулу</string>
     <string name="show_more_module_info_summary">Прикажи додатне информације о модулу као што је ажурирање ЈСОН УРЛ адреса</string>
     <string name="kernel_simple_kernel">Сажети приказ верзије језгра</string>

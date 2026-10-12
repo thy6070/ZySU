@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">URL Update JSON скопирован</string>
     <string name="refresh">Обновить</string>
     <string name="show_system_apps">Показать системные приложения</string>
-    <string name="hide_system_apps">Скрыть системные приложения</string>
     <string name="send_log">Отправить логи</string>
     <string name="safe_mode">Безопасный режим</string>
     <string name="reboot_to_apply">Перезагрузите, чтобы изменения вступили в силу</string>
@@ -273,11 +272,7 @@
     <string name="sort_name_desc">Название (по убыванию)</string>
     <string name="sort_install_time_new">Время установки (новые)</string>
     <string name="sort_install_time_old">Время установки (старые)</string>
-    <string name="sort_size_desc">Размер (по убыванию)</string>
-    <string name="sort_size_asc">Размер (по возрастанию)</string>
-    <string name="sort_usage_freq">Частота использования</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">В этой категории нет приложений</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Доступ отклонён</string>
     <string name="grant_authorization">Доступ выдан</string>
@@ -287,12 +282,8 @@
     <string name="collapse_menu">Свернуть</string>
     <string name="scroll_to_top">Наверх</string>
     <string name="scroll_to_bottom">Вниз</string>
-    <string name="selected">Выбранные</string>
-    <string name="select">опция</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Опции меню</string>
     <string name="sort_options">Сортировка</string>
-    <string name="app_categories">Выбор типа приложения</string>
     <string name="show_more_module_info">Показать больше информации о модуле</string>
     <string name="show_more_module_info_summary">Показывать доп. информацию о модулях, такую как JSON ссылку для обновления</string>
     <string name="kernel_simple_kernel">Скрыть доп. информацию о ядре</string>

@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Update JSON URL কপি করা হয়েছে</string>
     <string name="refresh">রিফ্রেশ</string>
     <string name="show_system_apps">শো সিস্টেম অ্যাপস</string>
-    <string name="hide_system_apps">হাইড সিস্টেম অ্যাপস</string>
     <string name="send_log">সেন্ড লগ</string>
     <string name="safe_mode">নিরাপদ মোড</string>
     <string name="reboot_to_apply">রিবুট এপ্লাই</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">নাম অবরোহী</string>
     <string name="sort_install_time_new">ইনস্টলেশন সময় (নতুন)</string>
     <string name="sort_install_time_old">ইনস্টলেশন সময় (পুরনো)</string>
-    <string name="sort_size_desc">আকারের অবরোহী ক্রম</string>
-    <string name="sort_size_asc">আকারের আরোহী ক্রম</string>
-    <string name="sort_usage_freq">ব্যবহারের ফ্রিকোয়েন্সি</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">এই বিভাগে কোনো অ্যাপ্লিকেশন নেই</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">অনুমোদন প্রত্যাখ্যান</string>
     <string name="grant_authorization">অনুমোদন</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">মেনু বন্ধ করুন</string>
     <string name="scroll_to_top">উপরে</string>
     <string name="scroll_to_bottom">নিচে</string>
-    <string name="selected">নির্বাচিত</string>
-    <string name="select">নির্বাচন করুন</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">মেনু বিকল্প</string>
     <string name="sort_options">এই অনুসারে সাজান</string>
-    <string name="app_categories">অ্যাপ্লিকেশন প্রকার নির্বাচন</string>
     <string name="show_more_module_info">আরও মডিউল তথ্য দেখান</string>
     <string name="show_more_module_info_summary">আপডেট JSON URL এর মতো অতিরিক্ত মডিউল তথ্য প্রদর্শন করুন</string>
     <string name="kernel_simple_kernel">কার্নেল সংস্করণ সংক্ষিপ্ত মোড</string>

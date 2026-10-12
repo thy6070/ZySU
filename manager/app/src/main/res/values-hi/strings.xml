@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Update JSON URL कॉपी किया गया</string>
     <string name="refresh">रिफ्रेश</string>
     <string name="show_system_apps">सिस्टम एप्प दिखाए</string>
-    <string name="hide_system_apps">सिस्टम एप्प छिपाए</string>
     <string name="send_log">लॉग भेजे</string>
     <string name="safe_mode">सुरक्षित मोड</string>
     <string name="reboot_to_apply">प्रभाव में होने के लिए रीबूट करें</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">नाम अवरोही</string>
     <string name="sort_install_time_new">स्थापना का समय (नवीनतम पहले)</string>
     <string name="sort_install_time_old">स्थापना का समय (सबसे पुराना पहले)</string>
-    <string name="sort_size_desc">आकार (पहले सबसे बड़ा)</string>
-    <string name="sort_size_asc">आकार का आरोही क्रम</string>
-    <string name="sort_usage_freq">सबसे अधिक प्रयोग किया जाता है</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">इस श्रेणी में कोई एप्लिकेशन नहीं</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">प्राधिकरण अस्वीकार</string>
     <string name="grant_authorization">प्राधिकरण</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">मेनू बंद करें</string>
     <string name="scroll_to_top">शीर्ष</string>
     <string name="scroll_to_bottom">नीचे</string>
-    <string name="selected">चयनित</string>
-    <string name="select">option</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">मेनू विकल्प</string>
     <string name="sort_options">इसके अनुसार क्रमबद्ध करें</string>
-    <string name="app_categories">एप्लिकेशन प्रकार चयन</string>
     <string name="show_more_module_info">अधिक मॉड्यूल जानकारी दिखाएं</string>
     <string name="show_more_module_info_summary">अपडेट JSON URL जैसी अतिरिक्त मॉड्यूल जानकारी प्रदर्शित करें</string>
     <string name="kernel_simple_kernel">कर्नेल संस्करण संक्षिप्त मोड</string>

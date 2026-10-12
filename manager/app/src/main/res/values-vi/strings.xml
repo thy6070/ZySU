@@ -39,7 +39,6 @@
     <string name="module_update_json_copied">Đã sao chép URL Update JSON</string>
     <string name="refresh">Làm mới</string>
     <string name="show_system_apps">Hiển thị ứng dụng hệ thống</string>
-    <string name="hide_system_apps">Ẩn ứng dụng hệ thống</string>
     <string name="send_log">Gửi nhật ký</string>
     <string name="safe_mode">Chế độ an toàn</string>
     <string name="reboot_to_apply">Khởi động lại để có hiệu lực</string>
@@ -271,11 +270,7 @@
     <string name="sort_name_desc">Tên (Giảm dần)</string>
     <string name="sort_install_time_new">Thời gian cài đặt (Mới)</string>
     <string name="sort_install_time_old">Thời gian cài đặt (Cũ)</string>
-    <string name="sort_size_desc">Kích thước (Giảm dần)</string>
-    <string name="sort_size_asc">Kích thước (Tăng dần)</string>
-    <string name="sort_usage_freq">Tần suất sử dụng</string>
     <!-- 状态相关 -->
-    <string name="no_apps_in_category">Không có ứng dụng nào trong danh mục này</string>
     <!-- 标签相关 -->
     <string name="deny_authorization">Huỷ bỏ uỷ quyền</string>
     <string name="grant_authorization">Uỷ quyền</string>
@@ -285,12 +280,8 @@
     <string name="collapse_menu">Thu gọn Menu</string>
     <string name="scroll_to_top">Lên trên</string>
     <string name="scroll_to_bottom">Xuống dưới</string>
-    <string name="selected">Đã chọn</string>
-    <string name="select">Chọn</string>
     <!-- BottomSheet相关 -->
-    <string name="menu_options">Tuỳ chọn Menu</string>
     <string name="sort_options">Sắp xếp theo</string>
-    <string name="app_categories">Lựa chọn loại ứng dụng</string>
     <string name="show_more_module_info">Hiển thị thêm thông tin mô-đun</string>
     <string name="show_more_module_info_summary">Hiển thị thông tin đường dẫn cập nhật \"JSON URLs\" của module</string>
     <string name="kernel_simple_kernel">Hiển thị tóm tắt \"Phiên bản Kernel\"</string>
