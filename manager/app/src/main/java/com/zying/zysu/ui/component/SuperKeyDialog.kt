@@ -35,8 +35,6 @@ import com.zying.zysu.ui.theme.ThemeColors
 import com.zying.zysu.ui.theme.ThemeManager
 import com.zying.zysu.ui.theme.isExpressiveUi
 import com.zying.zysu.ui.theme.getCardBorder
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -112,6 +110,7 @@ fun SuperKeyDialog(
     if (state !is SuperKeyDialogState) return
     
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     
     val authFailedMessage = stringResource(id = R.string.superkey_auth_failed)
     val emptyKeyMessage = stringResource(id = R.string.superkey_input_hint)
@@ -294,7 +293,9 @@ fun SuperKeyDialog(
                                 }
                                 
                                 isLoading = true
-                                CoroutineScope(Dispatchers.Main).launch {
+                                // Use the composition-bound scope so Compose tests and
+                                // lifecycle cancellation observe completion deterministically.
+                                scope.launch {
                                     try {
                                         val success = onAuthenticate(superKeyInput)
                                         if (success) {
