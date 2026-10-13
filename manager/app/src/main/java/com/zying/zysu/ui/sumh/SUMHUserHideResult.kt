@@ -3,7 +3,6 @@ package com.zying.zysu.ui.sumh
 import com.zying.zysu.ui.sumh.util.SUMHHideAction
 import com.zying.zysu.ui.sumh.util.SUMHHideBatchResult
 import com.zying.zysu.ui.sumh.util.SUMHHideItemResult
-import com.zying.zysu.ui.sumh.util.SUMH_HIDE_BATCH_LIMIT
 
 /** Counts remain complete even when large failure details cannot fit saved screen state. */
 internal data class UserHideOperationResult(
@@ -59,6 +58,6 @@ internal fun restoreUserHideResult(values: List<String>): UserHideOperationResul
     val completed = values[1].toIntOrNull()?.takeIf { it >= 0 } ?: return null
     val failed = values[2].toIntOrNull()?.takeIf { it >= 0 } ?: return null
     val failures = values.drop(4).chunked(2).map { SUMHHideItemResult(it[0], it[1]) }
-    if (failures.size > failed || completed + failed > SUMH_HIDE_BATCH_LIMIT) return null
+    if (failures.size > failed) return null
     return UserHideOperationResult(action, completed, failed, failures, values[3].toBoolean())
 }

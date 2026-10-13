@@ -36,7 +36,7 @@ class SUMHUserHideRulesTest {
         val runtimeOnly = rule("/data/live", 3, persisted = false)
         assertEquals(listOf(runtimeOnly), filterUserHideRules(listOf(runtimeOnly), "", UserHideFilter.Attention))
         assertFalse(userHideCanRetry(runtimeOnly))
-        assertFalse(userHideCanRetry(rule("/data/binding", 1)))
+        assertTrue(userHideCanRetry(rule("/data/binding", 1)))
         assertTrue(userHideCanRetry(rule("/data/suspended", 4)))
     }
 
@@ -46,7 +46,7 @@ class SUMHUserHideRulesTest {
         val result = SUMHHideBatchResult(SUMHHideAction.Add, listOf(
             SUMHHideItemResult("/data/ok"), SUMHHideItemResult("/data/failed", "permission denied"),
         ))
-        assertEquals("/data/failed\ninvalid", remainingUserHideDraft(draft, result))
+        assertEquals("  /data/ok  \n/data/failed\ninvalid", remainingUserHideDraft(draft, result))
     }
 
     @Test
@@ -116,5 +116,15 @@ class SUMHUserHideRulesTest {
         assertNull(restoreUserHideResult(listOf("Remove", "1", "0", "false", "/data/a", "error")))
         assertNull(restoreUserHideResult(listOf("Remove", "-1", "1", "false")))
         assertNull(restoreUserHideResult(listOf("unknown", "0", "1", "false")))
+    }
+
+    @Test
+    fun selectionChangesPreservePathsHiddenByTheFilter() {
+        val visible = setOf("/a", "/b")
+        val selected = setOf("/a", "/hidden")
+        assertEquals(setOf("/a", "/b", "/hidden"), toggleVisibleUserHideSelection(selected, visible))
+        assertEquals(setOf("/hidden"), toggleVisibleUserHideSelection(selected + "/b", visible))
+        assertEquals(setOf("/b", "/hidden"), invertVisibleUserHideSelection(selected, visible))
+        assertEquals(selected, invertVisibleUserHideSelection(selected, emptySet()))
     }
 }

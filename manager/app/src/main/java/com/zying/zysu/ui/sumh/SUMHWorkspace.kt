@@ -266,7 +266,7 @@ fun SUMHWorkspace(
             }
             Box(if (inlineContent) Modifier.fillMaxWidth() else Modifier.weight(1f).fillMaxWidth()) {
                 sectionState.SaveableStateProvider(section.name) {
-                    if (!dataReady && section != SUMHSection.Logs) {
+                    if (!dataReady && section != SUMHSection.Logs && section != SUMHSection.Rules) {
                         if (!inlineContent) Column(
                             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(contentPadding),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -287,15 +287,10 @@ fun SUMHWorkspace(
                             config = config,
                             sumhStatus = status,
                             features = features,
-                            snackbarHostState = snackbar,
                             controlsEnabled = dataReady && loadError == null && !saving && !isLoading,
                             runtimeApplyPending = runtimeApplyPending,
                             onRetryApply = ::retryApply,
                             onConfigChanged = ::saveConfig,
-                            onUserRulesSavingChanged = { working ->
-                                if (userRulesSaving && !working) userRulesRefresh++
-                                userRulesSaving = working
-                            },
                             onClearMapRules = {
                                 mutateMapRules(R.string.sumh_maps_cleared, R.string.sumh_maps_clear_failed) {
                                     Controller.clearMapsRules()
@@ -316,9 +311,14 @@ fun SUMHWorkspace(
                                 }
                             },
                         )
-                        SUMHSection.Rules -> RulesTab(
-                            rules, status, dataReady && loadError == null && !saving && !rulesRefreshing && !isLoading,
-                            ::refreshRules, ::clearRules,
+                        SUMHSection.Rules -> SUMHRulesWorkspace(
+                            rules, status, !configSaving && !externalSaving && !rulesRefreshing,
+                            dataReady && loadError == null && !saving && !isLoading && !rulesRefreshing,
+                            saving, snackbar,
+                            onSavingChanged = { working ->
+                                if (userRulesSaving && !working) userRulesRefresh++
+                                userRulesSaving = working
+                            }, onRefresh = ::refreshRules, onClearAll = ::clearRules,
                         )
                         SUMHSection.Logs -> LogsTab(
                             showKernelLog = showKernelLog,

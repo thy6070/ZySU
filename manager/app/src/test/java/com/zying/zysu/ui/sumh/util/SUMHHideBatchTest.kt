@@ -26,15 +26,29 @@ class SUMHHideBatchTest {
     }
 
     @Test
-    fun validatesAllPathsAndLimitBeforeAnyMutation() = runTest {
+    fun validatesAllPathsBeforeAnyMutation() = runTest {
         var calls = 0
-        for (paths in listOf(emptyList(), listOf("/good", "relative"),
-            (0..SUMH_HIDE_BATCH_LIMIT).map { "/data/$it" })) {
+        for (paths in listOf(emptyList(), listOf("/good", "relative"))) {
             assertFailsWith<IllegalArgumentException> {
                 runSUMHHideBatch(SUMHHideAction.Add, paths) { calls++ }
             }
         }
         assertEquals(0, calls)
+    }
+
+    @Test
+    fun largeBatchesReportProgressAndCanStopBeforeTheNextItem() = runTest {
+        val paths = (1..150).map { "/data/$it" }
+        val progress = mutableListOf<Int>()
+        var calls = 0
+        val result = runSUMHHideBatch(SUMHHideAction.Add, paths,
+            shouldContinue = { calls < 102 }, onProgress = { done, total ->
+                assertEquals(150, total); progress += done
+            }) { calls++ }
+        assertEquals(102, calls)
+        assertEquals((0..102).toList(), progress)
+        assertEquals(102, result.items.count { it.succeeded })
+        assertTrue(result.items.drop(102).all { it.error == "Not attempted: stopped by user" })
     }
 
     @Test

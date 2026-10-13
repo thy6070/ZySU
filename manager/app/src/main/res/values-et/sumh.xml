@@ -80,7 +80,6 @@
     <string name="sumh_no_conflicts">Haakimiskonflikte ei leitud</string>
     <string name="sumh_overlay_xattr">Peida OverlayFS-i laiendatud atribuudid</string>
     <string name="sumh_overlay_xattr_desc">Peida OverlayFS-i märgised virtuaalvaates</string>
-    <string name="sumh_quick_hide">Sageli peidetavad teed</string>
     <string name="sumh_retry_apply">Proovi uuesti rakendada</string>
     <string name="sumh_rule_maps_spoof">Võltsi ino/dev/pathname failis /proc/pid/maps</string>
     <string name="sumh_rule_module">Mooduli-/tuumareeglid</string>
@@ -117,7 +116,6 @@
     <string name="sumh_title">SUMH konfiguratsioon</string>
     <string name="sumh_toast_load_error">Viga andmete laadimisel: %s</string>
     <string name="sumh_user_hide_add">Lisa</string>
-    <string name="sumh_user_hide_placeholder">/absoluutne/tee/peitmiseks</string>
     <string name="sumh_user_hide_remove">Kustuta peitmisreegel</string>
     <string name="sumh_user_hide_title">Kohandatud peitmisreeglid</string>
     <string name="sumh_verbose">Üksikasjalik logimine</string>

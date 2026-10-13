@@ -70,7 +70,6 @@
     <string name="sumh_title">SUMH कॉन्फिगरेशन</string>
     <string name="sumh_toast_load_error">डेटा लोड करताना त्रुटी: %s</string>
     <string name="sumh_user_hide_add">जोडा</string>
-    <string name="sumh_user_hide_placeholder">/निरपेक्ष/पथ/लपवण्यासाठी</string>
     <string name="sumh_user_hide_title">कस्टम लपवण्याचे नियम</string>
     <string name="sumh_verbose">तपशीलवार लॉगिंग</string>
     <string name="sumh_verbose_desc">तपशीलवार daemon लॉग सक्षम करा</string>
@@ -106,7 +105,6 @@
     <string name="sumh_no_conflicts">कोणतेही माउंट संघर्ष आढळले नाहीत</string>
     <string name="sumh_overlay_xattr">OverlayFS चे विस्तारित गुणधर्म लपवा</string>
     <string name="sumh_overlay_xattr_desc">आभासी दृश्यातील OverlayFS चिन्हे लपवा</string>
-    <string name="sumh_quick_hide">नेहमी लपवले जाणारे पथ</string>
     <string name="sumh_retry_apply">पुन्हा लागू करा</string>
     <string name="sumh_rule_module">मॉड्यूल/कर्नल नियम</string>
     <string name="sumh_rule_save">बदल लागू करा</string>

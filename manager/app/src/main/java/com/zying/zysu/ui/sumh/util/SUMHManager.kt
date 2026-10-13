@@ -229,7 +229,11 @@ object SUMHManager {
         command("hide", if (remove) "remove" else "add", path)
     }
 
-    suspend fun changeUserHideRules(action: SUMHHideAction, paths: List<String>): SUMHHideBatchResult =
+    suspend fun changeUserHideRules(
+        action: SUMHHideAction, paths: List<String>,
+        shouldContinue: () -> Boolean = { true },
+        onProgress: suspend (Int, Int) -> Unit = { _, _ -> },
+    ): SUMHHideBatchResult =
         withContext(NonCancellable + Dispatchers.IO) {
             operations.withLock {
                 // Ownership is read under the same Manager lock as the whole batch.
@@ -237,7 +241,7 @@ object SUMHManager {
                 val stored = readHideRules().toSet()
                 val retryAvailable = action != SUMHHideAction.Retry || kernelSnapshot().optBoolean("sumh_available")
                 try {
-                    runSUMHHideBatch(action, paths) { path ->
+                    runSUMHHideBatch(action, paths, shouldContinue, onProgress) { path ->
                         when (action) {
                             SUMHHideAction.Add -> command("hide", "add", path)
                             SUMHHideAction.Remove -> {
@@ -255,6 +259,24 @@ object SUMHManager {
                             }
                         }
                     }
+                } finally { changes.value++ }
+            }
+        }
+
+    suspend fun editUserHideRule(original: String, replacement: String): SUMHHideEditResult =
+        withContext(NonCancellable + Dispatchers.IO) {
+            operations.withLock {
+                try {
+                    val stored = readHideRules().toSet()
+                    check(original in stored) { "Rule is no longer saved; refresh the list" }
+                    runSUMHHideEdit(original, replacement,
+                        prepareRemoval = { requireSUMHHideRemoval(original, stored, kernelSnapshot()) },
+                        add = { command("hide", "add", it) },
+                        remove = {
+                            requireSUMHHideRemoval(it, stored, kernelSnapshot())
+                            command("hide", "remove", it)
+                        },
+                    )
                 } finally { changes.value++ }
             }
         }

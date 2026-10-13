@@ -80,7 +80,6 @@
     <string name="sumh_no_conflicts">لم يُعثر على تعارضات في التركيب</string>
     <string name="sumh_overlay_xattr">إخفاء سمات OverlayFS الموسعة</string>
     <string name="sumh_overlay_xattr_desc">إخفاء علامات OverlayFS في العرض الافتراضي</string>
-    <string name="sumh_quick_hide">المسارات الشائعة للإخفاء</string>
     <string name="sumh_retry_apply">إعادة محاولة التطبيق</string>
     <string name="sumh_rule_maps_spoof">تزييف ino/dev/pathname في /proc/pid/maps</string>
     <string name="sumh_rule_module">قواعد الوحدات / النواة</string>
@@ -121,7 +120,6 @@
     <string name="sumh_title">إعداد SUMH</string>
     <string name="sumh_toast_load_error">خطأ في تحميل البيانات: %s</string>
     <string name="sumh_user_hide_add">إضافة</string>
-    <string name="sumh_user_hide_placeholder">/المسار/المطلق/للإخفاء</string>
     <string name="sumh_user_hide_remove">حذف قاعدة الإخفاء</string>
     <string name="sumh_user_hide_title">قواعد إخفاء مخصصة</string>
     <string name="sumh_verbose">تسجيل مفصّل</string>

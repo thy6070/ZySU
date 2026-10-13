@@ -80,7 +80,6 @@
     <string name="sumh_no_conflicts">Nenhum conflito de montagem encontrado</string>
     <string name="sumh_overlay_xattr">Ocultar atributos estendidos do OverlayFS</string>
     <string name="sumh_overlay_xattr_desc">Ocultar marcadores do OverlayFS na vista virtual</string>
-    <string name="sumh_quick_hide">Caminhos ocultos comuns</string>
     <string name="sumh_retry_apply">Tentar aplicar novamente</string>
     <string name="sumh_rule_maps_spoof">Falsificar ino/dev/pathname em /proc/pid/maps</string>
     <string name="sumh_rule_module">Regras de módulos e do kernel</string>
@@ -118,7 +117,6 @@
     <string name="sumh_title">Configuração do SUMH</string>
     <string name="sumh_toast_load_error">Erro ao carregar os dados: %s</string>
     <string name="sumh_user_hide_add">Adicionar</string>
-    <string name="sumh_user_hide_placeholder">/caminho/absoluto/para/ocultar</string>
     <string name="sumh_user_hide_remove">Remover regra de ocultação</string>
     <string name="sumh_user_hide_title">Regras de ocultação personalizadas</string>
     <string name="sumh_verbose">Registro detalhado</string>

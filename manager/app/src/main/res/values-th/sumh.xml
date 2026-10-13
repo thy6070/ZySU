@@ -70,7 +70,6 @@
     <string name="sumh_title">การกำหนดค่า SUMH</string>
     <string name="sumh_toast_load_error">เกิดข้อผิดพลาดในการโหลดข้อมูล: %s</string>
     <string name="sumh_user_hide_add">เพิ่ม</string>
-    <string name="sumh_user_hide_placeholder">/พาธ/สัมบูรณ์/ที่จะซ่อน</string>
     <string name="sumh_user_hide_title">กฎการซ่อนแบบกำหนดเอง</string>
     <string name="sumh_verbose">การบันทึกแบบละเอียด</string>
     <string name="sumh_verbose_desc">เปิดใช้งานบันทึกเดมอนแบบละเอียด</string>
@@ -106,7 +105,6 @@
     <string name="sumh_no_conflicts">ไม่พบความขัดแย้งในการเมานต์</string>
     <string name="sumh_overlay_xattr">ซ่อนแอตทริบิวต์ส่วนขยายของ OverlayFS</string>
     <string name="sumh_overlay_xattr_desc">ซ่อนเครื่องหมาย OverlayFS ในมุมมองเสมือน</string>
-    <string name="sumh_quick_hide">พาธที่ซ่อนบ่อย</string>
     <string name="sumh_retry_apply">ลองใช้อีกครั้ง</string>
     <string name="sumh_rule_module">กฎของโมดูล/เคอร์เนล</string>
     <string name="sumh_rule_save">ใช้การแก้ไข</string>

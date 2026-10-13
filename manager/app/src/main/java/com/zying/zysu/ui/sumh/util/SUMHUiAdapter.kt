@@ -225,8 +225,13 @@ object SUMHUiAdapter {
         // so the user can retry removal instead of losing its management entry.
         return userRules(snapshot)
     }
-    suspend fun changeUserHideRules(action: SUMHHideAction, paths: List<String>) =
-        SUMHManager.changeUserHideRules(action, paths)
+    suspend fun changeUserHideRules(
+        action: SUMHHideAction, paths: List<String>,
+        shouldContinue: () -> Boolean = { true },
+        onProgress: suspend (Int, Int) -> Unit = { _, _ -> },
+    ) = SUMHManager.changeUserHideRules(action, paths, shouldContinue, onProgress)
+    suspend fun editUserHideRule(original: String, replacement: String) =
+        SUMHManager.editUserHideRule(original, replacement)
     suspend fun retryUserHide(path: String) = success { SUMHManager.retryUserHide(path) }
     suspend fun addUserHideRule(path: String) = success { SUMHManager.saveHide(path) }
     suspend fun removeUserHideRule(path: String) = success { SUMHManager.saveHide(path, true) }

@@ -80,7 +80,6 @@
     <string name="sumh_no_conflicts">Keine Mount-Konflikte gefunden</string>
     <string name="sumh_overlay_xattr">Erweiterte OverlayFS-Attribute verbergen</string>
     <string name="sumh_overlay_xattr_desc">OverlayFS-Markierungen in der virtuellen Ansicht verbergen</string>
-    <string name="sumh_quick_hide">Häufig verborgene Pfade</string>
     <string name="sumh_retry_apply">Erneut anwenden</string>
     <string name="sumh_rule_maps_spoof">ino/dev/pathname in /proc/pid/maps fälschen</string>
     <string name="sumh_rule_module">Modul-/Kernel-Regeln</string>
@@ -117,7 +116,6 @@
     <string name="sumh_title">SUMH-Konfiguration</string>
     <string name="sumh_toast_load_error">Fehler beim Laden der Daten: %s</string>
     <string name="sumh_user_hide_add">Hinzufügen</string>
-    <string name="sumh_user_hide_placeholder">/absoluter/pfad/zum/verbergen</string>
     <string name="sumh_user_hide_remove">Regel zum Verbergen entfernen</string>
     <string name="sumh_user_hide_title">Benutzerdefinierte Verbergungsregeln</string>
     <string name="sumh_verbose">Ausführliche Protokollierung</string>

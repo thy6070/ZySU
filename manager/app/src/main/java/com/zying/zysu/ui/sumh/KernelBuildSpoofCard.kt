@@ -64,6 +64,8 @@ internal fun KernelBuildSpoofCard(
     var pendingEnable by rememberSaveable { mutableStateOf(false) }
     val editorState = rememberSaveableStateHolder()
     val expanded = config.enableKernelBuildSpoof || pendingEnable
+    var editing by rememberSaveable { mutableStateOf(false) }
+    val editorVisible = pendingEnable || (expanded && editing)
     var refresh by remember { mutableIntStateOf(0) }
     var read by remember { mutableStateOf<KernelBuildRead>(KernelBuildRead.Unavailable) }
     val revision by SUMHManager.revision.collectAsState()
@@ -121,6 +123,13 @@ internal fun KernelBuildSpoofCard(
             position = if (expanded) MoreSettingsItemPosition.First else MoreSettingsItemPosition.Only,
         )
         if (expanded) {
+            SUMHControlGroup(if (editorVisible) MoreSettingsItemPosition.Middle else MoreSettingsItemPosition.Last) {
+                TextButton(onClick = { editing = !editing }, enabled = !pendingEnable && controlsEnabled) {
+                    Text(stringResource(if (editorVisible) R.string.sumh_rules_done else R.string.sumh_rules_edit_settings))
+                }
+            }
+        }
+        if (editorVisible) {
             editorState.SaveableStateProvider("kernel-build-draft") {
                 SUMHControlGroup(MoreSettingsItemPosition.Last) {
                     KernelBuildSpoofEditor(

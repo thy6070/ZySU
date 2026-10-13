@@ -20,7 +20,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.zying.zysu.ui.util.SnackbarController
 import com.zying.zysu.R
 import com.zying.zysu.ui.component.YukiIcon
 import com.zying.zysu.ui.component.YukiPanel
@@ -35,12 +34,10 @@ internal fun SettingsTab(
     config: Controller.SUMHPConfig,
     sumhStatus: Controller.SUMHStatus,
     features: Controller.FeaturesResult?,
-    snackbarHostState: SnackbarController,
     controlsEnabled: Boolean,
     runtimeApplyPending: Boolean,
     onRetryApply: () -> Unit,
     onConfigChanged: (Controller.SUMHPConfig) -> Unit,
-    onUserRulesSavingChanged: (Boolean) -> Unit = {},
     onClearMapRules: () -> Unit,
     onAddMapRule: (Long, Long, Long, Long, String) -> Unit,
     section: SUMHSection,
@@ -104,9 +101,7 @@ internal fun SettingsTab(
                 kernelAvailable = sumhStatus == Controller.SUMHStatus.AVAILABLE,
                 features = features,
                 controlsEnabled = enabled,
-                snackbarHostState = snackbarHostState,
                 onConfigChanged = onConfigChanged,
-                onUserRulesSavingChanged = onUserRulesSavingChanged,
                 onClearMapRules = onClearMapRules,
                 onAddMapRule = onAddMapRule,
                 headingActions = headingActions,

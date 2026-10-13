@@ -70,7 +70,6 @@
     <string name="sumh_title">Cấu hình SUMH</string>
     <string name="sumh_toast_load_error">Lỗi khi tải dữ liệu: %s</string>
     <string name="sumh_user_hide_add">Thêm</string>
-    <string name="sumh_user_hide_placeholder">/đường/dẫn/tuyệt/đối/cần/ẩn</string>
     <string name="sumh_user_hide_title">Quy tắc ẩn tùy chỉnh</string>
     <string name="sumh_verbose">Nhật ký chi tiết</string>
     <string name="sumh_verbose_desc">Bật nhật ký chi tiết của daemon</string>
@@ -106,7 +105,6 @@
     <string name="sumh_no_conflicts">Không phát hiện xung đột gắn kết</string>
     <string name="sumh_overlay_xattr">Ẩn thuộc tính mở rộng của OverlayFS</string>
     <string name="sumh_overlay_xattr_desc">Ẩn dấu hiệu OverlayFS trong khung nhìn ảo</string>
-    <string name="sumh_quick_hide">Đường dẫn thường ẩn</string>
     <string name="sumh_retry_apply">Thử áp dụng lại</string>
     <string name="sumh_rule_module">Quy tắc mô-đun/nhân</string>
     <string name="sumh_rule_save">Áp dụng chỉnh sửa</string>

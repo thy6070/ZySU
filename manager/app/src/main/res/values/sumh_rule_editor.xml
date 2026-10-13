@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="sumh_rules_personal">My rules</string>
+    <string name="sumh_rules_edit">Edit path</string>
+    <string name="sumh_rules_edit_settings">Edit settings</string>
+    <string name="sumh_rules_save">Save</string>
+    <string name="sumh_rules_done">Done</string>
+    <string name="sumh_rules_select">Select</string>
+    <string name="sumh_rules_copy">Copy</string>
+    <string name="sumh_rules_more">More actions</string>
+    <string name="sumh_rules_import">Import paths</string>
+    <string name="sumh_rules_import_hint">One absolute path per line. Add valid paths now; duplicates are skipped and invalid lines remain editable. Spaces are preserved.</string>
+    <string name="sumh_rules_add_valid">Add valid paths</string>
+    <string name="sumh_rules_edit_hint">The new path is saved first. The original is removed only after the new rule is accepted.</string>
+    <string name="sumh_rules_edit_failed">Edit incomplete: %1$s. Refresh the list to check both paths; your input is retained.</string>
+    <string name="sumh_rules_progress">Processed: %1$d / %2$d</string>
+    <string name="sumh_rules_stop">Stop remaining</string>
+    <string name="sumh_rules_last_result">Last operation result</string>
+    <string name="sumh_rules_dismiss_result">Dismiss operation result</string>
+    <string name="sumh_rules_deselect_visible">Deselect visible</string>
+    <string name="sumh_rules_invert_visible">Invert visible</string>
+    <string name="sumh_rules_no_match">No matching paths.</string>
+    <string name="sumh_rules_clear_filter">Clear search and filters</string>
+    <string name="sumh_rules_reset_draft">Restore original path</string>
+    <string name="sumh_rules_continue_import">Continue unfinished paths</string>
+    <string name="sumh_rules_import_retry_hint">Unfinished paths can be retried even if already saved in configuration. Completed paths will not be submitted again.</string>
+</resources>

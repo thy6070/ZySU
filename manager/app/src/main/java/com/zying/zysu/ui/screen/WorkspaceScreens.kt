@@ -207,7 +207,7 @@ fun MountIsolationScreen(navigator: DestinationsNavigator) {
         }
     }
     WorkspaceOperationGuard(saving, MountIsolationScreenDestination.route)
-    val labels = listOf(stringResource(R.string.nav_mount), stringResource(R.string.nav_isolation), stringResource(R.string.nav_active_rules))
+    val labels = listOf(stringResource(R.string.nav_mount), stringResource(R.string.nav_isolation), stringResource(R.string.sumh_workspace_rules))
     WorkspaceScaffold(stringResource(R.string.settings_category_mount_isolation), navigator, navigationEnabled = !saving, tabs = {
         WorkspaceTabs(labels, selected, { selected = it }, enabled = !saving)
     }) {

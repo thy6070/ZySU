@@ -80,7 +80,6 @@
     <string name="sumh_no_conflicts">Geen koppelconflicten gevonden</string>
     <string name="sumh_overlay_xattr">Uitgebreide OverlayFS-attributen verbergen</string>
     <string name="sumh_overlay_xattr_desc">OverlayFS-markeringen in de virtuele weergave verbergen</string>
-    <string name="sumh_quick_hide">Vaak verborgen paden</string>
     <string name="sumh_retry_apply">Opnieuw toepassen</string>
     <string name="sumh_rule_maps_spoof">Vervals ino/dev/pathname in /proc/pid/maps</string>
     <string name="sumh_rule_module">Module-/kernelregels</string>
@@ -117,7 +116,6 @@
     <string name="sumh_title">SUMH-configuratie</string>
     <string name="sumh_toast_load_error">Fout bij het laden van gegevens: %s</string>
     <string name="sumh_user_hide_add">Toevoegen</string>
-    <string name="sumh_user_hide_placeholder">/absoluut/pad/om/te/verbergen</string>
     <string name="sumh_user_hide_remove">Verbergregel verwijderen</string>
     <string name="sumh_user_hide_title">Aangepaste verbergregels</string>
     <string name="sumh_verbose">Uitgebreid logboek</string>

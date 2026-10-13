@@ -15,31 +15,31 @@ data class SUMHHideBatchResult(val action: SUMHHideAction, val items: List<SUMHH
 internal suspend fun runSUMHHideBatch(
     action: SUMHHideAction,
     paths: List<String>,
+    shouldContinue: () -> Boolean = { true },
+    onProgress: suspend (Int, Int) -> Unit = { _, _ -> },
     operation: suspend (String) -> Unit,
 ): SUMHHideBatchResult {
     val unique = paths.distinct()
-    require(unique.size in 1..SUMH_HIDE_BATCH_LIMIT) { "Choose between 1 and $SUMH_HIDE_BATCH_LIMIT paths" }
-    // Validate the entire request before starting any mutations. Existing definitions
-    // can still be removed even when they predate the stricter new-path validation.
-    require(unique.all { path ->
-        if (action == SUMHHideAction.Add) validateSUMHHidePath(path) == null
-        else path.startsWith('/') && '\u0000' !in path && path.toByteArray(Charsets.UTF_8).size < 4096
-    }) { "Invalid hide rule path" }
+    require(unique.isNotEmpty()) { "Choose at least one path" }
+    // Validate the controller contract before starting any mutations.
+    require(unique.all { validateSUMHHidePath(it) == null }) { "Invalid hide rule path" }
     var requestError: String? = null
-    return SUMHHideBatchResult(action, unique.map { path ->
-        requestError?.let { return@map SUMHHideItemResult(path, it) }
+    onProgress(0, unique.size)
+    return SUMHHideBatchResult(action, unique.mapIndexed { index, path ->
+        if (!shouldContinue() && requestError == null) requestError = "Not attempted: stopped by user"
+        requestError?.let { return@mapIndexed SUMHHideItemResult(path, it) }
         try {
             operation(path)
             SUMHHideItemResult(path)
         } catch (error: Exception) {
             if (error is CancellationException) throw error
-            // A dead controller can otherwise hold a 100-item batch for 100 timeouts.
+            // A dead controller can otherwise hold a large batch for repeated timeouts.
             // Do not replay a request with an unknown outcome; let the user refresh
             // and explicitly retry after the connection recovers.
             if (error is IOException) {
                 requestError = "Not attempted after a controller or kernel I/O failure; refresh before retrying"
             }
             SUMHHideItemResult(path, error.message?.takeIf(String::isNotBlank) ?: "Rule operation failed")
-        }
+        }.also { onProgress(index + 1, unique.size) }
     })
 }

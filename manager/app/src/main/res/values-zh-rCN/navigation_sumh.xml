@@ -8,7 +8,7 @@
     <string name="sumh_group_process_isolation">进程隔离</string>
     <string name="sumh_group_mount_visibility">挂载可见性</string>
     <string name="sumh_group_filesystem">文件系统信息</string>
-    <string name="sumh_workspace_rules">运行时规则</string>
+    <string name="sumh_workspace_rules">规则</string>
     <string name="sumh_workspace_logs">挂载与隔离日志</string>
     <string name="sumh_workspace_debug">挂载与隔离诊断</string>
     <string name="sumh_workspace_rules_cleared">已清除全部规则</string>
