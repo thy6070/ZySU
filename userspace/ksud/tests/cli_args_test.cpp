@@ -18,6 +18,20 @@ bool validate_config_patch(const json::Value&, std::string&) {
 int main() {
     assert(ksud::terminal::set_color("never"));
 
+    for (const auto* command : {"boot-patch", "boot-patch-v2"}) {
+        ksud::CliArguments parsed;
+        assert(ksud::parse_cli({command, "--force-feature", "sulog=1", "--force-feature=6=1",
+                                "--block-module", "mkp", "--block-module=vr", "--no-custom-rc"},
+                               parsed) == -1);
+        const std::vector<std::string> expected = {
+            "--force-feature", "sulog=1", "--force-feature", "6=1", "--block-module", "mkp",
+            "--block-module",  "vr",      "--no-custom-rc"};
+        assert(parsed.option_args == expected);
+        assert(ksud::parse_cli({command, "--block-module"}, parsed) == 2);
+        assert(ksud::parse_cli({command, "--force-feature"}, parsed) == 2);
+        assert(ksud::parse_cli({command, "--allow-shell", "--allow-shell"}, parsed) == 2);
+    }
+
     // All former signature-registration entry points must fail during parsing,
     // before command dispatch can touch persisted trust or kernel state.
     const std::string digest(64, 'a');

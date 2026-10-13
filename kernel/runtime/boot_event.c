@@ -10,6 +10,7 @@
 #include "manager/manager_observer.h"
 #include "manager/throne_tracker.h"
 #include "policy/allowlist.h"
+#include "policy/feature.h"
 #include "runtime/ksud_boot.h"
 #include "runtime/ksud.h"
 #include "selinux/selinux.h"
@@ -36,6 +37,7 @@ void on_post_fs_data(void)
 	pr_info("ksu_file sid: %u\n", ksu_file_sid);
 	ksu_selinux_hide_handle_post_fs_data();
 	ksu_sumh_post_fs_data();
+	ksu_feature_apply_forced();
 }
 
 extern void ext4_unregister_sysfs(struct super_block *sb);

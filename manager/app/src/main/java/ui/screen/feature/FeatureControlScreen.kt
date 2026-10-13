@@ -167,6 +167,7 @@ fun FeatureControlContent(
         Natives.FEATURE_WEBVIEW_ZYGOTE_UMOUNT
     )
     val adbRoot = rememberFeatureToggleState(Natives.FEATURE_ADB_ROOT)
+    val shellSuAdbOnly = rememberFeatureToggleState(Natives.FEATURE_SHELL_SU_ADB_ONLY)
     val hideBootloader = rememberFeatureToggleState(Natives.FEATURE_HIDE_BOOTLOADER)
     val unicodePathGuard = rememberFeatureToggleState(Natives.FEATURE_UNICODE_PATH_GUARD)
     var unicodePathGuardRuntime by remember { mutableStateOf(UnicodePathGuardRuntime.Loading) }
@@ -194,7 +195,7 @@ fun FeatureControlContent(
 
     val saving = listOf(
         selinuxHide, kernelUmountDisabled, webViewZygoteUmount,
-        adbRoot, hideBootloader,
+        adbRoot, hideBootloader, shellSuAdbOnly,
         unicodePathGuard,
     ).any { it.saving }
     val savingCallback by rememberUpdatedState(onSavingChanged)
@@ -279,6 +280,23 @@ fun FeatureControlContent(
                     summary = stringResource(R.string.nav_umount_paths_summary),
                     enabled = !saving,
                     onClick = { navigator.navigate(UmountManagerScreenDestination) },
+                )
+
+                FeatureSwitchItem(
+                    featureId = Natives.FEATURE_SHELL_SU_ADB_ONLY,
+                    icon = Icons.Filled.Security,
+                    title = stringResource(R.string.settings_shell_su_adb_only),
+                    summary = stringResource(R.string.settings_shell_su_adb_only_summary),
+                    state = shellSuAdbOnly,
+                    onChange = { checked ->
+                        scope.persistFeature(
+                            state = shellSuAdbOnly,
+                            featureId = Natives.FEATURE_SHELL_SU_ADB_ONLY,
+                            featureName = "shell_su_adb_only",
+                            kernelEnabled = checked,
+                            onFailure = { snackbarHost.showSnackbar(failedMessage) },
+                        )
+                    },
                 )
 
                 FeatureSwitchItem(
@@ -390,6 +408,7 @@ private fun UnicodePathGuardCard(
     enabled: Boolean,
     onChange: (Boolean) -> Unit,
 ) {
+    val forced = remember { Natives.isFeatureForced(Natives.FEATURE_UNICODE_PATH_GUARD) }
     val runtimeSummary = stringResource(
         if (state.saving) R.string.unicode_path_guard_saving else when (runtime) {
             UnicodePathGuardRuntime.Loading -> R.string.unicode_path_guard_loading
@@ -403,9 +422,11 @@ private fun UnicodePathGuardCard(
         SwitchSettingItem(
             icon = Icons.Filled.Security,
             title = stringResource(R.string.unicode_path_guard_title),
-            summary = runtimeSummary,
+            summary = if (forced) {
+                stringResource(R.string.feature_status_forced_summary) + "\n" + runtimeSummary
+            } else runtimeSummary,
             checked = state.checked,
-            enabled = enabled && runtime.configurable && !state.saving,
+            enabled = enabled && !forced && runtime.configurable && !state.saving,
             groupPosition = MoreSettingsItemPosition.Only,
             onChange = onChange,
         )
@@ -523,6 +544,7 @@ private fun FeatureSwitchItem(
     val baseSummary = when (status) {
         "unsupported" -> stringResource(R.string.feature_status_unsupported_summary)
         "managed" -> stringResource(R.string.feature_status_managed_summary)
+        "forced" -> stringResource(R.string.feature_status_forced_summary)
         else -> summary
     }
     val renderedSummary = if (runtimeSummary == null) baseSummary else "$baseSummary\n$runtimeSummary"

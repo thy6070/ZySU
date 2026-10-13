@@ -13,6 +13,7 @@ enum ksu_feature_id {
   KSU_FEATURE_ADB_ROOT = 3,
   KSU_FEATURE_SELINUX_HIDE = 4,
   KSU_FEATURE_WEBVIEW_ZYGOTE_UMOUNT = 5,
+  KSU_FEATURE_SHELL_SU_ADB_ONLY = 6,
   // Always enabled; retained as a read-only feature for ABI compatibility.
   KSU_FEATURE_ENHANCED_SECURITY = 100,
   // Feature 101 is retired; do not reuse it.

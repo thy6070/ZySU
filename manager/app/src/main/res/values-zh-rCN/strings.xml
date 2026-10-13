@@ -699,4 +699,12 @@
     <string name="unicode_path_guard_scope">拦截 FUSE 与支持的 casefold 文件系统上，含可忽略 Unicode 字符且折叠为 Android、data 或 obb 的名称。刻意使用此类字符命名的目录也可能无法访问。</string>
     <string name="unicode_path_guard_notice">作用于新路径查找；已有文件句柄和挂载缓存需重启清理。此缓解措施不能替代系统或 Google Play 提供的 MediaProvider 安全更新。</string>
     <string name="unicode_path_guard_saved">已保存并确认运行状态。已有文件句柄和挂载缓存需重启清理。</string>
+    <string name="feature_status_forced_summary">已由启动配置强制设定，需重新修补镜像后才能修改。</string>
+    <string name="settings_shell_su_adb_only">将 Shell 的 Root 权限限制为 ADB 会话</string>
+    <string name="settings_shell_su_adb_only_summary">Shell 已获授权时，额外要求其祖先进程来自 adbd 或 ZySU Root 进程。脱离会话的进程会被拒绝；本机无线调试仍属于 ADB。</string>
+    <string name="install_block_modules">屏蔽内核模块（风险）</string>
+    <string name="install_block_modules_warning">屏蔽系统依赖的模块可能导致卡开机标志或反复重启（例如部分联发科设备的 mkp）。仅在确认适合你的设备后启用；无法开机时请刷回原厂 boot / init_boot 镜像恢复。</string>
+    <string name="install_block_modules_list">要屏蔽的模块</string>
+    <string name="install_block_modules_summary">用逗号分隔模块名，留空则不屏蔽。检测到的模块仅为建议，勾选此项后才会生效。</string>
+    <string name="install_block_modules_invalid">模块名仅允许字母、数字和下划线，每项 1–64 个字符，整个列表最多 255 个字符。</string>
 </resources>

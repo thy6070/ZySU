@@ -18,6 +18,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -149,6 +150,19 @@ fun InstallScreen(
     var allowShell by remember { mutableStateOf(false) }
     var enableAdb by remember { mutableStateOf(false) }
     var forceBackup by remember { mutableStateOf(false) }
+    var blockModulesEnabled by rememberSaveable { mutableStateOf(false) }
+    var blockModules by rememberSaveable { mutableStateOf("") }
+    var blockModulesPrefilled by rememberSaveable { mutableStateOf(false) }
+    var blockModulesEdited by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!blockModulesPrefilled) {
+            blockModulesPrefilled = true
+            val suggested = withContext(Dispatchers.IO) {
+                runCatching { getSuggestedBlockModules() }.getOrDefault("")
+            }
+            if (!blockModulesEdited) blockModules = suggested
+        }
+    }
     val embedLkmInBootByDefault = remember {
         runCatching { Natives.getLoadMode() == Natives.LOAD_MODE_IMAGE_PATCH }
             .getOrDefault(false)
@@ -171,6 +185,11 @@ fun InstallScreen(
                 Toast.makeText(context, R.string.superkey_invalid, Toast.LENGTH_LONG).show()
                 return@onInstall
             }
+            val effectiveBlockModules = effectiveBlockModules(blockModulesEnabled, blockModules)
+            if (effectiveBlockModules == null) {
+                Toast.makeText(context, R.string.install_block_modules_invalid, Toast.LENGTH_LONG).show()
+                return@onInstall
+            }
             val isOta = method is InstallMethod.DirectInstallToInactiveSlot
             if (embedLkmInBoot &&
                 (method is InstallMethod.SelectFile ||
@@ -191,6 +210,7 @@ fun InstallScreen(
                             partition = "boot",
                             allowShell = allowShell,
                             enableAdb = enableAdb,
+                            blockModules = effectiveBlockModules,
                             backup = false,
                             superKey = effectiveSuperKey.ifEmpty { null },
                             signatureBypass = signatureBypass,
@@ -211,6 +231,7 @@ fun InstallScreen(
                     lkm = selectedLkm,
                     allowShell = allowShell,
                     enableAdb = enableAdb,
+                    blockModules = effectiveBlockModules,
                     backup = forceBackup,
                     superKey = effectiveSuperKey.ifEmpty { null },
                     signatureBypass = signatureBypass,
@@ -227,6 +248,7 @@ fun InstallScreen(
                 partition = partitionSelection,
                 allowShell = allowShell,
                 enableAdb = enableAdb,
+                blockModules = effectiveBlockModules,
                 backup = method is InstallMethod.SelectFile && forceBackup,
                 superKey = effectiveSuperKey.ifEmpty { null },
                 signatureBypass = signatureBypass
@@ -830,6 +852,50 @@ fun InstallScreen(
                                 YukiSwitch(
                                     checked = enableAdb,
                                     onCheckedChange = { enableAdb = it }
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                                    value = blockModulesEnabled,
+                                    role = Role.Checkbox,
+                                    onValueChange = { blockModulesEnabled = it },
+                                ),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.install_block_modules),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.install_block_modules_warning),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    )
+                                }
+                                Checkbox(checked = blockModulesEnabled, onCheckedChange = null)
+                            }
+                            if (blockModulesEnabled) {
+                                val valid = normalizeBlockModules(blockModules) != null
+                                OutlinedTextField(
+                                    value = blockModules,
+                                    onValueChange = {
+                                        blockModulesEdited = true
+                                        blockModules = it
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = { Text(stringResource(R.string.install_block_modules_list)) },
+                                    supportingText = {
+                                        Text(stringResource(
+                                            if (valid) R.string.install_block_modules_summary
+                                            else R.string.install_block_modules_invalid
+                                        ))
+                                    },
+                                    isError = !valid,
+                                    singleLine = true,
                                 )
                             }
                         }

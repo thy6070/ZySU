@@ -541,6 +541,10 @@ NativeBridge(setHideBootloaderEnabled, jboolean, jboolean enabled) {
   return set_hide_bootloader_enabled(enabled);
 }
 
+NativeBridge(isFeatureForced, jboolean, jint id) {
+  return is_feature_forced((uint32_t)id);
+}
+
 NativeBridge(getFeature, jlong, jint id) {
   return (jlong)query_feature((uint32_t)id);
 }
@@ -575,7 +579,8 @@ NativeBridge(authenticateSuperKeyBytes, jboolean, jbyteArray superKey) {
     return false;
   }
   GetEnvironment()->GetByteArrayRegion(env, superKey, 0, length, (jbyte *)key);
-  if (GetEnvironment()->ExceptionCheck(env) || memchr(key, '\0', (size_t)length)) {
+  if (GetEnvironment()->ExceptionCheck(env) ||
+      memchr(key, '\0', (size_t)length)) {
     return false;
   }
   bool result = authenticate_superkey(key);

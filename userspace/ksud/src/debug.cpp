@@ -3,7 +3,9 @@
 #include "core/ksucalls.hpp"
 #include "kernelsu_loader.hpp"
 #include "log.hpp"
+#include "sulog.hpp"
 #include "terminal.hpp"
+#include "uapi/feature.h"
 #include "utils.hpp"
 
 #include <sys/stat.h>
@@ -105,6 +107,11 @@ int debug_insmod(const std::string& module, const std::vector<std::string>& para
         terminal::errorf("Failed to load kernel module: %s\n", resolved_path.c_str());
         return 1;
     }
+
+    // Late loading does not run post-fs-data. A forced logger still needs its
+    // userspace reader once the new kernel feature is available.
+    if (is_feature_forced(KSU_FEATURE_SULOG))
+        ensure_sulogd_running_if_enabled();
 
     printf("Loaded kernel module: %s\n", resolved_path.c_str());
     return 0;

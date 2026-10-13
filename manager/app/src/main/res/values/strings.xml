@@ -704,4 +704,12 @@
     <string name="unicode_path_guard_scope" tools:ignore="MissingTranslation">Blocks names containing ignorable Unicode characters that fold to Android, data or obb on FUSE and supported casefold filesystems. Deliberately named directories using these characters may also become inaccessible.</string>
     <string name="unicode_path_guard_notice" tools:ignore="MissingTranslation">Applies to new path lookups; restart to clear existing file handles and mount caches. This mitigation does not replace the MediaProvider system or Google Play security update.</string>
     <string name="unicode_path_guard_saved" tools:ignore="MissingTranslation">Saved and runtime status verified. Restart to clear existing file handles and mount caches.</string>
+    <string name="feature_status_forced_summary" tools:ignore="MissingTranslation">Forced by boot configuration; patch the image again to change this value.</string>
+    <string name="settings_shell_su_adb_only" tools:ignore="MissingTranslation">Restrict shell root to ADB</string>
+    <string name="settings_shell_su_adb_only_summary" tools:ignore="MissingTranslation">When Shell is granted root, also require an adbd or ZySU root ancestor. Detached sessions are denied. Local wireless debugging still counts as ADB.</string>
+    <string name="install_block_modules" tools:ignore="MissingTranslation">Block kernel modules (risky)</string>
+    <string name="install_block_modules_warning" tools:ignore="MissingTranslation">Blocking a module the system needs can cause a bootloop (for example, mkp on some MediaTek devices). Enable only after checking your device. To recover, restore the stock boot / init_boot image.</string>
+    <string name="install_block_modules_list" tools:ignore="MissingTranslation">Modules to block</string>
+    <string name="install_block_modules_summary" tools:ignore="MissingTranslation">Comma-separated module names. Empty means block nothing. Detected names are suggestions and only apply when this option is checked.</string>
+    <string name="install_block_modules_invalid" tools:ignore="MissingTranslation">Use letters, digits and underscores only: 1–64 characters per name, and at most 255 characters for the complete list.</string>
 </resources>

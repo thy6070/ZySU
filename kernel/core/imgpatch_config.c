@@ -11,11 +11,13 @@
 #include "klog.h" // IWYU pragma: keep
 #include "ksu.h"
 #include "policy/allowlist.h"
+#include "policy/feature.h"
+#include "feature/module_blacklist.h"
 #include "uapi/imgpatch_config.h"
 
 static_assert(sizeof(struct ksu_imgpatch_config) == 512,
 	      "ImgPatch config ABI drift");
-static_assert(offsetof(struct ksu_imgpatch_config, reserved) == 24,
+static_assert(offsetof(struct ksu_imgpatch_config, force_features) == 24,
 	      "ImgPatch reserved config ABI drift");
 
 static volatile struct ksu_imgpatch_config
@@ -138,7 +140,8 @@ int ksu_imgpatch_config_apply(void)
 
 	config = imgpatch_config_store;
 	if (config.magic != KSU_IMGPATCH_CONFIG_MAGIC ||
-	    config.version != KSU_IMGPATCH_CONFIG_VERSION ||
+	    (config.version != 2 &&
+	     config.version != KSU_IMGPATCH_CONFIG_VERSION) ||
 	    config.size != sizeof(config)) {
 		pr_err("imgpatch config header is invalid\n");
 		return -EINVAL;
@@ -149,6 +152,16 @@ int ksu_imgpatch_config_apply(void)
 		return -EINVAL;
 	}
 
+	if (config.version >= 3) {
+		if (!memchr(config.force_features, '\0',
+			    sizeof(config.force_features)) ||
+		    !memchr(config.block_modules, '\0',
+			    sizeof(config.block_modules)))
+			return -EINVAL;
+		ksu_feature_parse_forced(config.force_features);
+		ksu_module_blacklist_parse(config.block_modules);
+	}
+	ksu_no_custom_rc = !!(config.flags & KSU_IMGPATCH_CONFIG_NO_CUSTOM_RC);
 	ksu_bundled = !!(config.flags & KSU_IMGPATCH_CONFIG_BUNDLED);
 	allow_shell = !!(config.flags & KSU_IMGPATCH_CONFIG_ALLOW_SHELL);
 	ret = configure_adbd_from_imgpatch(

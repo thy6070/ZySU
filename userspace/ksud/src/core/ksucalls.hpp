@@ -73,6 +73,7 @@ int set_sepolicy(const void* payload, uint64_t payload_len);
 // Feature management
 // Returns: pair<value, supported>
 std::pair<uint64_t, bool> get_feature(uint32_t feature_id);
+bool is_feature_forced(uint32_t feature_id);
 int set_feature(uint32_t feature_id, uint64_t value);
 int get_su_path_config(ksu_su_path_config* config);
 int set_su_path_config(const ksu_su_path_config& config);

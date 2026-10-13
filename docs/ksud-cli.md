@@ -81,6 +81,8 @@ Other queries are `boot-info is-ab-device`, `boot-info slot-suffix [--ota]` and 
 | `--signature-bypass` | With SuperKey, skip the configured Manager's certificate check; its package restriction still applies |
 | `--allow-shell` | Allow Android shell UID to request root with the default profile |
 | `--no-custom-rc` | Skip custom init.rc injection |
+| `--force-feature <FEATURE=VALUE>` | Force a configurable feature at boot; repeatable |
+| `--block-module <NAME[,NAME...]>` | Block kernel modules at boot; repeatable; default none |
 | `--enable-adbd` | Enable the adbd root setup |
 | `--adb-debug-prop <FILE>` | Embed adb debug properties |
 | `--magiskboot <PATH>` | Compatibility argument; embedded tool is used |
@@ -91,6 +93,32 @@ pass `--kmi` with the matching firmware's KMI. Also pass `--kmi` if a replacemen
 kernel's version cannot be detected (for example, a compressed kernel).
 `--kernel` requires a boot image that contains a kernel; it cannot add one to
 `init_boot`. `--adb-debug-prop` reads the contents of the specified file.
+
+Both patchers accept `--force-feature`, `--block-module` and `--no-custom-rc`.
+Ramdisk patching writes `/ksu_config`; direct LKM patching uses ZySU's embedded
+512-byte ImgPatch block (version 3). A version 2 LKM remains usable with its
+original options, but new options require an updated LKM and are rejected before
+writing if unsupported. Omitting these options clears previous overrides.
+
+Forced features report `forced` from `feature check`, appear as `[FORCED]` in
+`feature list`, and reject runtime writes. `feature load` and boot initialization
+skip them; `feature save` preserves their previous saved values. Forced sulog
+still starts its userspace logger. Fixed SUMH/security features and read-only
+status IDs cannot be forced. See the [boot configuration guide](zh/guide/boot-config.md)
+for available IDs and validation commands.
+
+`shell_su_adb_only` (ID 6, off by default) adds an ancestry check when an already
+authorized shell UID requests root. An ancestor must be in the adbd or ZySU root
+domain. Detached sessions are denied; local wireless debugging through adbd is
+still allowed. It does not grant Shell root. Local ID 5 remains
+`webview_zygote_umount`.
+
+Module names use letters, digits or underscores, up to 64 characters each and
+255 characters for the complete list. Manager only applies its suggested list
+after explicitly checking **Block kernel modules (risky)**. Blocking required
+vendor modules (including `mkp` on some devices) can prevent boot; restore the
+matching stock boot / init_boot image to recover. The native blacklist only
+affects future loads and stays installed if ZySU is unloaded during that boot.
 
 ```sh
 # Replace android15-6.6 with the KMI of the matching firmware's boot.img.
@@ -110,7 +138,7 @@ ksud boot-patch-v2 --flash --ota
 
 File mode requires `--boot` (`-b`) and `--output` (`-o`, or `--out`); here the output is a **file**. Device mode uses `--flash`, optionally `--ota`, and rejects explicit input/output paths. `--ota` requires `--flash`. This path needs a supported AOSP **boot image containing a kernel** and rejects `init_boot` and `vendor_boot` as patch targets.
 
-Additional options are `--module` / `-m`, `--superkey`, `--signature-bypass`, `--allow-shell`, `--enable-adbd`, `--magiskboot`, `--force` and `--no-reuse`. `--force` permits replacing an existing output, never an input. `--no-reuse` forces full kernel analysis instead of reusing compatible injection metadata. In both patch paths, `--signature-bypass` selects SuperKey-only authentication for the configured Manager package, normally `com.zying.zysu`; without `--superkey`, it emits a warning and is ignored. It does not bypass the package restriction or Linux module-signature verification.
+Additional options are `--module` / `-m`, `--superkey`, `--signature-bypass`, `--allow-shell`, `--enable-adbd`, `--no-custom-rc`, `--force-feature`, `--block-module`, `--magiskboot`, `--force` and `--no-reuse`. `--force` permits replacing an existing output, never an input. `--no-reuse` forces full kernel analysis instead of reusing compatible injection metadata. In both patch paths, `--signature-bypass` selects SuperKey-only authentication for the configured Manager package, normally `com.zying.zysu`; without `--superkey`, it emits a warning and is ignored. It does not bypass the package restriction or Linux module-signature verification.
 
 When a nonempty SuperKey is requested, a module without a complete SuperKey configuration block causes patching to fail before output or flashing. Keys use 1–64 UTF-8 bytes without NUL characters; whitespace is preserved. Omitting the key writes signature-only configuration and overrides any compile-time key in a module that supports SuperKey.
 

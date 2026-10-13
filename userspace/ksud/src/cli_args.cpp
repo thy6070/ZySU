@@ -180,6 +180,9 @@ const std::vector<Command>& commands() {
           {"--signature-bypass", "", "", "", "Relax LKM signature checking"},
           {"--allow-shell", "", "", "", "Keep a root shell available"},
           {"--no-custom-rc", "", "", "", "Skip custom init.rc injection"},
+          {"--force-feature", "", "FEATURE=VALUE", "", "Force a configurable feature (repeatable)"},
+          {"--block-module", "", "NAME[,NAME...]", "",
+           "Block kernel modules (repeatable; default none)"},
           {"--enable-adbd", "", "", "", "Run adbd as root"},
           {"--adb-debug-prop", "", "FILE", "", "Embed adb debug properties from this file"},
           kMagiskboot},
@@ -209,6 +212,9 @@ const std::vector<Command>& commands() {
           {"--flash", "", "", ""},
           {"--ota", "", "", ""},
           {"--allow-shell", "", "", ""},
+          {"--no-custom-rc", "", "", ""},
+          {"--force-feature", "", "FEATURE=VALUE", ""},
+          {"--block-module", "", "NAME[,NAME...]", ""},
           {"--enable-adbd", "", "", ""},
           {"--signature-bypass", "", "", ""},
           {"--no-reuse", "", "", ""}}},
@@ -578,7 +584,9 @@ int read_option(const Command& command, const std::vector<std::string>& input, s
         return fail(command, "unknown option '" + name + "'" + suggestion(name, names));
     }
     const bool global = option->name == "--color" || option->name == "--verbose";
-    if (!global && parsed.has(std::string(option->name)))
+    const bool repeatable = (command.path == "boot-patch" || command.path == "boot-patch-v2") &&
+                            (option->name == "--force-feature" || option->name == "--block-module");
+    if (!global && !repeatable && parsed.has(std::string(option->name)))
         return fail(command, "option '" + name + "' was specified more than once");
     std::string value;
     if (option->value.empty()) {

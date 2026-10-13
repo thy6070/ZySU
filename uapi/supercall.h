@@ -154,10 +154,13 @@ struct ksu_set_app_profile_cmd {
   struct app_profile profile;
 };
 
+#define KSU_FEATURE_FLAG_SUPPORTED (1U << 0)
+#define KSU_FEATURE_FLAG_FORCED (1U << 1)
+
 struct ksu_get_feature_cmd {
   __u32 feature_id;
   __u64 value;
-  __u8 supported;
+  __u8 supported; /* KSU_FEATURE_FLAG_* bits; zero means unsupported. */
 };
 
 struct ksu_set_feature_cmd {

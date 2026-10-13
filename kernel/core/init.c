@@ -15,6 +15,8 @@
 
 #include "policy/allowlist.h"
 #include "policy/feature.h"
+#include "feature/module_blacklist.h"
+#include "feature/shell_su_adb_only.h"
 #include "core/imgpatch_config.h"
 #include "feature/adb_root.h"
 #include "feature/hide_bootloader.h"
@@ -138,11 +140,13 @@ static int __init kernelsu_init(void)
 		return -ENOMEM;
 	}
 
+	ksu_module_blacklist_init();
 	ksu_feature_init();
 	ksu_hide_bootloader_init();
 	ksu_lsm_hook_init();
 	ksu_adb_root_init();
 	ksu_selinux_hide_init();
+	ksu_shell_su_adb_only_init();
 
 #ifdef CONFIG_KSU_SUPERKEY
 	superkey_init();
@@ -181,6 +185,8 @@ static int __init kernelsu_init(void)
 	}
 
 	ksu_sumh_init();
+	if (ksu_late_loaded)
+		ksu_feature_apply_forced();
 	ksu_hook_init();
 	/* The dispatcher initializes its route table before SuperKey adds
 	 * prctl. */
@@ -225,11 +231,13 @@ static void kernelsu_exit(void)
 	ksu_allowlist_exit();
 
 	zysu_custom_config_exit();
+	ksu_shell_su_adb_only_exit();
 	ksu_selinux_hide_exit();
 	ksu_hide_bootloader_exit();
 	ksu_adb_root_exit();
 	ksu_lsm_hook_exit();
 	ksu_feature_exit();
+	ksu_module_blacklist_exit();
 
 	if (ksu_cred) {
 		put_cred(ksu_cred);

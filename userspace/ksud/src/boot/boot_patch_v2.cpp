@@ -29,7 +29,7 @@ namespace fs = std::filesystem;
 namespace ksud {
 namespace {
 
-struct BootPatchV2Args {
+struct BootPatchV2Args : KsuConfigArgs {
     std::string boot;
     std::string module;
     std::string output;
@@ -38,7 +38,6 @@ struct BootPatchV2Args {
     bool force = false;
     bool flash = false;
     bool ota = false;
-    bool allow_shell = false;
     bool enable_adbd = false;
     bool signature_bypass = false;
     bool no_reuse = false;
@@ -78,6 +77,14 @@ BootPatchV2Args parse_args(const std::vector<std::string>& args) {
             result.signature_bypass = true;
         } else if (argument == "--allow-shell") {
             result.allow_shell = true;
+        } else if (argument == "--no-custom-rc") {
+            result.no_custom_rc = true;
+        } else if (argument == "--force-feature" || argument == "--block-module") {
+            std::string value;
+            take_value(value);
+            if (result.valid && !(argument == "--force-feature" ? result.add_force_feature(value)
+                                                                : result.add_block_modules(value)))
+                result.valid = false;
         } else if (argument == "--enable-adbd") {
             result.enable_adbd = true;
         } else if (argument == "--no-reuse") {
@@ -485,10 +492,12 @@ int boot_patch_v2(const std::vector<std::string>& args) {
         (device_mode && (!parsed.boot.empty() || !parsed.output.empty()))) {
         LOGE("Usage: ksud boot-patch-v2 --boot <boot.img> [--module <kernelsu.ko>] "
              "--output <patched.img> [--superkey <key>] [--signature-bypass] "
-             "[--allow-shell] [--enable-adbd] [--force]\n"
+             "[--allow-shell] [--enable-adbd] [--force] [--no-custom-rc] "
+             "[--force-feature FEATURE=VALUE] [--block-module NAME[,NAME...]]\n"
              "       ksud boot-patch-v2 --flash [--ota] [--module <kernelsu.ko>] "
              "[--superkey <key>] [--signature-bypass] [--allow-shell] "
-             "[--enable-adbd]");
+             "[--enable-adbd] [--no-custom-rc] [--force-feature FEATURE=VALUE] "
+             "[--block-module NAME[,NAME...]]");
         return 1;
     }
     const fs::path module_path(parsed.module);
@@ -748,7 +757,7 @@ int boot_patch_v2(const std::vector<std::string>& args) {
         return 1;
     }
     if (!inject_imgpatch_config_into_lkm(module_for_injection.string(), parsed.allow_shell,
-                                         parsed.enable_adbd, bundled_lkm)) {
+                                         parsed.enable_adbd, bundled_lkm, parsed)) {
         LOGE("boot-patch-v2: failed to inject ImgPatch configuration into LKM");
         cleanup();
         return 1;

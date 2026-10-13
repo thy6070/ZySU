@@ -10,6 +10,13 @@ on:
       - 'userspace/ksud/third_party/MagiskbootAlone'
       - 'userspace/ksuinit/**'
       - 'userspace/common/**'
+      - 'uapi/**'
+      - 'kernel/policy/feature.*'
+      - 'kernel/policy/allowlist.*'
+      - 'kernel/feature/shell_su_adb_only.*'
+      - 'kernel/feature/module_blacklist.*'
+      - 'kernel/supercall/dispatch.c'
+      - 'scripts/ci/test_boot_config.py'
       - '.github/workflows/userspace-tests.yml'
   pull_request:
     paths:
@@ -19,6 +26,13 @@ on:
       - 'userspace/ksud/third_party/MagiskbootAlone'
       - 'userspace/ksuinit/**'
       - 'userspace/common/**'
+      - 'uapi/**'
+      - 'kernel/policy/feature.*'
+      - 'kernel/policy/allowlist.*'
+      - 'kernel/feature/shell_su_adb_only.*'
+      - 'kernel/feature/module_blacklist.*'
+      - 'kernel/supercall/dispatch.c'
+      - 'scripts/ci/test_boot_config.py'
       - '.github/workflows/userspace-tests.yml'
   workflow_dispatch:
 
@@ -40,6 +54,10 @@ jobs:
         run: python3 userspace/ksud/tests/run_host_tests.py --cxx clang++ --sanitize
       - name: Selected boot image patching and target KMI
         run: python3 userspace/ksud/tests/run_boot_patch_host_tests.py --cxx clang++ --sanitize
+      - name: Boot config, forced features and shell ancestry
+        run: |
+          python3 userspace/ksud/tests/run_boot_config_host_tests.py --cxx clang++ --sanitize
+          python3 scripts/ci/test_boot_config.py --cc clang
       - name: Boot and init_boot partial-write recovery
         run: python3 userspace/ksud/tests/run_boot_patch_v2_flash_host_tests.py --cxx clang++ --sanitize
       - name: Repack output integrity and I/O failures

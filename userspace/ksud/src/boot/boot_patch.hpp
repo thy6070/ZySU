@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ksu_config.hpp"
+
 #include <string>
 #include <vector>
 
@@ -30,6 +32,7 @@ bool inject_superkey_into_lkm(const std::string& lkm_path, const std::string& su
 
 // Patch early-boot ImgPatch options into the LKM's fixed configuration block.
 bool inject_imgpatch_config_into_lkm(const std::string& lkm_path, bool allow_shell,
-                                     bool enable_adbd, bool bundled_lkm);
+                                     bool enable_adbd, bool bundled_lkm,
+                                     const KsuConfigArgs& config = {});
 
 }  // namespace ksud

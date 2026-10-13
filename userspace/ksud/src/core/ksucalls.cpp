@@ -381,10 +381,17 @@ std::pair<uint64_t, bool> get_feature(uint32_t feature_id) {
     if (ret < 0) {
         return {0, false};
     }
-    return {cmd.value, cmd.supported != 0};
+    return {cmd.value, (cmd.supported & KSU_FEATURE_FLAG_SUPPORTED) != 0};
 }
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+bool is_feature_forced(uint32_t feature_id) {
+    GetFeatureCmd cmd = {feature_id, 0, 0};
+    return ksuctl(KSU_IOCTL_GET_FEATURE, &cmd) >= 0 &&
+           (cmd.supported & (KSU_FEATURE_FLAG_SUPPORTED | KSU_FEATURE_FLAG_FORCED)) ==
+               (KSU_FEATURE_FLAG_SUPPORTED | KSU_FEATURE_FLAG_FORCED);
+}
+
 int set_feature(uint32_t feature_id, uint64_t value) {
     SetFeatureCmd cmd = {feature_id, value};
     return ksuctl(KSU_IOCTL_SET_FEATURE, &cmd);

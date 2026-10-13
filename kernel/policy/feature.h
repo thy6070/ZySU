@@ -22,6 +22,10 @@ int ksu_get_feature(u32 feature_id, u64 *value, bool *supported);
 
 int ksu_set_feature(u32 feature_id, u64 value);
 
+void ksu_feature_parse_forced(const char *val);
+bool ksu_feature_is_forced(u32 feature_id);
+void ksu_feature_apply_forced(void);
+
 void ksu_feature_init(void);
 
 void ksu_feature_exit(void);

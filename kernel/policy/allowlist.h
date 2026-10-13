@@ -25,6 +25,8 @@ bool __ksu_is_allow_uid(uid_t uid);
 #define ksu_is_allow_uid(uid) unlikely(__ksu_is_allow_uid(uid))
 
 // Check if the uid is in allow list, or current is ksu domain root
+// Grant query only; actual authorization must also check current ancestry.
+bool ksu_is_uid_granted_root(uid_t uid);
 bool __ksu_is_allow_uid_for_current(uid_t uid);
 #define ksu_is_allow_uid_for_current(uid)                                      \
 	unlikely(__ksu_is_allow_uid_for_current(uid))

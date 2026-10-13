@@ -332,11 +332,16 @@ internal fun ksudReadLines(args: String, shell: Shell = getRootShell()): List<St
     shell.newJob().add(ksudCmd(args)).to(ArrayList(), null).exec().out
         .filter { it.isNotBlank() }.map { it.trim() }
 
-/** Feature state as the settings screens want to render it. The kernel only
- *  reports supported/unsupported; "managed" is reserved for the day ksud can
- *  tell us a module owns the feature. */
-fun getFeatureStatus(feature: Int): String =
-    if (Natives.isFeatureSupported(feature)) "supported" else "unsupported"
+/** Boot overrides are immutable until the image is patched again. */
+fun getFeatureStatus(feature: Int): String = when {
+    !Natives.isFeatureSupported(feature) -> "unsupported"
+    Natives.isFeatureForced(feature) -> "forced"
+    else -> "supported"
+}
+
+internal fun getSuggestedBlockModules(): String = suggestedBlockModules(
+    ShellUtils.fastCmd(getRootShell(), "cat /proc/modules")
+)
 
 /** A feature's on/off state. Unsupported reads as off. */
 fun getFeatureValue(feature: Int): Boolean = Natives.isFeatureEnabled(feature)
@@ -574,6 +579,7 @@ private fun patchBootImage(
     onFinish: (Boolean, Int) -> Unit,
     onStdout: (String) -> Unit,
     onStderr: (String) -> Unit,
+    blockModules: String = "",
 ): Boolean {
     var lkmFile: File? = null
     val result = try {
@@ -582,6 +588,7 @@ private fun patchBootImage(
             onFinish(false, 1)
             return false
         }
+        val blocked = requireNotNull(normalizeBlockModules(blockModules)) { "Invalid kernel module block list" }
         var cmd = "boot-patch"
 
         cmd += if (bootFile == null) {
@@ -635,6 +642,7 @@ private fun patchBootImage(
             cmd += " --enable-adbd"
         }
 
+        if (blocked.isNotEmpty()) cmd += " --block-module ${shellArg(blocked)}"
         flashWithIO(ksudCmd(cmd), onStdout, onStderr)
     } catch (error: Exception) {
         onStderr(error.message ?: "Failed to patch boot image")
@@ -672,6 +680,7 @@ fun patchBootImageV2(
     onFinish: (Boolean, Int) -> Unit,
     onStdout: (String) -> Unit,
     onStderr: (String) -> Unit,
+    blockModules: String = "",
 ): Boolean {
     var bootFile: File? = null
     var lkmFile: File? = null
@@ -691,8 +700,10 @@ fun patchBootImageV2(
                     "${UUID.randomUUID().toString().take(8)}.img",
             )
         }
+        val blocked = requireNotNull(normalizeBlockModules(blockModules)) { "Invalid kernel module block list" }
         val command = buildString {
             append("boot-patch-v2")
+            if (blocked.isNotEmpty()) append(" --block-module ${shellArg(blocked)}")
             if (inputFile != null && outputFile != null) {
                 append(" --boot ")
                 append(shellArg(inputFile.absolutePath))
@@ -759,6 +770,7 @@ fun installBoot(
     onFinish: (Boolean, Int) -> Unit,
     onStdout: (String) -> Unit,
     onStderr: (String) -> Unit,
+    blockModules: String = "",
 ): Boolean {
     if (embedLkmInBoot) {
         return patchBootImageV2(
@@ -767,6 +779,7 @@ fun installBoot(
             ota = ota,
             allowShell = allowShell,
             enableAdb = enableAdb,
+            blockModules = blockModules,
             superKey = superKey,
             signatureBypass = signatureBypass,
             onFinish = onFinish,
@@ -789,6 +802,7 @@ fun installBoot(
         partition = partition,
         allowShell = allowShell,
         enableAdb = enableAdb,
+        blockModules = blockModules,
         forceBackup = forceBackup,
         superKey = superKey,
         signatureBypass = signatureBypass,
@@ -844,6 +858,7 @@ fun downloadBoot(
     onFinish: (Boolean, Int) -> Unit,
     onStdout: (String) -> Unit,
     onStderr: (String) -> Unit,
+    blockModules: String = "",
 ): Boolean {
     val bootFile = File(ksuApp.cacheDir, "download-boot.img")
     try {
@@ -870,6 +885,7 @@ fun downloadBoot(
         partition = partition,
         allowShell = allowShell,
         enableAdb = enableAdb,
+        blockModules = blockModules,
         forceBackup = forceBackup,
         superKey = superKey,
         signatureBypass = signatureBypass,

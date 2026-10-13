@@ -47,6 +47,7 @@ const std::map<std::string, uint32_t>& get_feature_map() {
         {"kernel_umount", KSU_FEATURE_KERNEL_UMOUNT},
         {"enhanced_security", KSU_FEATURE_ENHANCED_SECURITY},
         {"adb_root", KSU_FEATURE_ADB_ROOT},
+        {"shell_su_adb_only", KSU_FEATURE_SHELL_SU_ADB_ONLY},
         {"selinux_hide", KSU_FEATURE_SELINUX_HIDE},
         {"selinux_hide_status", KSU_FEATURE_SELINUX_HIDE_STATUS},
         {"webview_zygote_umount", KSU_FEATURE_WEBVIEW_ZYGOTE_UMOUNT},
@@ -71,6 +72,8 @@ const std::map<uint32_t, const char*>& get_feature_descriptions() {
         {KSU_FEATURE_ENHANCED_SECURITY,
          "Enhanced Security - always enabled; blocks non-KSU root elevation and unauthorized "
          "UID downgrades"},
+        {KSU_FEATURE_SHELL_SU_ADB_ONLY,
+         "Shell SU ADB Only - a granted shell must descend from adbd or a ZySU root process"},
         {KSU_FEATURE_ADB_ROOT,
          "ADB Root - run adbd with root privileges via kernel feature injection"},
         {KSU_FEATURE_SELINUX_HIDE,
@@ -228,10 +231,27 @@ const char* feature_id_to_description(uint32_t id) {
     return "Unknown feature";
 }
 
+std::map<uint32_t, uint64_t> parse_text_feature_config(const std::string& content);
+
+void ensure_forced_sulog_running() {
+    if (!is_feature_forced(KSU_FEATURE_SULOG))
+        return;
+    const auto [value, supported] = get_feature(KSU_FEATURE_SULOG);
+    if (supported && value && ensure_sulogd_running() != 0)
+        LOGW("Failed to start sulogd for boot-forced sulog");
+}
+
 std::map<uint32_t, uint64_t> get_current_feature_values() {
-    std::map<uint32_t, uint64_t> features;
+    // Keep the user's saved value of forced features so removing the boot
+    // override restores their preference. Never persist the forced runtime value.
+    auto saved = load_binary_config();
+    std::map<uint32_t, uint64_t> features =
+        saved ? *saved : parse_text_feature_config(read_file(FEATURE_CONFIG_PATH).value_or(""));
+    discard_non_configurable_features(features);
     for (const auto& [_, id] : get_feature_map()) {
         if (!is_configurable_feature_id(id))
+            continue;
+        if (is_feature_forced(id))
             continue;
         auto [value, supported] = get_feature(id);
         if (supported) {
@@ -278,6 +298,10 @@ int feature_save_config_locked() {
 }
 
 int feature_set_impl(const std::string& id, uint32_t feature_id, uint64_t value) {
+    if (is_feature_forced(feature_id)) {
+        LOGE("Feature %s is forced by boot config", id.c_str());
+        return 1;
+    }
     if (feature_id == KSU_FEATURE_SELINUX_HIDE_STATUS ||
         feature_id == KSU_FEATURE_UNICODE_PATH_GUARD_STATUS) {
         LOGE("Feature %s reports runtime status and is read-only", id.c_str());
@@ -343,6 +367,8 @@ int feature_get(const std::string& id) {
     printf("Feature: %s (%u)\n", feature_id_to_name(feature_id), feature_id);
     printf("Description: %s\n", feature_id_to_description(feature_id));
     printf("Value: %" PRIu64 "\n", value);
+    if (is_feature_forced(feature_id))
+        printf("[FORCED by boot config]\n");
     printf("Status: ");
     if (feature_id == KSU_FEATURE_SELINUX_HIDE_STATUS) {
         terminal::status(stdout, selinux_hide_status_name(value), value == KSU_SELINUX_HIDE_ACTIVE);
@@ -445,7 +471,7 @@ void feature_list() {
                                 ? value == KSU_UNICODE_PATH_GUARD_ACTIVE
                                 : value != 0;
         terminal::status(stdout, status, supported && active);
-        printf("] %s (ID=%u)\n", name.c_str(), id);
+        printf("] %s (ID=%u)%s\n", name.c_str(), id, is_feature_forced(id) ? " [FORCED]" : "");
         printf("    %s\n", feature_id_to_description(id));
     }
 }
@@ -457,11 +483,23 @@ int feature_check(const std::string& id) {
         return 1;
     }
 
-    // TODO: Check if this feature is managed by any module
-    // For now, just check kernel support
-
     auto [value, supported] = get_feature(feature_id);
     if (supported) {
+        if (is_feature_forced(feature_id)) {
+            printf("forced\n");
+            return 0;
+        }
+        if (is_configurable_feature_id(feature_id)) {
+            for (const auto& [module, names] : get_managed_features()) {
+                for (const auto& name : names) {
+                    const auto [managed_id, known] = parse_feature_id(name);
+                    if (known && managed_id == feature_id) {
+                        printf("managed\n");
+                        return 0;
+                    }
+                }
+            }
+        }
         printf("supported\n");
         return 0;
     } else {
@@ -504,6 +542,7 @@ int feature_load_config() {
         return 1;
     }
 
+    ensure_forced_sulog_running();
     const std::string config_path = std::string(FEATURE_CONFIG_PATH);
     auto content = read_file(config_path);
     if (!content) {
@@ -514,9 +553,15 @@ int feature_load_config() {
     auto loaded_features = parse_text_feature_config(*content);
     discard_non_configurable_features(loaded_features);
     for (const auto& [id, value] : loaded_features) {
+        if (is_feature_forced(id)) {
+            LOGI("Skip feature %u: forced by boot config", id);
+            continue;
+        }
         if (set_feature(id, value) < 0) {
             LOGW("Failed to load feature %s", feature_id_to_name(id));
         } else {
+            if (id == KSU_FEATURE_SULOG && value && ensure_sulogd_running() != 0)
+                LOGW("Failed to start sulogd while loading config");
             LOGI("Loaded feature %s = %" PRIu64, feature_id_to_name(id), value);
         }
     }
@@ -651,10 +696,15 @@ namespace {
 
 int apply_config_locked(std::map<uint32_t, uint64_t>& features) {
     LOGI("Applying feature configuration to kernel...");
+    ensure_forced_sulog_running();
 
     discard_non_configurable_features(features);
     int applied = 0;
     for (const auto& [id, value] : features) {
+        if (is_feature_forced(id)) {
+            LOGI("Skip feature %u: forced by boot config", id);
+            continue;
+        }
         const int ret = set_feature(id, value);
         if (ret >= 0) {
             if (id == KSU_FEATURE_SULOG && value != 0 && ensure_sulogd_running() != 0) {
@@ -752,6 +802,8 @@ int init_features() {
                              feature_name.c_str());
                         continue;
                     }
+                    if (is_feature_forced(feature_id))
+                        continue;  // Keep the user's saved preference under a boot override.
                     // Remove managed features from config, let modules control them
                     auto it = features.find(feature_id);
                     if (it != features.end()) {

@@ -160,6 +160,7 @@ object Natives {
     const val FEATURE_ADB_ROOT = 3
     const val FEATURE_SELINUX_HIDE = 4
     const val FEATURE_WEBVIEW_ZYGOTE_UMOUNT = 5
+    const val FEATURE_SHELL_SU_ADB_ONLY = 6
     const val FEATURE_ENHANCED_SECURITY = 100
     const val FEATURE_DEFAULT_NO_NEW_PRIVS = 102
     const val FEATURE_HIDE_BOOTLOADER = 104
@@ -176,6 +177,8 @@ object Natives {
      * this is the raw form for features whose value is not just a flag.
      */
     external fun getFeature(id: Int): Long
+
+    external fun isFeatureForced(id: Int): Boolean
 
     /** Whether the running kernel knows about this feature at all. */
     fun isFeatureSupported(id: Int): Boolean = getFeature(id) >= 0

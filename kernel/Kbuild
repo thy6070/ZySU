@@ -15,6 +15,7 @@ endif
 endif
 
 kernelsu-objs := core/init.o
+kernelsu-objs += feature/module_blacklist.o feature/shell_su_adb_only.o
 kernelsu-objs += core/imgpatch_config.o
 kernelsu-objs += policy/allowlist.o
 kernelsu-objs += policy/app_profile.o

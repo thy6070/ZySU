@@ -218,9 +218,9 @@ bool inject_superkey_to_lkm(const std::string& lkm_path, const std::string& supe
 }
 
 bool inject_imgpatch_config_to_lkm(const std::string& lkm_path, bool allow_shell, bool enable_adbd,
-                                   bool bundled_lkm) {
+                                   bool bundled_lkm, const KsuConfigArgs& args) {
     static_assert(sizeof(ksu_imgpatch_config) == 512, "ImgPatch config ABI drift");
-    static_assert(offsetof(ksu_imgpatch_config, reserved) == 24, "ImgPatch config ABI drift");
+    static_assert(offsetof(ksu_imgpatch_config, force_features) == 24, "ImgPatch config ABI drift");
 
     ksu_imgpatch_config config{};
     config.magic = KSU_IMGPATCH_CONFIG_MAGIC;
@@ -232,6 +232,17 @@ bool inject_imgpatch_config_to_lkm(const std::string& lkm_path, bool allow_shell
         config.flags |= KSU_IMGPATCH_CONFIG_ALLOW_SHELL;
     if (enable_adbd)
         config.flags |= KSU_IMGPATCH_CONFIG_ENABLE_ADBD;
+
+    if (args.no_custom_rc)
+        config.flags |= KSU_IMGPATCH_CONFIG_NO_CUSTOM_RC;
+    const auto forced = args.force_features();
+    const auto blocked = args.block_modules();
+    if (forced.size() >= sizeof(config.force_features) ||
+        blocked.size() >= sizeof(config.block_modules))
+        return false;
+    memcpy(config.force_features, forced.c_str(), forced.size() + 1);
+    memcpy(config.block_modules, blocked.c_str(), blocked.size() + 1);
+    const bool extended_config = args.no_custom_rc || !forced.empty() || !blocked.empty();
 
     std::vector<uint8_t> content;
     if (!read_file_bytes(lkm_path, &content)) {
@@ -249,8 +260,8 @@ bool inject_imgpatch_config_to_lkm(const std::string& lkm_path, bool allow_shell
 
         ksu_imgpatch_config candidate{};
         memcpy(&candidate, content.data() + offset, sizeof(candidate));
-        if (candidate.version != KSU_IMGPATCH_CONFIG_VERSION ||
-            candidate.size != sizeof(candidate)) {
+        if ((candidate.version != KSU_IMGPATCH_CONFIG_VERSION && candidate.version != 2) ||
+            (candidate.version == 2 && extended_config) || candidate.size != sizeof(candidate)) {
             incompatible_marker = true;
             continue;
         }
@@ -258,11 +269,12 @@ bool inject_imgpatch_config_to_lkm(const std::string& lkm_path, bool allow_shell
             LOGE("LKM contains duplicate ImgPatch config markers");
             return false;
         }
+        config.version = candidate.version;
         config_offset = offset;
     }
 
     if (!config_offset.has_value()) {
-        if (incompatible_marker || config.flags != 0) {
+        if (incompatible_marker || config.flags != 0 || extended_config) {
             LOGE("Selected LKM does not support embedded ImgPatch configuration%s",
                  incompatible_marker ? " (incompatible marker version)" : "");
             return false;
@@ -441,8 +453,8 @@ bool restore_legacy_ramdisk(const std::string& magiskboot, const std::string& wo
         return magiskboot_query({"cpio", ramdisk, "exists " + std::string(entry)}) == 0;
     };
     constexpr std::array<const char*, 8> payload = {
-        "kernelsu.ko", "sumh.ko", "ksuinit", "ksu_config", "ksu_allow_shell",
-        "force_debuggable", "adb_debug.prop", "stock_image.sha1",
+        "kernelsu.ko",     "sumh.ko",          "ksuinit",        "ksu_config",
+        "ksu_allow_shell", "force_debuggable", "adb_debug.prop", "stock_image.sha1",
     };
     if (exists("init.real")) {
         // cpio mv refuses to overwrite an existing destination.
@@ -480,11 +492,11 @@ bool restore_legacy_ramdisk(const std::string& magiskboot, const std::string& wo
         if (path.empty())
             return false;
         saw_entry = true;
-        if (path == "." || path == "init" || path == ".backup" ||
-            path.rfind(".backup/", 0) == 0)
+        if (path == "." || path == "init" || path == ".backup" || path.rfind(".backup/", 0) == 0)
             continue;
         if (std::find(payload.begin(), payload.end(), path) == payload.end()) {
-            LOGE("Cannot restore init without init.real or a stock backup (entry: %s)", path.c_str());
+            LOGE("Cannot restore init without init.real or a stock backup (entry: %s)",
+                 path.c_str());
             return false;
         }
     }
@@ -500,12 +512,13 @@ bool inject_superkey_into_lkm(const std::string& lkm_path, const std::string& su
 }
 
 bool inject_imgpatch_config_into_lkm(const std::string& lkm_path, bool allow_shell,
-                                     bool enable_adbd, bool bundled_lkm) {
-    return inject_imgpatch_config_to_lkm(lkm_path, allow_shell, enable_adbd, bundled_lkm);
+                                     bool enable_adbd, bool bundled_lkm,
+                                     const KsuConfigArgs& config) {
+    return inject_imgpatch_config_to_lkm(lkm_path, allow_shell, enable_adbd, bundled_lkm, config);
 }
 
 // Parse boot patch arguments
-struct BootPatchArgs {
+struct BootPatchArgs : KsuConfigArgs {
     std::string boot_image;         // -b, --boot
     std::string kernel;             // -k, --kernel
     std::string module;             // -m, --module (LKM path)
@@ -520,8 +533,6 @@ struct BootPatchArgs {
     std::string kmi;                // --kmi
     std::string partition;          // --partition
     std::string out_name;           // --out-name
-    bool allow_shell = false;       // --allow-shell
-    bool no_custom_rc = false;      // --no-custom-rc
     bool enable_adbd = false;       // --enable-adbd
     std::string adb_debug_prop;     // --adb-debug-prop
     bool help = false;              // -h, --help
@@ -557,6 +568,8 @@ void print_boot_patch_usage() {
            "      --signature-bypass relax LKM signature checking\n"
            "      --allow-shell      keep a root shell available\n"
            "      --no-custom-rc     skip the custom init.rc injection\n"
+           "      --force-feature FEATURE=VALUE  force a configurable feature (repeatable)\n"
+           "      --block-module NAME[,NAME...]  block kernel modules (repeatable; default none)\n"
            "      --enable-adbd      run adbd as root\n"
            "      --adb-debug-prop <file>  adb debug properties to embed\n"
            "      --magiskboot <path>      accepted for compatibility; ignored\n"
@@ -626,6 +639,12 @@ BootPatchArgs parse_boot_patch_args(const std::vector<std::string>& args) {
             result.no_custom_rc = true;
         } else if (arg == "--enable-adbd") {
             result.enable_adbd = true;
+        } else if (arg == "--force-feature" || arg == "--block-module") {
+            std::string value;
+            take_value(value);
+            if (result.valid && !(arg == "--force-feature" ? result.add_force_feature(value)
+                                                           : result.add_block_modules(value)))
+                reject("invalid or oversized " + arg + " value: " + value);
         } else if (arg == "--adb-debug-prop") {
             take_value(result.adb_debug_prop);
         } else {
@@ -891,9 +910,8 @@ int boot_patch_impl(const std::vector<std::string>& args) {
     std::string kmi = parsed.kmi;
     if (kmi.empty() && (!parsed.kernel.empty() || !parsed.boot_image.empty())) {
         // Asset selection must follow the kernel that will actually boot.
-        kmi = !parsed.kernel.empty()
-                  ? parse_kmi_from_kernel_file(parsed.kernel)
-                  : parse_kmi_from_boot(magiskboot, workdir, parsed.boot_image);
+        kmi = !parsed.kernel.empty() ? parse_kmi_from_kernel_file(parsed.kernel)
+                                     : parse_kmi_from_boot(magiskboot, workdir, parsed.boot_image);
         if (kmi.empty()) {
             LOGE("Cannot detect the selected kernel KMI; specify the target KMI with --kmi "
                  "(required for an init_boot image without a kernel)");
@@ -1244,25 +1262,8 @@ int boot_patch_impl(const std::vector<std::string>& args) {
         return 1;
     }
 
-    std::vector<std::string> ksu_config;
-    if (bundled_lkm)
-        ksu_config.emplace_back("bundled=1");
-    if (parsed.allow_shell) {
-        printf("- Adding allow shell config\n");
-        ksu_config.emplace_back("allow_shell=1");
-    }
-    if (parsed.no_custom_rc) {
-        printf("- Adding no custom rc config\n");
-        ksu_config.emplace_back("norc=1");
-    }
-
-    if (!ksu_config.empty()) {
-        std::string config_text;
-        for (size_t i = 0; i < ksu_config.size(); ++i) {
-            if (i != 0)
-                config_text += ' ';
-            config_text += ksu_config[i];
-        }
+    const std::string config_text = parsed.module_params(bundled_lkm);
+    if (!config_text.empty()) {
         if (!write_file(workdir + "/ksu_config", config_text)) {
             LOGE("Failed to create ksu_config");
             cleanup();
@@ -1272,8 +1273,11 @@ int boot_patch_impl(const std::vector<std::string>& args) {
             cleanup();
             return 1;
         }
-    } else {
-        do_cpio_cmd(magiskboot, workdir, ramdisk, "rm ksu_config");
+    } else if (magiskboot_query({"cpio", ramdisk, "exists ksu_config"}) == 0 &&
+               !do_cpio_cmd(magiskboot, workdir, ramdisk, "rm ksu_config")) {
+        // Omitting the options must clear old overrides, including a block list.
+        cleanup();
+        return 1;
     }
 
     if (magiskboot_query({"cpio", ramdisk, "exists ksu_allow_shell"}) == 0) {
@@ -1378,7 +1382,8 @@ int boot_patch_impl(const std::vector<std::string>& args) {
     std::error_code output_error;
     if (!fs::is_regular_file(new_boot, output_error) || output_error ||
         fs::file_size(new_boot, output_error) == 0 || output_error) {
-        LOGE("magiskboot repack reported success but output is missing or empty: %s", new_boot.c_str());
+        LOGE("magiskboot repack reported success but output is missing or empty: %s",
+             new_boot.c_str());
         LOGE("Current magiskboot may be an incomplete build (unpack/repack stubs).");
         LOGE("Please use a full magiskboot implementation from upstream Magisk.");
         cleanup();
@@ -1447,7 +1452,8 @@ int boot_patch_impl(const std::vector<std::string>& args) {
         if (companion_boot_restore &&
             !flash_boot(companion_boot_restore->device, companion_boot_restore->restored_image)) {
             LOGE("Failed to restore direct-LKM boot image; rolling back both partitions");
-            if (!flash_boot(companion_boot_restore->device, companion_boot_restore->original_image)) {
+            if (!flash_boot(companion_boot_restore->device,
+                            companion_boot_restore->original_image)) {
                 LOGE("Failed to roll back direct-LKM boot image");
                 preserve_workdir = true;
             }

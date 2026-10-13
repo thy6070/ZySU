@@ -289,7 +289,7 @@ static int do_uid_granted_root(void __user *arg)
 		return -EFAULT;
 	}
 
-	cmd.granted = ksu_is_allow_uid_for_current(cmd.uid);
+	cmd.granted = ksu_is_uid_granted_root(cmd.uid);
 
 	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
 		pr_err("uid_granted_root: copy_to_user failed\n");
@@ -452,7 +452,7 @@ out:
 static int do_get_feature(void __user *arg)
 {
 	struct ksu_get_feature_cmd cmd;
-	bool supported;
+	bool supported = false;
 	int ret;
 
 	if (copy_from_user(&cmd, arg, sizeof(cmd))) {
@@ -461,7 +461,9 @@ static int do_get_feature(void __user *arg)
 	}
 
 	ret = ksu_get_feature(cmd.feature_id, &cmd.value, &supported);
-	cmd.supported = supported ? 1 : 0;
+	cmd.supported = supported ? KSU_FEATURE_FLAG_SUPPORTED : 0;
+	if (supported && ksu_feature_is_forced(cmd.feature_id))
+		cmd.supported |= KSU_FEATURE_FLAG_FORCED;
 
 	if (ret && supported) {
 		pr_err("get_feature: failed for feature %u: %d\n",
