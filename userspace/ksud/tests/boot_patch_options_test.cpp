@@ -43,8 +43,10 @@ bool copy_file_data(const std::string& src, const std::string& dst) {
     return contents && write_file(dst, *contents);
 }
 
-#include "boot_patch_kernel_kmi_under_test.inc"
 #include "boot_patch_parse_kmi_under_test.inc"
+
+// The kernel scanner calls the parser defined above; preserve this order.
+#include "boot_patch_kernel_kmi_under_test.inc"
 
 struct Options {
     std::string kernel, boot_image, kmi, adb_debug_prop;
