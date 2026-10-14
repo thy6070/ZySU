@@ -116,6 +116,8 @@ auto scan_driver_fd() -> DriverFd {
             continue;
         }
 
+        // strtol requires a char** output parameter, even for read-only input.
+        // NOLINTNEXTLINE(misc-const-correctness)
         char* end = nullptr;
         const long fd_num = strtol(entry->d_name, &end, 10);
         if (end == entry->d_name || *end != '\0' || fd_num < 0) {
@@ -202,8 +204,12 @@ auto init_driver_fd() -> int {
         errno = EPERM;
     else if ((prctl_error == EINVAL || prctl_error == ENOSYS) && reboot_error == EINVAL)
         errno = ENODEV;
+    else if (reboot_error != 0)
+        errno = reboot_error;
+    else if (prctl_error != 0)
+        errno = prctl_error;
     else
-        errno = reboot_error != 0 ? reboot_error : (prctl_error != 0 ? prctl_error : EIO);
+        errno = EIO;
     return -1;
 }
 

@@ -382,7 +382,7 @@ struct PartitionImage {
     std::string device;
 };
 
-enum class PartitionFlashResult { kSuccess, kRolledBack, kRollbackFailed };
+enum class PartitionFlashResult : std::uint8_t { kSuccess, kRolledBack, kRollbackFailed };
 
 PartitionFlashResult flash_partition_images(const std::vector<PartitionImage>& partitions) {
     for (std::size_t index = 0; index < partitions.size(); ++index) {

@@ -466,10 +466,12 @@ void feature_list() {
         }
 
         printf("[");
-        const bool active = id == KSU_FEATURE_SELINUX_HIDE_STATUS ? value == KSU_SELINUX_HIDE_ACTIVE
-                            : id == KSU_FEATURE_UNICODE_PATH_GUARD_STATUS
-                                ? value == KSU_UNICODE_PATH_GUARD_ACTIVE
-                                : value != 0;
+        bool active = value != 0;
+        if (id == KSU_FEATURE_SELINUX_HIDE_STATUS) {
+            active = value == KSU_SELINUX_HIDE_ACTIVE;
+        } else if (id == KSU_FEATURE_UNICODE_PATH_GUARD_STATUS) {
+            active = value == KSU_UNICODE_PATH_GUARD_ACTIVE;
+        }
         terminal::status(stdout, status, supported && active);
         printf("] %s (ID=%u)%s\n", name.c_str(), id, is_feature_forced(id) ? " [FORCED]" : "");
         printf("    %s\n", feature_id_to_description(id));
