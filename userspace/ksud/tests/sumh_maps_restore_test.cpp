@@ -5,6 +5,7 @@
 #include "sumhp/sumh_client.hpp"
 #include "uapi/sumh.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cerrno>
 #include <climits>
