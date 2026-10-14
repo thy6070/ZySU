@@ -6,11 +6,13 @@
 
 #include "sumh_runtime.h"
 
+/* Immutable after publication; both indices retire through one RCU callback. */
 struct sumh_spoof_kstat_entry {
 	char *target_pathname;
 	u32 path_hash;
 	unsigned long target_ino;
-	unsigned long target_dev;
+	unsigned long
+	    target_dev; /* Exact for path rules, including device zero. */
 	unsigned long spoofed_ino;
 	unsigned long spoofed_dev;
 	unsigned int spoofed_nlink;
@@ -31,6 +33,7 @@ struct sumh_spoof_kstat_entry {
 
 struct sumh_maps_rule_entry {
 	struct list_head list;
+	bool managed;
 	unsigned long target_ino;
 	unsigned long target_dev;
 	unsigned long spoofed_ino;

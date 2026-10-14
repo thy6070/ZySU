@@ -71,6 +71,7 @@ fun SUMHWorkspace(
     var version by remember { mutableStateOf("Unknown") }
     var config by remember { mutableStateOf(Controller.SUMHPConfig()) }
     var rules by remember { mutableStateOf(emptyList<Controller.ActiveRule>()) }
+    var rulesIncomplete by remember { mutableStateOf(false) }
     var system by remember { mutableStateOf(Controller.SystemInfo("", "", emptyList(), emptyList(), false, null)) }
     var features by remember { mutableStateOf<Controller.FeaturesResult?>(null) }
     var rulesRefreshing by remember { mutableStateOf(false) }
@@ -99,6 +100,7 @@ fun SUMHWorkspace(
         config = loaded.config
         system = loaded.system
         rules = loaded.rules
+        rulesIncomplete = loaded.rulesIncomplete
         features = loaded.features
         dataReady = true
         loadError = null
@@ -182,7 +184,9 @@ fun SUMHWorkspace(
         rulesRefreshing = true
         scope.launchUi(snackbar) {
             try {
-                rules = Controller.getActiveRules()
+                val refreshed = Controller.getActiveRules()
+                rules = refreshed.rules
+                rulesIncomplete = refreshed.incomplete
             } finally {
                 rulesRefreshing = false
             }
@@ -210,7 +214,7 @@ fun SUMHWorkspace(
         }
     }
 
-    fun mutateMapRules(successMessage: Int, failureMessage: Int, mutation: suspend () -> Boolean) {
+    fun mutateMapRules(successMessage: Int, failureMessage: Int, clearing: Boolean = false, mutation: suspend () -> Boolean) {
         if (saving || isLoading || !dataReady || loadError != null) return
         if (!config.enableMapsSpoof || status != Controller.SUMHStatus.AVAILABLE ||
             features?.names?.contains("maps_spoof") != true) return
@@ -218,7 +222,10 @@ fun SUMHWorkspace(
         scope.launchUi(snackbar, start = CoroutineStart.UNDISPATCHED) {
             val message = withContext(NonCancellable) {
                 try {
-                    if (mutation()) successMessage else failureMessage
+                    if (mutation()) {
+                        if (clearing && config.mapsRules.isNotEmpty()) runtimeApplyPending = true
+                        successMessage
+                    } else failureMessage
                 } finally {
                     configSaving = false
                 }
@@ -292,7 +299,7 @@ fun SUMHWorkspace(
                             onRetryApply = ::retryApply,
                             onConfigChanged = ::saveConfig,
                             onClearMapRules = {
-                                mutateMapRules(R.string.sumh_maps_cleared, R.string.sumh_maps_clear_failed) {
+                                mutateMapRules(R.string.sumh_maps_cleared, R.string.sumh_maps_clear_failed, clearing = true) {
                                     Controller.clearMapsRules()
                                 }
                             },
@@ -319,6 +326,7 @@ fun SUMHWorkspace(
                                 if (userRulesSaving && !working) userRulesRefresh++
                                 userRulesSaving = working
                             }, onRefresh = ::refreshRules, onClearAll = ::clearRules,
+                            rulesIncomplete = rulesIncomplete,
                         )
                         SUMHSection.Logs -> LogsTab(
                             showKernelLog = showKernelLog,

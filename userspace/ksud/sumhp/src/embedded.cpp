@@ -89,7 +89,15 @@ void embedded_boot_completed() {
     mount::recovery_boot_completed();
     // Retry an early restoration that could not reach the kernel yet.
     embedded_restore_kernel_build(true);
-    if (ksud::is_safe_mode() || !embedded_external_mount_owner().empty()) {
+    if (ksud::is_safe_mode()) {
+        return;
+    }
+    // Path identities are resolved only after module mounts have settled.
+    // Maps filtering is independent of which controller owns those mounts.
+    if (sumh::is_available() && run_via_daemon({"sumh", "maps", "apply"}) != 0) {
+        logging::write(logging::Level::Error, "boot", "failed to restore maps path rules");
+    }
+    if (!embedded_external_mount_owner().empty()) {
         return;
     }
     if (run_via_daemon({"hide", "apply"}) != 0) {

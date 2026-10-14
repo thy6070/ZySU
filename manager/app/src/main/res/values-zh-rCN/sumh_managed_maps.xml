@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sumh_maps_path_saved">已保存的路径规则（%1$d）</string>
+    <string name="sumh_maps_path_description">路径保存在 SUMH 配置中。启用 Maps 伪装后，每次应用配置或启动时重新解析文件；文件发生变化后请重新应用。此列表显示已保存的定义，不代表实时绑定状态。</string>
+    <string name="sumh_maps_path_apply">应用已保存配置</string>
+    <string name="sumh_maps_path_add">添加路径规则</string>
+    <string name="sumh_maps_path_edit">编辑路径规则</string>
+    <string name="sumh_maps_path_edit_label">编辑 %1$s 的已保存规则</string>
+    <string name="sumh_maps_path_missing">此规则已不在已保存配置中，请关闭编辑器并刷新后再试。</string>
+    <string name="sumh_maps_path_hint">请输入被映射文件和替代文件的绝对路径。应用时两个文件都须存在，路径中的空格会保留。最多保存 256 条规则，编码后的总大小不能超过 56 KiB。保存失败后可继续编辑草稿。</string>
+    <string name="sumh_maps_path_budget">路径规则编码后的总大小超过 56 KiB，请缩短路径或删除已保存的规则。</string>
+    <string name="sumh_maps_path_target">目标文件路径</string>
+    <string name="sumh_maps_path_replacement">替代文件路径</string>
+    <string name="sumh_maps_path_target_length">请将目标路径缩短至 4095 个 UTF-8 字节以内。</string>
+    <string name="sumh_maps_path_control">请移除路径中的 NUL、回车符和换行符。</string>
+    <string name="sumh_maps_path_duplicate">其他已保存规则使用了此目标路径，请选择不同目标或编辑该规则。</string>
+    <string name="sumh_maps_path_limit">最多可保存 256 条路径规则，请先删除一条再添加。</string>
+    <string name="sumh_maps_path_unsupported">当前内核不支持托管路径规则，仍可删除已保存的定义。</string>
+    <string name="sumh_maps_path_disabled">启用 Maps 伪装后才会应用这些已保存的规则。</string>
+    <string name="sumh_maps_path_remove">删除已保存的路径规则</string>
+    <string name="sumh_maps_path_remove_label">删除 %1$s 的已保存规则</string>
+    <string name="sumh_maps_path_remove_confirm">从配置中删除此定义并应用更改？如果应用失败，请重试应用配置以移除其运行时规则。</string>
+    <string name="sumh_maps_runtime_add">添加数值规则</string>
+    <string name="sumh_maps_runtime_clear">清空运行时规则</string>
+    <string name="sumh_maps_runtime_clear_confirm">清空当前内核中的所有 Maps 规则，包括通过已保存路径安装的规则？已保存的定义会保留，在启用 Maps 伪装时，随应用配置或启动恢复。</string>
+</resources>

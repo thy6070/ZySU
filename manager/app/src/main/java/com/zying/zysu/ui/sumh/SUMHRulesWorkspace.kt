@@ -17,6 +17,7 @@ internal fun SUMHRulesWorkspace(
     rules: List<Controller.ActiveRule>, status: Controller.SUMHStatus, enabled: Boolean, runtimeEnabled: Boolean,
     saving: Boolean, snackbar: SnackbarController, onSavingChanged: (Boolean) -> Unit,
     onRefresh: () -> Unit, onClearAll: () -> Unit,
+    rulesIncomplete: Boolean = false,
 ) {
     var runtime by rememberSaveable { mutableStateOf(false) }
     val pages = rememberSaveableStateHolder()
@@ -25,11 +26,11 @@ internal fun SUMHRulesWorkspace(
             FilterChip(selected = !runtime, onClick = { runtime = false }, enabled = !saving,
                 label = { Text(stringResource(R.string.sumh_rules_personal)) })
             FilterChip(selected = runtime, onClick = { runtime = true }, enabled = !saving,
-                label = { Text(stringResource(R.string.nav_active_rules)) })
+                label = { Text(stringResource(R.string.sumh_rules_runtime)) })
         }
         Box(Modifier.weight(1f)) {
             pages.SaveableStateProvider(runtime) {
-                if (runtime) RulesTab(rules, status, runtimeEnabled, onRefresh, onClearAll)
+                if (runtime) RulesTab(rules, status, runtimeEnabled, onRefresh, onClearAll, rulesIncomplete)
                 else UserHideRulesScreen(enabled, snackbar, onSavingChanged, status == Controller.SUMHStatus.AVAILABLE)
             }
         }

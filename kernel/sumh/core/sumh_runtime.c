@@ -800,18 +800,23 @@ sumh_spoof_kstat_lookup_by_path(const char *path_str)
 struct sumh_spoof_kstat_entry *sumh_spoof_kstat_lookup_by_ino(unsigned long ino,
 							      unsigned long dev)
 {
-	struct sumh_spoof_kstat_entry *e;
+	struct sumh_spoof_kstat_entry *e, *wildcard = NULL;
 
 	if (!ino)
 		return NULL;
 	hlist_for_each_entry_rcu(
 	    e, &sumh_spoof_kstat_ino[hash_min(ino, SUMH_HASH_BITS)], ino_node)
 	{
-		if (e->target_ino == ino &&
-		    (e->target_dev == 0 || dev == 0 || e->target_dev == dev))
+		if (e->target_ino != ino)
+			continue;
+		/* A path on device zero is still exact. Only legacy inode-only
+		 * rules are wildcards, and exact matches always win. */
+		if (!e->target_pathname)
+			wildcard = e;
+		else if (e->target_dev == dev)
 			return e;
 	}
-	return NULL;
+	return wildcard;
 }
 
 void sumh_mark_inode_hidden(struct inode *inode)
@@ -869,9 +874,9 @@ bool sumh_store_upsert(struct sumh_entry *replacement)
 		hlist_add_head_rcu(&replacement->node,
 				   &sumh_paths[hash_min(hash, SUMH_HASH_BITS)]);
 		hlist_del_rcu(&entry->node);
-		if (changed)
-			sumh_clear_inode_flags_for_path(
-			    entry->target, AS_FLAGS_SUMH_SPOOF_KSTAT);
+		/* Keep the shared flag: an explicit kstat rule or another
+		 * redirect may still own this source. getattr checks live
+		 * rules. */
 		call_rcu(&entry->rcu, sumh_entry_free_rcu);
 		found = true;
 		break;

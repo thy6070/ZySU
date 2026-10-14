@@ -15,7 +15,7 @@ private val runtimeConfigKeys = setOf(
     "enable_kernel_debug", "enable_stealth", "enable_overlay_xattr_hide",
     "enable_mount_hide", "mount_hide_mode", "enable_maps_spoof", "enable_statfs_spoof",
     "enable_kernel_build_spoof", "kernel_build_release", "kernel_build_version",
-    "kernel_build_apply_stage",
+    "kernel_build_apply_stage", "maps_rules",
 )
 
 private val rebootConfigKeys = setOf(

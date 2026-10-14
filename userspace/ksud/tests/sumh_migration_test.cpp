@@ -100,7 +100,8 @@ int main() {
         "mirror_dir":"/dev/kagami/mirror","debug":true,"custom":"kasumi"})");
     put(legacy / "module_mode.json", R"({"first":"kasumi","other":"overlay"})");
     put(legacy / "module_rules.json", R"({"first":[{"path":"/system/kasumi","mode":"kasumi"},
-        {"path":"/vendor","mode":"hide"}],"custom":"unchanged"})");
+        {"path":"/vendor","mode":"hide"}],"configured":{"mode":"kasumi","rules":[
+        {"path":"/system/keep","mode":"kasumi"}]},"custom":"unchanged"})");
     put(legacy / "user_hide_rules.json", "[\"/data/kasumi\"]\n");
     put(legacy / "mirror.img", "image contents");
     put(legacy / "run/boot_attempts", "2\n");
@@ -118,6 +119,8 @@ int main() {
     assert(rules.find("first")->a[0].find("mode")->s == "sumh");
     assert(rules.find("first")->a[0].find("path")->s == "/system/kasumi");
     assert(rules.find("first")->a[1].find("mode")->s == "hide");
+    assert(rules.find("configured")->find("mode")->s == "sumh");
+    assert(rules.find("configured")->find("rules")->a[0].find("mode")->s == "sumh");
     assert(get(current / "user_hide_rules.json") == "[\"/data/kasumi\"]\n");
     assert(get(current / "mirror.img") == "image contents");
     assert(get(current / "run/boot_attempts") == "2\n");

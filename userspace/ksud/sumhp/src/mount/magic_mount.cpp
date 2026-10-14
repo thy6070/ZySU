@@ -9,7 +9,6 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <sys/xattr.h>
 #include <unistd.h>
 #include <climits>
 
@@ -89,21 +88,17 @@ std::string join(const std::string& base, const std::string& name) {
 }
 
 NType type_from_lstat(const std::string& path, const struct stat& st) {
-    if (S_ISCHR(st.st_mode) && st.st_rdev == 0)
+    bool whiteout = false;
+    if (!fsutil::stat_is_whiteout(path, st, whiteout))
+        scan_error("cannot read whiteout metadata: " + path);
+    if (whiteout)
         return NType::Whiteout;
     if (S_ISDIR(st.st_mode))
         return NType::Directory;
     if (S_ISLNK(st.st_mode))
         return NType::Symlink;
-    if (S_ISREG(st.st_mode)) {
-        if (st.st_size == 0) {
-            if (lgetxattr(path.c_str(), "trusted.overlay.whiteout", nullptr, 0) >= 0)
-                return NType::Whiteout;
-            if (errno != ENODATA && errno != EOPNOTSUPP)
-                scan_error("cannot read whiteout metadata: " + path);
-        }
+    if (S_ISREG(st.st_mode))
         return NType::Regular;
-    }
     scan_error("unsupported module entry: " + path);
 }
 
@@ -202,8 +197,7 @@ std::optional<Node> collect_module_files(const std::vector<ModuleEntry>& modules
     system.name = "system";
     system.type = NType::Directory;
 
-    auto partitions = fsutil::managed_partitions();
-    partitions.insert(partitions.end(), extra.begin(), extra.end());
+    const auto partitions = fsutil::managed_partitions(extra);
 
     bool has = false;
     for (const auto& m : modules) {

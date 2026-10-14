@@ -28,6 +28,8 @@ python3 scripts/ci/test_selinux_hide_status.py --cc clang
 python3 scripts/ci/test_sumh_guards.py --cc clang
 python3 scripts/ci/test_sumh_kernel_build.py --cc clang
 python3 scripts/ci/test_sumh_rules.py --cc clang
+python3 scripts/ci/test_sumh_maps.py --cc clang
+python3 scripts/ci/test_sumh_kstat.py --cc clang
 ```
 
 | 测试脚本 | 覆盖范围 |
@@ -40,8 +42,12 @@ python3 scripts/ci/test_sumh_rules.py --cc clang
 | `test_sumh_guards.py` | 递归保护、哈希冲突、嵌套任务标记和空桶锁获取 |
 | `test_sumh_kernel_build.py` | 内核构建字段校验、状态更新和恢复语义 |
 | `test_sumh_rules.py` | 规则导出的分配与清理失败分支 |
+| `test_sumh_maps.py` | 受管规则替换、失败原子性、临时规则与精确设备匹配优先级 |
+| `test_sumh_kstat.py` | 显式属性规则的设备身份、路径重绑定、RCU 替换、失败保留与残留 hook 标记 |
 
 这些脚本读取生产 C 函数或源文件，以 VFS、RCU、工作队列、锁等测试替身执行关键分支。它们不加载内核模块，也不进行真实并发压力测试。分支内分配或锁计数的改善不能换算为设备延迟提升比例。
+
+kstat 设备回归需覆盖：两个文件系统中的同号 inode、精确规则与数字通配规则共存、文件替换后重新提交路径、硬链接别名冲突、更新失败保留旧规则，以及持有旧文件句柄时更新规则。并发读取 stat 时应只观察到完整的新或旧属性集；旧 inode 若没有剩余显式规则或有效虚拟映射，其残留 hook 应保留原始属性。`is_static` 不提供自动重绑定，零值字段仍遵循原 ABI，不能把它们当成新增的静态属性管理功能。
 
 ### 用户空间与挂载控制
 
@@ -49,11 +55,14 @@ python3 scripts/ci/test_sumh_rules.py --cc clang
 python3 userspace/ksud/tests/run_sumh_host_tests.py --cxx g++
 python3 userspace/ksud/tests/run_sumhp_daemon_host_tests.py --cxx g++
 python3 userspace/ksud/tests/run_mount_alias_host_tests.py --cxx g++
+python3 userspace/ksud/tests/run_sumh_planner_host_tests.py --cxx g++
 python3 userspace/ksud/tests/run_magic_mount_host_tests.py --cxx g++
 python3 userspace/ksud/tests/run_overlay_mount_host_tests.py --cxx g++
 ```
 
 SUMH 用户空间测试覆盖客户端响应长度/文本边界、驱动探测、规则恢复、持久化失败、配置迁移、内核构建设置及 CLI。daemon 测试包含真实 POSIX socket 的分帧、截止时间和重试处理，但不会启动 Android 上的生产 daemon。挂载测试覆盖分区别名、挂载规划以及 Magic Mount、OverlayFS 的相关生产逻辑，不会在宿主机实际修改 Android 挂载树。
+
+挂载规划回归还覆盖规则前缀的分区别名、解析后的模式冲突、whiteout 拆分为既有隐藏操作，以及准备失败时不发送挂载请求。生命周期回归检查热挂载标记写入/恢复失败、重建前配置校验、Overlay 挂载身份变化、回滚残留记录和挂载信息读取失败。设备上仍需验证真实命名空间、whiteout 属性和挂载系统调用。
 
 自动化入口为 [`.github/workflows/sumh-tests.yml`](../../../.github/workflows/sumh-tests.yml)。工作流存在或曾执行过，不代表当前提交所有目标的测试已通过；验证报告应记录具体提交、命令、编译器和结果。
 
@@ -85,7 +94,7 @@ Windows 下，内核脚本可通过 `--cc` 指定 NDK 的 `clang.exe`，使用�
 
 ### 自定义隐藏规则的批量管理
 
-“规则”页默认显示“我的规则”，可按路径搜索，并按已生效或需要处理的状态筛选；“活动规则”保留运行时规则查看。点击已保存的路径即可直接编辑，保存时先添加新路径，再删除原路径；添加失败不会删除原规则，部分完成时保留输入并提示刷新检查新旧路径。
+“规则”页默认显示“隐藏路径”，可按路径搜索，并按已生效或需要处理的状态筛选；“内核规则”查看实际内核记录和已绑定的隐藏路径，等待绑定的保存定义不计入内核记录。同路径隐藏项去重，功能项单独标识；不完整的文本列表会显示提示，无法可靠分割的路径对按原文展示。点击已保存的路径即可直接编辑，保存时先添加新路径，再删除原路径；添加失败不会删除原规则，部分完成时保留输入并提示刷新检查新旧路径。
 
 “多选”模式下才显示批量操作，可复制路径、重试或删除；长按任意规则也可进入多选，返回键先退出多选。全选、取消和反选仅影响当前筛选中的路径，隐藏的选择保持不变。删除确认框列出实际选中路径，筛选不会把已经选中的其他路径偷偷替换成当前列表。列表使用独立滚动区域，修改搜索或状态筛选后回到第一个匹配项，无匹配时可直接清除筛选。新增、批量导入和每条规则的编辑分别保留草稿，关闭窗口或切换规则不会重置草稿，可用“恢复原路径”放弃该条修改。
 
@@ -101,7 +110,9 @@ Windows 下，内核脚本可通过 `--cc` 指定 NDK 的 `clang.exe`，使用�
 
 回归时覆盖：直接编辑、末尾空格、重复路径、超过 100 条输入、UTF-8 长路径、有效与无效行混合导入、部分失败后继续、停止剩余操作、失败项重试、隐藏选中项的删除确认、内核不可用时保存/删除、刷新失败保留操作结果、模块规则不被批量删除，以及批量过程中旋转屏幕或切到后台。Compose 界面测试覆盖点击编辑、多选行为、导入及窄屏大字体下的保存按钮；截图输出到 `manager/app/build/reports/sumh-layout`。这些主机测试不替代设备输入法及真实内核验证。
 
-Maps 规则的 inode/device 输入使用无符号 64 位十进制值，负数、溢出和无效文本应在提交前阻止；伪装路径按内核 256 字节字段限制校验。规则仅在当前运行时有效，重启或清空后需要重新添加，不能把设置开关的持久化等同于 maps 规则持久化。
+Maps 数字规则的 inode/device 输入使用无符号十进制值，负数、溢出和无效文本应在提交前阻止；伪装路径按内核 256 字节字段限制校验，回车/换行不能进入 proc 文本。数字规则仅在当前运行时有效。新的路径规则保存目标文件和替换文件路径，启动完成后重新解析身份并原子替换受管部分；路径缺失或整批校验失败时保留原规则。验证配置持久化、旧内核能力门控、原地编辑与重命名、失败草稿和旋转恢复、满额时编辑、重复与编码预算校验、精确 device 优先、临时规则保留和 saved/applied 错误反馈。还需从实际配置应用入口验证 Maps 失败不会关闭其他功能，待应用提示出现时不重复显示应用按钮。详见 [Maps 路径规则](sumh-maps-rules.md)。
+
+模块路径编辑还需覆盖 `hide`、`none` 的不同效果、最长前缀匹配与父目录隐藏的边界、旧 Overlay/Magic 路径模式、非法路径和重复项、旋转恢复、失败后保留草稿，以及单次保存模式和规则的原子性。读取损坏配置时，应拒绝保存与重放并保留旧运行状态。详见 [模块路径规则](sumh-module-rules.md)。
 
 ## 设备基线采集
 

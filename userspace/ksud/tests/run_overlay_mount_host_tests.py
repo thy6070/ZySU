@@ -37,8 +37,14 @@ def main():
         common = (tests.parent / "sumhp/src/mount/mount_fs.cpp").read_text(encoding="utf-8")
         (build / "mount_decode_under_test.inc").write_text(
             function(common, "std::string decode_mount_path("), encoding="utf-8")
+        (build / "mount_journal_under_test.inc").write_text(
+            function(common, "bool write_mount_journal(const std::string& journal, const std::vector<MountRecord>&") +
+            function(common, "bool write_mount_journal(const std::string& journal, const std::vector<std::string>&"),
+            encoding="utf-8")
         (build / "overlay_mount_under_test.inc").write_text(
-            function(source, "bool mount_modules("), encoding="utf-8")
+            function(source, "bool rollback_mounts(") +
+            function(source, "bool mount_modules(") + function(source, "bool unmount_all("),
+            encoding="utf-8")
         start = source.index("struct LayerSelection {")
         end = source.index("\n};", start) + 3
         (build / "overlay_layers_under_test.inc").write_text(

@@ -6,6 +6,7 @@
 #include "mount/magic_mount.hpp"
 #include "mount/mount_fs.hpp"
 #include "mount/overlayfs.hpp"
+#include "mount/partition_alias.hpp"
 #include "mount/storage.hpp"
 #include "mount/sumh.hpp"
 #include "sumhp/sumh_client.hpp"
@@ -14,14 +15,18 @@
 #include <algorithm>
 #include <cerrno>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <map>
 #include <set>
 #include <sstream>
 #include <string>
 #include <vector>
 
+#include <fcntl.h>
+#include <sys/file.h>
 #include <unistd.h>
 
 namespace sumhp::mount {
@@ -60,16 +65,23 @@ int count_committed_mounts() {
     return static_cast<int>(magic::active_mounts(Config{}).size());
 }
 
-bool apply_sumh_features(const Config& config) {
+bool apply_sumh_features(const Config& config, bool& maps_ok) {
+    maps_ok = true;
     if (!::sumhp::sumh::is_available()) {
         return true;
     }
     std::string error;
-    if (sumh::apply_feature_config(config, error)) {
-        return true;
+    if (!sumh::apply_feature_config(config, error, false, false)) {
+        fsutil::mlog("sumh: feature apply failed: " + error, logging::Level::Error);
+        return false;
     }
-    fsutil::mlog("sumh: feature apply failed: " + error, logging::Level::Error);
-    return false;
+    const bool restore_maps = ksud::getprop("sys.boot_completed") == "1";
+    if (!sumh::apply_maps_config(config, error, restore_maps)) {
+        maps_ok = false;
+        fsutil::mlog("sumh: maps apply failed: " + error, logging::Level::Error);
+        return false;
+    }
+    return true;
 }
 }  // namespace
 
@@ -158,129 +170,370 @@ std::vector<ModuleEntry> enumerate_mountable_modules() {
     return out;
 }
 
-// Per-module control-plane state is separate from module files so the manager
-// can select backends without modifying another module's contents.
-ModuleModeMap load_module_modes() {
-    ModuleModeMap out;
-    std::ifstream in((runtime_data_dir() / "module_mode.json").string());
-    if (!in) {
-        return out;
-    }
-    std::stringstream buf;
-    std::copy(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>(),
-              std::ostreambuf_iterator<char>(buf));
-    JsonValue root;
-    std::string error;
-    if (parse_json(buf.str(), root, error) && root.is_object()) {
-        for (const auto& [id, value] : root.o) {
-            if (value.is_string()) {
-                out[id] = value.s;
-            }
+// Share the config/migration lock so legacy two-file imports and direct CLI
+// mutations cannot race the daemon's module configuration snapshots.
+class ModuleConfigLock {
+public:
+    ModuleConfigLock() = default;
+    ModuleConfigLock(const ModuleConfigLock&) = delete;
+    ModuleConfigLock& operator=(const ModuleConfigLock&) = delete;
+    ModuleConfigLock(ModuleConfigLock&&) = delete;
+    ModuleConfigLock& operator=(ModuleConfigLock&&) = delete;
+    ~ModuleConfigLock() {
+        if (fd_ >= 0) {
+            (void)::flock(fd_, LOCK_UN);
+            ::close(fd_);
         }
     }
-    return out;
+    bool acquire(std::string& error) {
+        if (!prepare_private_directory(runtime_data_dir(), error))
+            return false;
+        const auto path = runtime_config_file().string() + ".lock";
+        fd_ = ::open(path.c_str(), O_CREAT | O_RDWR | O_CLOEXEC | O_NOFOLLOW, 0600);
+        if (fd_ < 0 || ::flock(fd_, LOCK_EX) != 0) {
+            error = "lock module configuration: " + std::string(std::strerror(errno));
+            return false;
+        }
+        return true;
+    }
+
+private:
+    int fd_ = -1;
+};
+
+namespace {
+struct ModuleConfigRecord {
+    std::string mode = "auto";
+    std::vector<ModuleRule> rules;
+};
+using ModuleConfiguration = std::map<std::string, ModuleConfigRecord>;
+
+bool valid_module_mode(const std::string& mode, bool path_rule = false) {
+    return mode == "auto" || mode == "sumh" || mode == "overlay" || mode == "magic" ||
+           mode == "none" || (path_rule && mode == "hide");
 }
 
-bool save_module_modes(const ModuleModeMap& modes) {
-    JsonValue root;
-    root.type = JsonValue::Type::Object;
-    for (const auto& [id, mode] : modes)
-        root.o[id] = JsonValue(mode);
-    return ksud::write_file_atomic(runtime_data_dir() / "module_mode.json",
-                                   stringify_json(root, 2) + "\n");
+bool valid_stored_module_rule_path(const std::string& path) {
+    return !path.empty() && path.front() == '/' && path.size() < 4096 &&
+           path.find('\0') == std::string::npos && path.find_first_of("\r\n") == std::string::npos;
 }
 
-ModuleRuleMap load_module_rules() {
-    ModuleRuleMap out;
-    std::ifstream in(runtime_data_dir() / "module_rules.json");
-    if (!in) {
-        return out;
+JsonValue module_rules_json(const std::vector<ModuleRule>& rules) {
+    JsonValue array;
+    array.type = JsonValue::Type::Array;
+    for (const auto& rule : rules) {
+        JsonValue item = JsonValue::object();
+        item.o["path"] = JsonValue(rule.path);
+        item.o["mode"] = JsonValue(rule.mode);
+        array.a.push_back(std::move(item));
     }
-    std::stringstream buf;
-    std::copy(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>(),
-              std::ostreambuf_iterator<char>(buf));
-    JsonValue root;
-    std::string error;
-    if (!parse_json(buf.str(), root, error) || !root.is_object()) {
-        return out;
+    return array;
+}
+
+bool validate_module_rules(const std::vector<ModuleRule>& rules, std::string& error) {
+    if (rules.size() > 256) {
+        error = "module supports at most 256 path rules";
+        return false;
     }
-    for (const auto& [id, entries] : root.o) {
-        if (!entries.is_array()) {
+    std::set<std::string> paths;
+    std::size_t slash_escaping = 0;
+    for (std::size_t index = 0; index < rules.size(); ++index) {
+        const auto& rule = rules[index];
+        if (!valid_module_rule_path(rule.path) || !valid_module_mode(rule.mode, true)) {
+            error = "invalid module path or mode at index " + std::to_string(index);
+            return false;
+        }
+        if (!paths.insert(rule.path).second) {
+            error = "duplicate module path at index " + std::to_string(index);
+            return false;
+        }
+        // Android JSONObject escapes '/' during both serialization passes.
+        slash_escaping +=
+            3 * static_cast<std::size_t>(std::count(rule.path.begin(), rule.path.end(), '/'));
+    }
+    if (json_quote(stringify_json(module_rules_json(rules))).size() + slash_escaping >
+        56UL * 1024) {
+        error = "module rules exceed the 56 KiB encoded configuration budget";
+        return false;
+    }
+    return true;
+}
+
+bool parse_module_rules_value(const JsonValue& value, std::vector<ModuleRule>& rules,
+                              std::string& error, bool strict = true) {
+    if (!value.is_array()) {
+        error = "module rules must be a JSON array";
+        return false;
+    }
+    std::vector<ModuleRule> parsed;
+    for (const auto& entry : value.a) {
+        const auto* path = entry.find("path");
+        const auto* mode = entry.find("mode");
+        if (!entry.is_object() || entry.o.size() != 2 || !path || !path->is_string() || !mode ||
+            !mode->is_string()) {
+            error = "module rules require path and mode strings";
+            return false;
+        }
+        if (!valid_stored_module_rule_path(path->s) || !valid_module_mode(mode->s, true)) {
+            error = "invalid saved module path or mode";
+            return false;
+        }
+        parsed.push_back({path->s, mode->s});
+    }
+    if (strict && !validate_module_rules(parsed, error))
+        return false;
+    rules = std::move(parsed);
+    return true;
+}
+
+bool read_module_document(const char* name, JsonValue& root, std::string& error) {
+    errno = 0;
+    const auto input = ksud::read_file((runtime_data_dir() / name).string());
+    if (!input) {
+        if (errno == ENOENT) {
+            root = JsonValue::object();
+            return true;
+        }
+        error = std::string("read ") + name + ": " + std::strerror(errno ? errno : EIO);
+        return false;
+    }
+    if (!parse_json(*input, root, error) || !root.is_object()) {
+        error = std::string("invalid ") + name + ": " +
+                (error.empty() ? "expected a JSON object" : error);
+        return false;
+    }
+    return true;
+}
+
+bool read_module_configuration(ModuleConfiguration& records, std::string& error) {
+    JsonValue modes;
+    JsonValue rules;
+    if (!read_module_document("module_mode.json", modes, error) ||
+        !read_module_document("module_rules.json", rules, error))
+        return false;
+    ModuleConfiguration parsed;
+    for (const auto& [id, value] : modes.o) {
+        // Canonical entries own their mode, including explicit auto.
+        const auto* configured = rules.find(id);
+        if (configured && configured->is_object())
             continue;
+        if (!valid_module_id(id) || !value.is_string() || !valid_module_mode(value.s)) {
+            error = "invalid legacy module mode for " + id;
+            return false;
         }
-        for (const auto& entry : entries.a) {
-            if (!entry.is_object()) {
-                continue;
+        parsed[id].mode = value.s;
+    }
+    for (const auto& [id, value] : rules.o) {
+        if (!valid_module_id(id)) {
+            error = "invalid module id in module_rules.json";
+            return false;
+        }
+        auto& record = parsed[id];
+        const JsonValue* entries = &value;
+        if (value.is_object()) {
+            const auto* mode = value.find("mode");
+            entries = value.find("rules");
+            if (value.o.size() != 2 || !mode || !mode->is_string() || !valid_module_mode(mode->s) ||
+                !entries) {
+                error = "invalid module configuration for " + id;
+                return false;
             }
-            const JsonValue* path = entry.find("path");
-            const JsonValue* mode = entry.find("mode");
-            if (path && mode && path->is_string() && mode->is_string()) {
-                out[id].push_back({path->s, mode->s});
-            }
+            record.mode = mode->s;
+        }
+        // Existing controllers accepted noncanonical prefixes and unbounded
+        // arrays. Preserve their exact matching behavior so users can repair
+        // them through configure/removal; new rule sets use strict validation.
+        if (!parse_module_rules_value(*entries, record.rules, error, false)) {
+            error.insert(0, "invalid module configuration for " + id + ": ");
+            return false;
         }
     }
-    return out;
+    records = std::move(parsed);
+    return true;
 }
 
-bool save_module_rules(const ModuleRuleMap& rules) {
-    JsonValue root;
-    root.type = JsonValue::Type::Object;
-    for (const auto& [id, entries] : rules) {
-        auto& array = root.o[id];
-        array.type = JsonValue::Type::Array;
-        for (const auto& entry : entries) {
-            JsonValue rule;
-            rule.type = JsonValue::Type::Object;
-            rule.o["path"] = JsonValue(entry.path);
-            rule.o["mode"] = JsonValue(entry.mode);
-            array.a.push_back(std::move(rule));
-        }
+bool write_module_configuration(const ModuleConfiguration& records, std::string& error) {
+    JsonValue root = JsonValue::object();
+    for (const auto& [id, record] : records) {
+        JsonValue value = JsonValue::object();
+        value.o["mode"] = JsonValue(record.mode);
+        value.o["rules"] = module_rules_json(record.rules);
+        root.o[id] = std::move(value);
     }
-    return ksud::write_file_atomic(runtime_data_dir() / "module_rules.json",
-                                   stringify_json(root, 2) + "\n");
+    if (!ksud::write_file_atomic(runtime_data_dir() / "module_rules.json",
+                                 stringify_json(root, 2) + "\n")) {
+        error = "write module configuration: " + std::string(std::strerror(errno ? errno : EIO));
+        return false;
+    }
+    return true;
+}
+
+bool update_module_configuration(const std::string& id,
+                                 const std::function<void(ModuleConfigRecord&)>& update,
+                                 std::string& error, bool validate_rules = true) {
+    error.clear();
+    if (!valid_module_id(id)) {
+        error = "invalid module id";
+        return false;
+    }
+    ModuleConfigLock lock;
+    ModuleConfiguration records;
+    if (!lock.acquire(error) || !read_module_configuration(records, error))
+        return false;
+    auto& record = records[id];
+    update(record);
+    if (!valid_module_mode(record.mode) ||
+        (validate_rules && !validate_module_rules(record.rules, error))) {
+        if (error.empty())
+            error = "invalid module mode";
+        return false;
+    }
+    // Keep auto/empty records so old module_mode.json values never reappear.
+    return write_module_configuration(records, error);
+}
+}  // namespace
+
+bool valid_module_id(const std::string& id) {
+    return !id.empty() && id != "." && id != ".." &&
+           std::all_of(id.begin(), id.end(), [](unsigned char byte) {
+               return (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
+                      (byte >= '0' && byte <= '9') || byte == '_' || byte == '-' || byte == '.';
+           });
+}
+
+bool valid_module_rule_path(const std::string& path) {
+    if (!valid_stored_module_rule_path(path) || (path.size() > 1 && path.back() == '/'))
+        return false;
+    if (path == "/")
+        return true;
+    std::size_t start = 1;
+    while (start < path.size()) {
+        const auto end = path.find('/', start);
+        const auto segment = path.substr(start, end == std::string::npos ? end : end - start);
+        if (segment.empty() || segment == "." || segment == "..")
+            return false;
+        if (end == std::string::npos)
+            break;
+        start = end + 1;
+    }
+    return true;
+}
+
+bool parse_module_rules(const std::string& json, std::vector<ModuleRule>& rules,
+                        std::string& error) {
+    error.clear();
+    JsonValue value;
+    return parse_json(json, value, error) && parse_module_rules_value(value, rules, error);
+}
+
+bool load_module_configuration(ModuleModeMap& modes, ModuleRuleMap& rules, std::string& error) {
+    error.clear();
+    ModuleConfigLock lock;
+    ModuleConfiguration records;
+    if (!lock.acquire(error) || !read_module_configuration(records, error))
+        return false;
+    ModuleModeMap parsed_modes;
+    ModuleRuleMap parsed_rules;
+    for (const auto& [id, record] : records) {
+        if (record.mode != "auto")
+            parsed_modes[id] = record.mode;
+        if (!record.rules.empty())
+            parsed_rules[id] = record.rules;
+    }
+    modes = std::move(parsed_modes);
+    rules = std::move(parsed_rules);
+    return true;
+}
+
+bool configure_module(const std::string& id, const std::string& mode,
+                      const std::vector<ModuleRule>& rules, std::string& error) {
+    return update_module_configuration(
+        id,
+        [&](auto& record) {
+            record.mode = mode;
+            record.rules = rules;
+        },
+        error);
+}
+
+bool set_module_mode(const std::string& id, const std::string& mode, std::string& error) {
+    return update_module_configuration(id, [&](auto& record) { record.mode = mode; }, error, false);
+}
+
+bool upsert_module_rule(const std::string& id, const ModuleRule& rule, std::string& error) {
+    return update_module_configuration(
+        id,
+        [&](auto& record) {
+            const auto found =
+                std::find_if(record.rules.begin(), record.rules.end(),
+                             [&](const auto& existing) { return existing.path == rule.path; });
+            if (found == record.rules.end())
+                record.rules.push_back(rule);
+            else
+                found->mode = rule.mode;
+        },
+        error);
+}
+
+bool remove_module_rule(const std::string& id, const std::string& path, std::string& error) {
+    if (!valid_stored_module_rule_path(path)) {
+        error = "invalid module path";
+        return false;
+    }
+    return update_module_configuration(
+        id,
+        [&](auto& record) {
+            record.rules.erase(std::remove_if(record.rules.begin(), record.rules.end(),
+                                              [&](const auto& rule) { return rule.path == path; }),
+                               record.rules.end());
+        },
+        error, false);
 }
 
 namespace {
-bool dir_has_direct_files(const fs::path& dir) {
+bool dir_has_direct_files(const fs::path& dir, const std::vector<std::string>& parts,
+                          bool system_root = false) {
     std::error_code ec;
-    if (!fs::is_directory(dir, ec)) {
+    const auto status = fs::symlink_status(dir, ec);
+    if (ec == std::errc::no_such_file_or_directory || status.type() == fs::file_type::not_found) {
         return false;
     }
-    for (const auto& e : fs::directory_iterator(dir, ec)) {
-        if (!e.is_directory(ec)) {
-            return true;  // a non-dir entry sits directly at this level
+    if (ec)
+        return true;
+    if (!fs::is_directory(status))
+        return !fsutil::module_partition_alias(dir).has_value();
+    for (fs::directory_iterator it(dir, ec), end; it != end && !ec; it.increment(ec)) {
+        const auto& entry = *it;
+        if (system_root &&
+            std::find(parts.begin(), parts.end(), entry.path().filename().string()) !=
+                parts.end() &&
+            fsutil::module_partition_alias(entry.path())) {
+            continue;  // canonical installer alias is scanned through the top-level tree
+        }
+        if (!fs::is_directory(entry.symlink_status(ec))) {
+            return true;  // files and arbitrary symlinks cannot form overlay leaves
         }
     }
-    return false;
+    return static_cast<bool>(ec);
 }
 
 // A module needs magic mount when it places files directly at a partition root
 // (e.g. system/build.prop): overlay only stacks on leaf subdirs, never on a
-// partition root. Everything else can be overlaid.
-std::vector<std::string> managed_partitions(const Config& config) {
-    std::vector<std::string> parts = fsutil::managed_partitions();
-    for (const auto& part : config.partitions) {
-        if (!part.empty() && std::find(parts.begin(), parts.end(), part) == parts.end()) {
-            parts.push_back(part);
-        }
-    }
-    return parts;
-}
-
+// partition root. Directory trees remain subject to OverlayFS target validation.
 bool module_needs_magic(const ModuleEntry& m, const Config& config) {
-    if (dir_has_direct_files(m.path / "system")) {
+    const auto parts = fsutil::managed_partitions(config.partitions);
+    if (dir_has_direct_files(m.path / "system", parts, true)) {
         return true;
     }
-    const auto parts = managed_partitions(config);
     return std::any_of(parts.begin(), parts.end(), [&](const auto& part) {
-        return part != "system" && (dir_has_direct_files(m.path / part) ||
-                                    dir_has_direct_files(m.path / "system" / part));
+        return part != "system" && (dir_has_direct_files(m.path / part, parts) ||
+                                    dir_has_direct_files(m.path / "system" / part, parts));
     });
 }
 
 // True if the module has any managed-partition tree (i.e. contributes mounts).
 bool module_has_content(const ModuleEntry& m, const Config& config) {
-    for (const auto& part : managed_partitions(config)) {
+    for (const auto& part : fsutil::managed_partitions(config.partitions)) {
         std::error_code ec;
         if (fs::is_directory(m.path / part, ec)) {
             return true;
@@ -328,9 +581,14 @@ std::string resolve_module_backend(const ModuleEntry& m, const Config& config,
         return fallback_backend(m, config);
     }
     if (mode == "overlay") {
-        return config.overlayfs_enabled && proc_filesystems_has("overlay")
-                   ? "overlay"
-                   : fallback_backend(m, config);
+        if (config.overlayfs_enabled && proc_filesystems_has("overlay") &&
+            !module_needs_magic(m, config)) {
+            return "overlay";
+        }
+        const auto fallback = fallback_backend(m, config);
+        fsutil::mlog("module=" + m.id + " cannot use leaf OverlayFS; selected backend=" + fallback,
+                     logging::Level::Warning);
+        return fallback;
     }
     if (mode == "magic") {
         return config.magic_mount_enabled ? "magic" : fallback_backend(m, config);
@@ -341,6 +599,66 @@ std::string resolve_module_backend(const ModuleEntry& m, const Config& config,
 MountReport mount_all_enabled(const Config& config) {
     MountReport report;
     fsutil::mlog("mount plan begin config=" + runtime_config_file().string());
+    ModuleModeMap modes;
+    ModuleRuleMap rules;
+    if (!load_module_configuration(modes, rules, report.detail)) {
+        fsutil::mlog(report.detail, logging::Level::Error);
+        return report;
+    }
+
+    const bool manage_sumh = ::sumhp::sumh::is_available();
+    const auto modules = enumerate_mountable_modules();
+    report.modules = static_cast<int>(modules.size());
+
+    // Orchestrate per module: a global override (config.mount_backend != "auto")
+    // forces every module; otherwise each module's saved mode (default
+    // "auto") decides, with auto following OverlayFS -> Magic Mount -> none.
+    // SUMH is selected only by an explicit module/global setting.
+    std::vector<ModuleEntry> overlay_set;
+    std::vector<ModuleEntry> magic_set;
+    std::vector<ModuleEntry> sumh_set;
+    for (const auto& m : modules) {
+        const std::string mode = resolve_module_backend(m, config, modes);
+        const auto configured = modes.find(m.id);
+        auto requested = configured == modes.end() ? "auto" : configured->second;
+        if (!config.mount_backend.empty() && config.mount_backend != "auto")
+            requested = config.mount_backend;
+        const auto path_rules = rules.find(m.id);
+        if (requested == "sumh" && mode != "sumh" && path_rules != rules.end() &&
+            std::any_of(path_rules->second.begin(), path_rules->second.end(), [](const auto& rule) {
+                return rule.mode == "hide" || rule.mode == "none";
+            })) {
+            report.detail = "module " + m.id +
+                            " requires SUMH for hidden/excluded paths; "
+                            "refusing fallback backend " +
+                            mode;
+            fsutil::mlog(report.detail, logging::Level::Error);
+            return report;
+        }
+        fsutil::mlog("selected module=" + m.id + " backend=" + mode);
+        if (mode == "overlay") {
+            overlay_set.push_back(m);
+        } else if (mode == "magic") {
+            magic_set.push_back(m);
+        } else if (mode == "sumh") {
+            sumh_set.push_back(m);
+        }
+        // "none" → skip
+    }
+
+    fsutil::mlog("orchestrator: overlay=" + std::to_string(overlay_set.size()) + " magic=" +
+                 std::to_string(magic_set.size()) + " sumh=" + std::to_string(sumh_set.size()));
+
+    if (manage_sumh && !fsutil::run_in_init_mount_ns(
+                           [&]() {
+                               sumh::ModuleMountPlan plan;
+                               return sumh::prepare_modules(sumh_set, config, rules, plan,
+                                                            report.detail);
+                           },
+                           report.detail)) {
+        fsutil::mlog("sumh: mount preflight failed: " + report.detail, logging::Level::Error);
+        return report;
+    }
 
     if (!claim_mount_orchestrator()) {
         report.detail = "module mount-all already ran this boot or its state could not be recorded";
@@ -350,9 +668,7 @@ MountReport mount_all_enabled(const Config& config) {
     sumh::invalidate_active_state();
     sumh::clear_replayable_mappings();
 
-    const bool sumh_present = ::sumhp::sumh::is_available();
-    const auto modules = enumerate_mountable_modules();
-    report.modules = static_cast<int>(modules.size());
+    const bool sumh_present = manage_sumh;
 
     // Bootloop protection: refuse to mount if previous boots never confirmed
     // completion, so a bad mount cannot brick boot. The counter is bumped here
@@ -395,41 +711,6 @@ MountReport mount_all_enabled(const Config& config) {
     }
     write_boot_attempts(attempts + 1);
 
-    const bool manage_sumh = ::sumhp::sumh::is_available();
-    bool sumh_prepare_ok = true;
-    if (manage_sumh) {
-        std::string error;
-        sumh_prepare_ok = sumh::reset_runtime_state(error);
-        if (!sumh_prepare_ok) {
-            fsutil::mlog("sumh: reset before rebuild failed: " + error, logging::Level::Error);
-        }
-    }
-
-    // Orchestrate per module: a global override (config.mount_backend != "auto")
-    // forces every module; otherwise each module's mode (module_mode.json, default
-    // "auto") decides, with auto following OverlayFS -> Magic Mount -> none.
-    // SUMH is selected only by an explicit module/global setting.
-    const auto modes = load_module_modes();
-    const auto rules = load_module_rules();
-    std::vector<ModuleEntry> overlay_set;
-    std::vector<ModuleEntry> magic_set;
-    std::vector<ModuleEntry> sumh_set;
-    for (const auto& m : modules) {
-        const std::string mode = resolve_module_backend(m, config, modes);
-        fsutil::mlog("selected module=" + m.id + " backend=" + mode);
-        if (mode == "overlay") {
-            overlay_set.push_back(m);
-        } else if (mode == "magic") {
-            magic_set.push_back(m);
-        } else if (mode == "sumh") {
-            sumh_set.push_back(m);
-        }
-        // "none" → skip
-    }
-
-    fsutil::mlog("orchestrator: overlay=" + std::to_string(overlay_set.size()) + " magic=" +
-                 std::to_string(magic_set.size()) + " sumh=" + std::to_string(sumh_set.size()));
-
     bool non_sumh_mounts_ok = true;
     bool sumh_rules_ok = true;
     if (!overlay_set.empty() || !magic_set.empty()) {
@@ -446,11 +727,35 @@ MountReport mount_all_enabled(const Config& config) {
         });
     }
     if (manage_sumh) {
-        sumh_rules_ok = sumh_prepare_ok && fsutil::run_in_init_mount_ns([&]() {
-                            return sumh::mount_modules(sumh_set, config, rules);
-                        });
+        std::string error;
+        sumh_rules_ok = fsutil::run_in_init_mount_ns(
+            [&]() {
+                sumh::ModuleMountPlan plan;
+                if (!sumh::prepare_modules(sumh_set, config, rules, plan, error))
+                    return false;
+                if (sumh::reset_runtime_state(error) && sumh::apply_modules(plan))
+                    return true;
+                std::string cleanup_error;
+                (void)sumh::reset_runtime_state(cleanup_error);
+                if (error.empty())
+                    error = "failed to apply prepared module mappings";
+                return false;
+            },
+            error);
+        if (!sumh_rules_ok)
+            fsutil::mlog("sumh: rebuild failed: " + error, logging::Level::Error);
+        // The native reset also clears OverlayFS attribute-hiding state. The
+        // fallback mounts above are already attached, so rebind their markers.
+        if (sumh_rules_ok && !fsutil::run_in_init_mount_ns(
+                                 [&]() { return overlay::restore_xattr_hiding(config); })) {
+            sumh_rules_ok = false;
+            (void)sumh::reset_runtime_state(error);
+            fsutil::mlog("sumh: failed to restore overlay attributes after rebuild",
+                         logging::Level::Error);
+        }
         if (sumh_rules_ok && !sumh_set.empty() && !sumh::record_replayable_mappings(sumh_set)) {
             sumh_rules_ok = false;
+            (void)sumh::reset_runtime_state(error);
             fsutil::mlog("sumh: failed to commit the boot mapping plan", logging::Level::Error);
         }
         if (!sumh_rules_ok || sumh_set.empty()) {
@@ -461,13 +766,16 @@ MountReport mount_all_enabled(const Config& config) {
     }
 
     bool features_ok = true;
-    if (manage_sumh && sumh_prepare_ok && sumh_rules_ok) {
-        features_ok = apply_sumh_features(config);
+    bool maps_ok = true;
+    if (manage_sumh && sumh_rules_ok) {
+        features_ok = apply_sumh_features(config, maps_ok);
     } else if (manage_sumh) {
         features_ok = false;
     }
-    const bool sumh_ok = sumh_prepare_ok && features_ok && sumh_rules_ok;
-    if (manage_sumh && !sumh_ok) {
+    const bool sumh_ok = features_ok && sumh_rules_ok;
+    // A failed Maps restore must not erase module rules that were successfully
+    // rebuilt. Base feature failures retain the existing transaction cleanup.
+    if (manage_sumh && sumh_rules_ok && !features_ok && maps_ok) {
         std::string error;
         (void)sumh::reset_runtime_state(error);
     }
@@ -477,7 +785,8 @@ MountReport mount_all_enabled(const Config& config) {
                      ",magic=" + std::to_string(magic_set.size()) +
                      ",sumh=" + std::to_string(sumh_set.size()) + ")";
     report.ok = ok;
-    report.mounts = static_cast<int>(magic::active_mounts(config).size());
+    report.mounts = static_cast<int>(magic::active_mounts(config).size() +
+                                     overlay::active_mounts(config).size());
     report.detail = ok ? "ok" : "some backends reported errors (see controller log)";
     fsutil::mlog("mount plan complete backend=" + report.backend + " modules=" +
                      std::to_string(report.modules) + " result=" + (ok ? "ok" : "failed"),
@@ -497,7 +806,9 @@ bool unmount_all(const Config& config) {
     });
 }
 
-bool refresh_sumh_modules(const Config& config) {
+bool refresh_sumh_modules(const Config& config, bool* mappings_applied) {
+    if (mappings_applied)
+        *mappings_applied = false;
     if (!sumh_usable()) {
         return false;
     }
@@ -516,27 +827,46 @@ bool refresh_sumh_modules(const Config& config) {
             selected.push_back(module);
         }
     }
-    const auto rules = load_module_rules();
+    ModuleModeMap modes;
+    ModuleRuleMap rules;
     std::string error;
-    const bool prepare_ok = sumh::reset_runtime_state(error);
-    if (!prepare_ok) {
-        fsutil::mlog("sumh: reset before refresh failed: " + error, logging::Level::Error);
+    if (!load_module_configuration(modes, rules, error)) {
+        fsutil::mlog(error, logging::Level::Error);
+        return false;
     }
-    const bool mount_ok = prepare_ok && fsutil::run_in_init_mount_ns([&]() {
-                              return sumh::mount_modules(selected, config, rules);
-                          });
-    const bool overlay_xattr_ok = mount_ok && fsutil::run_in_init_mount_ns([&]() {
-                                      return overlay::restore_xattr_hiding(config);
-                                  });
-    const bool features_ok = apply_sumh_features(config);
-    const bool ok = prepare_ok && mount_ok && overlay_xattr_ok && features_ok;
-    if (!ok) {
+    // Compilation must finish before clearing the live store. The prepared
+    // batch stays in this callback because namespace entry forks on Android.
+    const bool mount_ok = fsutil::run_in_init_mount_ns(
+        [&]() {
+            sumh::ModuleMountPlan plan;
+            if (!sumh::prepare_modules(selected, config, rules, plan, error))
+                return false;
+            if (sumh::reset_runtime_state(error) && sumh::apply_modules(plan))
+                return true;
+            std::string cleanup_error;
+            (void)sumh::reset_runtime_state(cleanup_error);
+            if (error.empty())
+                error = "failed to apply prepared module mappings";
+            return false;
+        },
+        error);
+    if (!mount_ok) {
+        fsutil::mlog("sumh: refresh failed: " + error, logging::Level::Error);
+        return false;
+    }
+    const bool mappings_ok =
+        fsutil::run_in_init_mount_ns([&]() { return overlay::restore_xattr_hiding(config); });
+    bool maps_ok = true;
+    const bool features_ok = mappings_ok && apply_sumh_features(config, maps_ok);
+    if (!mappings_ok || (!features_ok && maps_ok)) {
         std::string cleanup_error;
         (void)sumh::reset_runtime_state(cleanup_error);
     } else {
+        if (mappings_applied)
+            *mappings_applied = true;
         (void)sumh::restore_persisted_hide_rules(error);
     }
-    return ok;
+    return mappings_ok && features_ok;
 }
 
 void recovery_boot_completed() {

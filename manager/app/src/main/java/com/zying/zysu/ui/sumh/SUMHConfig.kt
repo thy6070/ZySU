@@ -34,6 +34,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -60,6 +63,7 @@ import com.zying.zysu.ui.sumh.util.SUMHUiAdapter as SUMHManager
 import com.zying.zysu.ui.sumh.util.SUMHUiAdapter.SUMHStatus
 import com.zying.zysu.ui.sumh.util.SUMHMapsPathError
 import com.zying.zysu.ui.sumh.util.parseSUMHMapsNumber
+import com.zying.zysu.ui.sumh.util.parseSUMHMapsDevice
 import com.zying.zysu.ui.sumh.util.parseSUMHMapsRuleInput
 import com.zying.zysu.ui.sumh.util.validateSUMHMapsPath
 import com.zying.zysu.ui.theme.getCardColors
@@ -247,8 +251,8 @@ internal fun MapsSpoofControls(
     if (showClearConfirm) {
         YukiAlertDialog(
             onDismissRequest = { showClearConfirm = false },
-            title = { Text(stringResource(R.string.sumh_maps_clear)) },
-            text = { Text(stringResource(R.string.sumh_maps_clear_confirm)) },
+            title = { Text(stringResource(R.string.sumh_maps_runtime_clear)) },
+            text = { Text(stringResource(R.string.sumh_maps_runtime_clear_confirm)) },
             confirmButton = {
                 TextButton(
                     enabled = enabled,
@@ -273,7 +277,9 @@ internal fun MapsSpoofControls(
     if (showAddDialog) {
         val focusRequesters = remember { List(5) { FocusRequester() } }
         val numbers = listOf(tIno, tDev, sIno, sDev)
-        val numberErrors = numbers.map { parseSUMHMapsNumber(it) == null }
+        val numberErrors = numbers.mapIndexed { index, value ->
+            (if (index == 1 || index == 3) parseSUMHMapsDevice(value) else parseSUMHMapsNumber(value)) == null
+        }
         val pathError = validateSUMHMapsPath(path)
         val input = parseSUMHMapsRuleInput(tIno, tDev, sIno, sDev, path)
         fun submit() {
@@ -290,7 +296,7 @@ internal fun MapsSpoofControls(
         }
         YukiAlertDialog(
             onDismissRequest = { showAddDialog = false },
-            title = { Text(stringResource(R.string.sumh_maps_add_rule)) },
+            title = { Text(stringResource(R.string.sumh_maps_runtime_add)) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
@@ -317,7 +323,8 @@ internal fun MapsSpoofControls(
                             singleLine = true,
                             isError = (submitted || editedFields and (1 shl index) != 0) && numberErrors[index],
                             supportingText = if ((submitted || editedFields and (1 shl index) != 0) && numberErrors[index]) {
-                                { Text(stringResource(R.string.sumh_maps_input_number_error)) }
+                                { Text(stringResource(if (index == 1 || index == 3) R.string.sumh_maps_input_device_error
+                                    else R.string.sumh_maps_input_number_error)) }
                             } else null,
                             keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                             keyboardActions = KeyboardActions(onNext = { focusRequesters[index + 1].requestFocus() }),
@@ -387,7 +394,7 @@ internal fun MapsSpoofControls(
             ) {
                 YukiIcon(Icons.Filled.Delete, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.sumh_maps_clear_action))
+                Text(stringResource(R.string.sumh_maps_runtime_clear))
             }
             FilledTonalButton(
                 onClick = { if (enabled) showAddDialog = true },
@@ -397,7 +404,7 @@ internal fun MapsSpoofControls(
             ) {
                 YukiIcon(Icons.Filled.Add, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.sumh_maps_add_action))
+                Text(stringResource(R.string.sumh_maps_runtime_add))
             }
         }
     }
@@ -409,7 +416,8 @@ internal fun RulesTab(
     sumhStatus: SUMHStatus,
     controlsEnabled: Boolean,
     onRefresh: () -> Unit,
-    onClearAll: () -> Unit
+    onClearAll: () -> Unit,
+    rulesIncomplete: Boolean = false,
 ) {
     var showClearDialog by remember { mutableStateOf(false) }
 
@@ -495,7 +503,7 @@ internal fun RulesTab(
         }
 
         Text(
-            text = pluralStringResource(R.plurals.sumh_rules_count, activeRules.size, activeRules.size),
+            text = stringResource(R.string.sumh_rules_runtime_count, activeRules.size),
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(bottom = 8.dp)
         )
@@ -503,6 +511,15 @@ internal fun RulesTab(
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            item {
+                Text(stringResource(R.string.sumh_rules_runtime_hint),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (rulesIncomplete) item {
+                Text(stringResource(R.string.sumh_rules_runtime_incomplete),
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
             itemsIndexed(activeRules) { index, rule ->
                 RuleItem(rule, index, activeRules.size)
             }
@@ -516,7 +533,7 @@ internal fun RulesTab(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = stringResource(R.string.sumh_rules_empty),
+                            text = stringResource(R.string.sumh_rules_runtime_empty),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -574,11 +591,12 @@ private fun RuleItem(rule: SUMHManager.ActiveRule, index: Int = 0, count: Int = 
                     "maps_spoof" -> stringResource(R.string.sumh_rule_maps_spoof)
                     "statfs_spoof" -> stringResource(R.string.sumh_rule_statfs_spoof)
                     "stealth" -> stringResource(R.string.sumh_rule_stealth)
+                    "kernel_build_spoof" -> stringResource(R.string.sumh_kernel_build_spoof)
                     else -> rule.src
                 }
                 ScrollableRuleText(
                     text = displayText,
-                    fontFamily = if (rule.type in listOf("mount_hide", "maps_spoof", "statfs_spoof", "stealth"))
+                    fontFamily = if (rule.type in listOf("mount_hide", "maps_spoof", "statfs_spoof", "stealth", "kernel_build_spoof"))
                         FontFamily.Default else FontFamily.Monospace,
                 )
                 if (rule.hideState != null) {
@@ -592,8 +610,16 @@ private fun RuleItem(rule: SUMHManager.ActiveRule, index: Int = 0, count: Int = 
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                if (rule.rawOperands) {
+                    Text(stringResource(R.string.sumh_rules_runtime_raw_operands),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 Text(
-                    text = stringResource(if (rule.isUserDefined) R.string.sumh_rule_user else R.string.sumh_rule_module),
+                    text = stringResource(when {
+                        rule.isUserDefined -> R.string.sumh_rule_user
+                        rule.type in listOf("mount_hide", "maps_spoof", "statfs_spoof", "stealth", "kernel_build_spoof") -> R.string.sumh_rules_runtime_feature
+                        else -> R.string.sumh_rules_runtime_path
+                    }),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

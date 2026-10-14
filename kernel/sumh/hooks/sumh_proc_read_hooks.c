@@ -1112,6 +1112,27 @@ static int sumh_parse_maps_line(const char *line, size_t line_len,
 	return 0;
 }
 
+/* Caller holds sumh_maps_mutex until the selected values have been copied.
+ * Prefer exact devices over wildcards, and explicit legacy rules over the
+ * controller-owned set when both define the same key.
+ */
+static struct sumh_maps_rule_entry *sumh_maps_find_rule(unsigned long ino,
+							unsigned long dev)
+{
+	struct sumh_maps_rule_entry *entry, *best = NULL;
+
+	list_for_each_entry (entry, &sumh_maps_rules, list) {
+		if (entry->target_ino != ino ||
+		    (entry->target_dev && entry->target_dev != dev))
+			continue;
+		if (!best || (!best->target_dev && entry->target_dev) ||
+		    (best->target_dev == entry->target_dev && best->managed &&
+		     !entry->managed))
+			best = entry;
+	}
+	return best;
+}
+
 static bool sumh_maps_line_looks_like_header(const char *line, size_t line_len)
 {
 	size_t i = 0;
@@ -1198,11 +1219,8 @@ static int sumh_filter_maps_lines(const char *src, size_t len, char *dst,
 
 		if (spoof) {
 			mutex_lock(&sumh_maps_mutex);
-			list_for_each_entry (r, &sumh_maps_rules, list) {
-				if (r->target_ino != ino)
-					continue;
-				if (r->target_dev != 0 && r->target_dev != dev)
-					continue;
+			r = sumh_maps_find_rule(ino, dev);
+			if (r) {
 				spoof_ino = r->spoofed_ino;
 				spoof_dev = r->spoofed_dev;
 				/* Do not retain a rule-owned pointer after
@@ -1210,7 +1228,6 @@ static int sumh_filter_maps_lines(const char *src, size_t len, char *dst,
 				strscpy(replacement_path, r->spoofed_pathname,
 					sizeof(replacement_path));
 				have_replacement_path = true;
-				break;
 			}
 			mutex_unlock(&sumh_maps_mutex);
 		}

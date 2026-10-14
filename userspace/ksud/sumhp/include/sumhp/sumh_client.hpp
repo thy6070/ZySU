@@ -34,6 +34,14 @@ struct KernelBuild {
     std::string version;
 };
 
+struct MapsRule {
+    unsigned long target_ino = 0;
+    unsigned long target_dev = 0;
+    unsigned long spoofed_ino = 0;
+    unsigned long spoofed_dev = 0;
+    std::string spoofed_path;
+};
+
 struct UserHideRule {
     std::uint64_t id = 0;
     std::uint64_t generation = 0;
@@ -86,6 +94,8 @@ bool delete_rule(const std::string& path);
 bool add_maps_rule(unsigned long target_ino, unsigned long target_dev, unsigned long spoofed_ino,
                    unsigned long spoofed_dev, const std::string& spoofed_path);
 bool clear_maps_rules();
+// Atomically replaces only the managed set. Legacy numeric rules are retained.
+bool replace_managed_maps_rules(const std::vector<MapsRule>& rules);
 int enabled_state();
 int process_uid();
 int process_euid();

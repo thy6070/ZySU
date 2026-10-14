@@ -21,6 +21,7 @@
 #include <fstream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -86,12 +87,18 @@ int sys_move_mount(int from_fd, const char* from, int to_fd, const char* to, uns
 struct AttachedMount {
     std::string path;
     bool registered = false;
+    bool overlay = true;
+    fsutil::MountRecord identity;
 };
 
 namespace {
 bool record_mount(const std::string& target, std::vector<AttachedMount>& attached,
                   bool register_path = true) {
-    attached.push_back({target, false});
+    attached.push_back({target, false, register_path, {}});
+    if (!fsutil::capture_mount_identity(target, attached.back().identity)) {
+        mlog("overlay: cannot identify attached mount " + target, logging::Level::Error);
+        return false;
+    }
     if (!register_path)
         return true;
     attached.back().registered = fsutil::register_umount(target);
@@ -242,9 +249,12 @@ bool rbind_mount(const std::string& src, const std::string& dst,
 struct MountPointIndex {
 private:
     std::vector<std::string> paths;
+    bool complete = false;
 
 public:
     explicit MountPointIndex(std::istream& in) {
+        if (!in)
+            return;
         std::string line;
         while (std::getline(in, line)) {
             size_t begin = 0;
@@ -264,7 +274,10 @@ public:
         }
         std::sort(paths.begin(), paths.end());
         paths.erase(std::unique(paths.begin(), paths.end()), paths.end());
+        complete = in.eof() && !in.bad();
     }
+
+    [[nodiscard]] bool valid() const { return complete; }
 
     // Mount points strictly below root, with parents preceding descendants.
     [[nodiscard]] std::vector<std::string> children(const std::string& root) const {
@@ -276,6 +289,16 @@ public:
         return {first, last};
     }
 };
+
+std::optional<MountPointIndex> read_mount_points() {
+    std::ifstream mountinfo("/proc/self/mountinfo");
+    MountPointIndex mount_points(mountinfo);
+    if (!mount_points.valid()) {
+        mlog("overlay: cannot read complete stock mount snapshot", logging::Level::Error);
+        return std::nullopt;
+    }
+    return mount_points;
+}
 
 // Re-establish a sub-mount that the root overlay just shadowed: overlay the
 // modules that touch it on top of the stock content, or bind the stock back.
@@ -439,6 +462,48 @@ std::map<std::string, std::vector<std::string>> plan_overlays(
 
 std::string overlay_journal() {
     return (runtime_data_dir() / "run" / "overlay_mounts.list").string();
+}
+
+bool rollback_mounts(const std::vector<AttachedMount>& attached) {
+    bool ok = true;
+    for (auto it = attached.rbegin(); it != attached.rend(); ++it) {
+        if (it->identity.path.empty()) {
+            mlog("overlay: cannot safely roll back unidentified mount " + it->path,
+                 logging::Level::Error);
+            ok = false;
+            continue;
+        }
+        if (!fsutil::mount_matches(it->identity))
+            continue;
+        if (umount2(it->path.c_str(), MNT_DETACH) != 0)
+            mlog("overlay: rollback detach failed for " + it->path + ": " + std::strerror(errno),
+                 logging::Level::Error);
+    }
+    std::vector<fsutil::MountRecord> remaining;
+    for (const auto& entry : attached) {
+        if (entry.identity.path.empty())
+            continue;
+        if (fsutil::mount_matches(entry.identity)) {
+            ok = false;
+            // Stock binds are descendants of these overlays, and detach with
+            // their parent. Keep the journal restricted to overlay superblocks
+            // so xattr restoration never marks a stock filesystem.
+            if (entry.overlay)
+                remaining.push_back(entry.identity);
+        } else if (entry.registered && !fsutil::unregister_umount(entry.path)) {
+            mlog("overlay: rollback unregister failed for " + entry.path, logging::Level::Error);
+            ok = false;
+        }
+    }
+    if (!remaining.empty()) {
+        if (!fsutil::write_mount_journal(overlay_journal(), remaining))
+            mlog("overlay: cannot journal mounts left after rollback", logging::Level::Error);
+    } else if (ok) {
+        std::error_code ec;
+        fs::remove(overlay_journal(), ec);
+        ok = !ec;
+    }
+    return ok;
 }
 
 std::vector<std::string> our_overlays(const std::string& source) {
@@ -631,8 +696,7 @@ bool mount_modules(const std::vector<ModuleEntry>& modules, const Config& config
     mlog(std::string("overlay: base mode=") + storage::mode_name(base.mode) +
          " content=" + base.content_dir);
 
-    const std::vector<std::string>& partitions =
-        config.partitions.empty() ? fsutil::managed_partitions() : config.partitions;
+    const auto partitions = fsutil::managed_partitions(config.partitions);
 
     if (!sync_content(modules, base, partitions)) {
         mlog("overlay: content synchronization failed", logging::Level::Error);
@@ -649,28 +713,35 @@ bool mount_modules(const std::vector<ModuleEntry>& modules, const Config& config
     // partition root itself. Shallower targets first so a parent leaf is mounted
     // before any nested leaf under it.
     const auto ops = plan_overlays(base.content_dir, enabled, partitions);
-    std::ifstream mountinfo("/proc/self/mountinfo");
-    const MountPointIndex mount_points(mountinfo);
+    const auto mount_points = read_mount_points();
+    if (!mount_points)
+        return false;
     std::vector<AttachedMount> attached;
     bool ok = !ops.empty();
     for (const auto& [target, layers] : ops) {
         if (layers.empty())
             continue;
-        if (!mount_overlay(target, layers, "", "", config.mount_source, attached, mount_points)) {
+        if (!mount_overlay(target, layers, "", "", config.mount_source, attached, *mount_points)) {
             ok = false;
             break;
         }
     }
     if (ok) {
-        std::vector<std::string> paths;
+        std::vector<fsutil::MountRecord> records;
         const bool hide_xattrs = config.enable_overlay_xattr_hide && ::sumhp::sumh::is_available();
         for (const auto& entry : attached) {
+            if (!fsutil::mount_matches(entry.identity)) {
+                mlog("overlay: attached mount changed before commit: " + entry.path,
+                     logging::Level::Error);
+                ok = false;
+                break;
+            }
             // Child overlays have their own superblocks, so marking just the
             // planned leaf leaves their attributes exposed until a refresh.
             // Stock sub-mount binds are unregistered and must not be marked.
             if (!entry.registered)
                 continue;
-            paths.push_back(entry.path);
+            records.push_back(entry.identity);
             if (hide_xattrs && !::sumhp::sumh::hide_overlay_xattrs(entry.path)) {
                 mlog("overlay: failed to hide xattrs for " + entry.path, logging::Level::Error);
                 ok = false;
@@ -678,16 +749,12 @@ bool mount_modules(const std::vector<ModuleEntry>& modules, const Config& config
             }
         }
         if (ok)
-            ok = fsutil::write_mount_journal(overlay_journal(), paths);
+            ok = fsutil::write_mount_journal(overlay_journal(), records);
     }
     if (!ok) {
-        for (auto it = attached.rbegin(); it != attached.rend(); ++it) {
-            if (umount2(it->path.c_str(), MNT_DETACH) != 0)
-                mlog("overlay: rollback failed for " + it->path + ": " + std::strerror(errno),
-                     logging::Level::Error);
-            else if (it->registered && !fsutil::unregister_umount(it->path))
-                mlog("overlay: unregister failed for " + it->path, logging::Level::Error);
-        }
+        if (!rollback_mounts(attached))
+            mlog("overlay: rollback incomplete; inspect mount journal and log",
+                 logging::Level::Error);
         mlog("overlay: mount plan failed", logging::Level::Error);
         return false;
     }
@@ -703,8 +770,10 @@ bool unmount_all(const Config& config) {
         return false;
     bool ok = true;
     for (auto it = records.rbegin(); it != records.rend(); ++it) {
-        if (!fsutil::mount_matches(*it))
+        if (!fsutil::mount_matches(*it)) {
+            ok = fsutil::unregister_umount(it->path) && ok;
             continue;
+        }
         if (umount2(it->path.c_str(), MNT_DETACH) != 0) {
             mlog("overlay: detach failed for " + it->path + ": " + std::strerror(errno),
                  logging::Level::Error);

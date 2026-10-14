@@ -78,6 +78,13 @@ int close(int) {
     return 0;
 }
 namespace fsutil {
+struct MountRecord {
+    std::string path;
+};
+bool capture_mount_identity(const std::string& path, MountRecord& record) {
+    record.path = path;
+    return true;
+}
 void mlog(const std::string&, logging::Level = logging::Level::Info) {}
 bool register_umount(const std::string&) {
     return true;

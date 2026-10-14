@@ -50,9 +50,18 @@ bool migrate_config_document(const std::string& name, JsonValue& root) {
             changed |= migrate_backend_value(value);
     } else if (name == "module_rules.json") {
         for (auto& [id, rules] : root.o) {
-            if (!rules.is_array())
+            JsonValue* entries = &rules;
+            if (rules.is_object()) {
+                if (auto it = rules.o.find("mode"); it != rules.o.end())
+                    changed |= migrate_backend_value(it->second);
+                const auto it = rules.o.find("rules");
+                if (it == rules.o.end())
+                    continue;
+                entries = &it->second;
+            }
+            if (!entries->is_array())
                 continue;
-            for (auto& rule : rules.a) {
+            for (auto& rule : entries->a) {
                 if (rule.is_object()) {
                     if (auto it = rule.o.find("mode"); it != rule.o.end())
                         changed |= migrate_backend_value(it->second);

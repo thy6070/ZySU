@@ -359,6 +359,13 @@ int serve_foreground(int ready_fd = -1) {
         std::string restore_error;
         if (!mount::sumh::restore_persisted_hide_rules(restore_error))
             append_log(restore_error, logging::Level::Error);
+        if (!ksud::is_safe_mode() && ksud::getprop("sys.boot_completed") == "1" &&
+            sumh::is_available()) {
+            restore_error.clear();
+            if (!mount::sumh::apply_maps_config(log_config, restore_error)) {
+                append_log("restore maps paths: " + restore_error, logging::Level::Error);
+            }
+        }
     }
     bool stopping = false;
     int exit_code = 0;

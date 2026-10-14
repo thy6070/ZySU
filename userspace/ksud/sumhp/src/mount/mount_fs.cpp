@@ -18,6 +18,7 @@
 #include <sys/wait.h>
 #include <sys/xattr.h>
 #include <unistd.h>
+#include <algorithm>
 #include <climits>
 
 #include <cerrno>
@@ -34,6 +35,17 @@ const std::vector<std::string>& managed_partitions() {
     static const std::vector<std::string> partitions = {
         "system", "vendor", "product", "system_ext", "odm", "oem",
     };
+    return partitions;
+}
+
+std::vector<std::string> managed_partitions(const std::vector<std::string>& extra) {
+    auto partitions = managed_partitions();
+    for (const auto& partition : extra) {
+        if (!partition.empty() &&
+            std::find(partitions.begin(), partitions.end(), partition) == partitions.end()) {
+            partitions.push_back(partition);
+        }
+    }
     return partitions;
 }
 
@@ -167,6 +179,27 @@ bool directory_is_opaque(const std::string& path, bool& opaque) {
     return true;
 }
 
+bool stat_is_whiteout(const std::string& path, const struct stat& st, bool& whiteout) {
+    whiteout = S_ISCHR(st.st_mode) && st.st_rdev == makedev(0, 0);
+    if (S_ISREG(st.st_mode) && st.st_size == 0) {
+        const ssize_t count = lgetxattr(path.c_str(), "trusted.overlay.whiteout", nullptr, 0);
+        if (count >= 0)
+            whiteout = true;
+        else if (errno != ENODATA && errno != EOPNOTSUPP) {
+            mlog("read whiteout attribute " + path + ": " + std::strerror(errno),
+                 logging::Level::Error);
+            return false;
+        }
+    }
+    return true;
+}
+
+bool path_is_whiteout(const std::string& path, bool& whiteout) {
+    whiteout = false;
+    struct stat st{};
+    return lstat(path.c_str(), &st) == 0 && stat_is_whiteout(path, st, whiteout);
+}
+
 bool copy_tree(const std::string& src, const std::string& dst) {
     struct stat st{};
     if (lstat(src.c_str(), &st) != 0) {
@@ -174,17 +207,9 @@ bool copy_tree(const std::string& src, const std::string& dst) {
         return false;
     }
 
-    bool whiteout = S_ISCHR(st.st_mode) && st.st_rdev == makedev(0, 0);
-    if (S_ISREG(st.st_mode) && st.st_size == 0) {
-        const ssize_t count = lgetxattr(src.c_str(), "trusted.overlay.whiteout", nullptr, 0);
-        if (count >= 0)
-            whiteout = true;
-        else if (errno != ENODATA && errno != EOPNOTSUPP) {
-            mlog("read whiteout attribute " + src + ": " + std::strerror(errno),
-                 logging::Level::Error);
-            return false;
-        }
-    }
+    bool whiteout = false;
+    if (!stat_is_whiteout(src, st, whiteout))
+        return false;
     if (whiteout) {
         if (mknod(dst.c_str(), S_IFCHR | (st.st_mode & 07777), makedev(0, 0)) != 0) {
             mlog("create whiteout " + dst + ": " + std::strerror(errno), logging::Level::Error);
@@ -333,21 +358,33 @@ bool read_mount_journal(const std::string& journal, std::vector<MountRecord>& re
     return input.eof();
 }
 
-bool write_mount_journal(const std::string& journal, const std::vector<std::string>& mounts) {
+bool write_mount_journal(const std::string& journal, const std::vector<MountRecord>& records) {
     const auto boot = runtime_boot_id();
     if (boot.empty())
         return false;
     std::ostringstream data;
     data << "SUMHP_MOUNTS_V2 " << boot << "\n";
-    for (const auto& path : mounts) {
-        MountRecord record;
-        if (path.find_first_of("\r\n") != std::string::npos ||
-            !capture_mount_identity(path, record))
+    for (const auto& record : records) {
+        if (record.path.empty() || record.path.front() != '/' || !record.mount_id ||
+            record.path.find_first_of("\r\n") != std::string::npos ||
+            record.path.find('\0') != std::string::npos)
             return false;
         data << record.mount_id << " " << record.device << " " << record.inode << " "
-             << std::quoted(path) << "\n";
+             << std::quoted(record.path) << "\n";
     }
     return ksud::write_file_atomic(journal, data.str());
+}
+
+bool write_mount_journal(const std::string& journal, const std::vector<std::string>& mounts) {
+    std::vector<MountRecord> records;
+    records.reserve(mounts.size());
+    for (const auto& path : mounts) {
+        MountRecord record;
+        if (!capture_mount_identity(path, record))
+            return false;
+        records.push_back(std::move(record));
+    }
+    return write_mount_journal(journal, records);
 }
 
 std::string decode_mount_path(const std::string& input) {
@@ -417,6 +454,68 @@ bool run_in_init_mount_ns(const std::function<bool()>& fn) {
         waited = waitpid(pid, &status, 0);
     } while (waited < 0 && errno == EINTR);
     return waited == pid && WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+
+bool run_in_init_mount_ns(const std::function<bool()>& fn, std::string& error) {
+    // Keep the reply below PIPE_BUF: the existing helper waits for its child
+    // before this parent reads, so the complete reply must fit without blocking.
+    struct Reply {
+        int error;
+        char message[1024];
+    } reply = {};
+    static_assert(sizeof(Reply) <= PIPE_BUF);
+    int channel[2];
+    if (pipe2(channel, O_CLOEXEC) != 0) {
+        error = "create namespace result pipe: " + std::string(std::strerror(errno));
+        return false;
+    }
+    error.clear();
+    errno = 0;
+    const bool ok = run_in_init_mount_ns([&]() {
+        close(channel[0]);
+        errno = 0;
+        const bool child_ok = fn();
+        if (!child_ok)
+            reply.error = errno ? errno : EIO;
+        const auto length = std::min(error.size(), sizeof(reply.message) - 1);
+        std::memcpy(reply.message, error.data(), length);
+        const char* cursor = reinterpret_cast<const char*>(&reply);
+        std::size_t remaining = sizeof(reply);
+        while (remaining) {
+            const auto written = write(channel[1], cursor, remaining);
+            if (written < 0 && errno == EINTR)
+                continue;
+            if (written <= 0)
+                break;
+            cursor += written;
+            remaining -= static_cast<std::size_t>(written);
+        }
+        close(channel[1]);
+        return child_ok;
+    });
+    const int namespace_error = errno;
+    close(channel[1]);
+    char* cursor = reinterpret_cast<char*>(&reply);
+    std::size_t received = 0;
+    while (received < sizeof(reply)) {
+        const auto count = read(channel[0], cursor + received, sizeof(reply) - received);
+        if (count < 0 && errno == EINTR)
+            continue;
+        if (count <= 0)
+            break;
+        received += static_cast<std::size_t>(count);
+    }
+    close(channel[0]);
+    if (ok && received == sizeof(reply) && reply.error == 0)
+        return true;
+    int failure = namespace_error ? namespace_error : EIO;
+    if (received == sizeof(reply) && reply.error)
+        failure = reply.error;
+    errno = failure;
+    error = received == sizeof(reply) && reply.message[0]
+                ? std::string(reply.message)
+                : "failed to run managed operation in init mount namespace";
+    return false;
 }
 
 std::string partition_mount_point(const std::string& partition) {

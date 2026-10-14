@@ -225,6 +225,69 @@ void test_maps_paths() {
     assert(calls.empty());
 }
 
+void test_managed_maps() {
+    namespace sumh = sumhp::sumh;
+    const sumh::MapsRule valid{1, 2, 3, 4, "/replacement"};
+    for (const auto& path : {std::string(), std::string("relative"), std::string("/bad\n"),
+                             std::string("/bad\r"), std::string("/bad\0suffix", 11)}) {
+        auto rule = valid;
+        rule.spoofed_path = path;
+        assert(!sumh::replace_managed_maps_rules({rule}));
+        assert(errno == EINVAL);
+    }
+    auto rule = valid;
+    rule.spoofed_path = "/" + std::string(SUMH_MAX_LEN_PATHNAME - 1, 'x');
+    assert(!sumh::replace_managed_maps_rules({rule}) && errno == ENAMETOOLONG);
+    for (int field = 0; field < 4; ++field) {
+        rule = valid;
+        if (field == 0)
+            rule.target_ino = 0;
+        if (field == 1)
+            rule.target_dev = 0;
+        if (field == 2)
+            rule.spoofed_ino = 0;
+        if (field == 3)
+            rule.spoofed_dev = 0;
+        assert(!sumh::replace_managed_maps_rules({rule}) && errno == EINVAL);
+    }
+    assert(!sumh::replace_managed_maps_rules({valid, valid}) && errno == EINVAL);
+    assert(!sumh::replace_managed_maps_rules(
+        std::vector<sumh::MapsRule>(SUMH_MANAGED_MAPS_MAX_RULES + 1, valid)));
+    assert(errno == E2BIG && calls.empty());
+    expect_features(0);
+    assert(sumh::replace_managed_maps_rules({}));
+    expect_features(0);
+    assert(!sumh::replace_managed_maps_rules({valid}) && errno == EOPNOTSUPP);
+    expect_error(SUMH_IOC_GET_FEATURES, EACCES);
+    assert(!sumh::replace_managed_maps_rules({}) && errno == EACCES);
+    expect_features(SUMH_FEATURE_MANAGED_MAPS);
+    expect(SUMH_IOC_SET_MANAGED_MAPS, [](void* value) {
+        const auto& arg = *static_cast<sumh_managed_maps_arg*>(value);
+        assert(arg.size == sizeof(arg) && arg.count == 1 && arg.rules != 0);
+        assert(arg.reserved[0] == 0 && arg.reserved[1] == 0);
+        const auto* rules =
+            reinterpret_cast<const sumh_maps_rule*>(static_cast<std::uintptr_t>(arg.rules));
+        assert(rules[0].target_ino == 1 && rules[0].target_dev == 2 && rules[0].err == 0);
+        assert(rules[0].spoofed_ino == 3 && rules[0].spoofed_dev == 4);
+        assert(std::string(rules[0].spoofed_pathname) == "/replacement");
+        return 0;
+    });
+    assert(sumh::replace_managed_maps_rules({valid}));
+    expect_features(SUMH_FEATURE_MANAGED_MAPS);
+    expect_error(SUMH_IOC_SET_MANAGED_MAPS, ENOMEM);
+    assert(!sumh::replace_managed_maps_rules({valid}) && errno == ENOMEM);
+    expect_features(SUMH_FEATURE_MANAGED_MAPS);
+    expect(SUMH_IOC_SET_MANAGED_MAPS, [](void* value) {
+        const auto& arg = *static_cast<sumh_managed_maps_arg*>(value);
+        assert(arg.count == 0 && arg.rules == 0);
+        return 0;
+    });
+    assert(sumh::replace_managed_maps_rules({}));
+    assert((sumh::feature_names(SUMH_FEATURE_MANAGED_MAPS) ==
+            std::vector<std::string>{"managed_maps"}));
+    assert(calls.empty());
+}
+
 void test_kernel_build() {
     namespace sumh = sumhp::sumh;
     const std::string release = "6.1.75-android14-11-g16c5f6cd5e9b-ab12268515";
@@ -377,6 +440,7 @@ int main() {
     test_text_replies();
     test_feature_errors();
     test_maps_paths();
+    test_managed_maps();
     test_kernel_build();
     test_hide_snapshot();
     test_active_modules();

@@ -4,15 +4,17 @@
 
 ## 实际挂载规划
 
-SUMHP 的 `auto` 规划按 OverlayFS → Magic Mount → none。OverlayFS 适用于不需要替换分区根的模块树；分区根直属文件会使规划器回退到 Magic Mount。可以用 `module set-mode <ID> overlay` 显式选择，但配置或内核不支持时仍可能回退。
+SUMHP 的 `auto` 规划按 OverlayFS → Magic Mount → none。OverlayFS 适用于不需要替换分区根的模块树；分区根直属文件会使规划器回退到 Magic Mount。`module set-mode <ID> overlay` 的显式选择也检查这个布局条件；无法形成叶目录挂载时使用已有回退，并在日志中说明。模块扫描、SUMH、OverlayFS 和 Magic Mount 共用内置分区与额外分区的去重集合。
 
 OverlayFS 实现：
 
 - 按分区和相对路径选择模块层，保留层优先级；遇到 opaque / `.replace` 祖先时截断更低层。
 - 优先使用 `fsopen`/`fsconfig`/`fsmount`/`move_mount`，失败时回退到传统 `mount(2)`。
-- 原分区内容被 opaque 截断且仅剩一个模块层时，添加空的第二 lower 层；可写 upper/work 由 SUMHP 配置准备。
+- 原分区内容被 opaque 截断且仅剩一个模块层时，添加空的第二 lower 层。当前叶目录挂载使用只读 lower 层，存储层准备 upper/work 不代表这些挂载已启用写入。
 - 每个实际 OverlayFS 挂载都登记可卸载身份，包括后续重建的独立子挂载；恢复原生 bind 挂载不会被误记为 OverlayFS。
-- 挂载期间读取当前命名空间挂载表，按路径索引查找子挂载；索引不跨调用缓存。
+- 挂载期间读取当前命名空间挂载表，按路径索引查找子挂载；索引不跨调用缓存，读取不完整时不发布覆盖挂载。
+
+挂载失败时按挂载身份回滚，避免卸载已经被替换的其他挂载。不能卸载的本模块挂载继续写入现有日志，供后续清理；已经消失的挂载会清理对应卸载登记。日志保存失败仍是操作失败，不能把仅打印错误当成残留挂载已经可恢复。
 
 `enable_overlay_xattr_hide` 默认关闭，并且需要内核导出 `overlay_xattr_hide` 能力。即使 OverlayFS 已启用，扩展属性过滤也可能不可用；用 `ksud sumhp api sumh`、`api features` 和日志确认实际状态。
 

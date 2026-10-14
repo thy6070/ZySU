@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <iostream>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -25,6 +26,7 @@
 namespace {
 std::optional<std::string> saved_config;
 bool saved = false;
+bool save_ok = true;
 bool build_supported = true;
 int capabilities_error = 0;
 bool original_query_ok = true;
@@ -42,6 +44,22 @@ int runtime_preparation_calls = 0;
 std::string mount_owner;
 int build_apply_calls = 0;
 int hide_apply_calls = 0;
+int maps_boot_calls = 0;
+int maps_restore_calls = 0;
+int maps_clear_calls = 0;
+bool maps_restore_ok = true;
+int maps_switch_error = 0;
+int maps_clear_error = 0;
+int feature_reset_calls = 0;
+bool replay_pending = false;
+bool replay_ok = true;
+int replay_calls = 0;
+int xattr_restore_calls = 0;
+bool xattr_restore_ok = true;
+int snapshot_calls = 0;
+std::vector<std::string> maps_operations;
+std::vector<sumhp::MapsPathRule> restored_maps;
+std::vector<bool> maps_enable_calls;
 int boot_errors = 0;
 int aggressive_mount_error = 0;
 int normal_mount_error = 0;
@@ -91,7 +109,12 @@ struct ConfigFileLock {
 std::filesystem::path runtime_config_file() {
     return "/mock/config.json";
 }
-bool save_config(const std::string& data, std::string&) {
+bool save_config(const std::string& data, std::string& error) {
+    if (!save_ok) {
+        errno = EIO;
+        error = "injected persistence failure";
+        return false;
+    }
     saved_config = data;
     saved = true;
     return true;
@@ -146,6 +169,17 @@ int features() {
 bool clear_maps_rules() {
     return false;
 }
+bool replace_managed_maps_rules(const std::vector<MapsRule>& rules) {
+    assert(rules.empty());
+    maps_operations.push_back("clear");
+    ++maps_clear_calls;
+    if (maps_clear_error) {
+        errno = maps_clear_error;
+        return false;
+    }
+    restored_maps.clear();
+    return true;
+}
 bool add_maps_rule(unsigned long, unsigned long, unsigned long, unsigned long, const std::string&) {
     return false;
 }
@@ -174,7 +208,13 @@ bool set_mount_hide(bool enable, MountHideMode mode) {
     }
     return true;
 }
-bool set_maps_spoof(bool) {
+bool set_maps_spoof(bool enabled) {
+    maps_operations.push_back(enabled ? "enable" : "disable");
+    maps_enable_calls.push_back(enabled);
+    if (maps_switch_error) {
+        errno = maps_switch_error;
+        return false;
+    }
     return true;
 }
 bool set_statfs_spoof(bool) {
@@ -191,10 +231,54 @@ bool set_stealth(bool) {
 namespace sumhp {
 namespace mount {
 void recovery_boot_completed() {}
+bool refresh_sumh_modules(const Config&) {
+    ++replay_calls;
+    return replay_ok;
+}
+namespace fsutil {
+template <typename Callback>
+bool run_in_init_mount_ns(Callback callback) {
+    return callback();
+}
+}  // namespace fsutil
+namespace overlay {
+bool restore_xattr_hiding(const Config&) {
+    ++xattr_restore_calls;
+    return xattr_restore_ok;
+}
+}  // namespace overlay
 }  // namespace mount
 namespace mount::sumh {
 void invalidate_active_state() {}
 void mlog(const std::string&) {}
+bool restore_managed_maps_rules(const Config& config, std::string& error) {
+    maps_operations.push_back("restore");
+    ++maps_restore_calls;
+    if (!maps_restore_ok) {
+        errno = ENOENT;
+        error = "injected missing maps path";
+        return false;
+    }
+    restored_maps = config.maps_rules;
+    return true;
+}
+bool apply_maps_config(const Config&, std::string&, bool restore_rules = true);
+bool apply_feature_config(const Config&, std::string&, bool apply_immediately = false,
+                          bool apply_maps = true);
+bool has_replayable_mappings() {
+    return replay_pending;
+}
+bool is_active() {
+    return false;
+}
+bool reset_feature_state(std::string&) {
+    ++feature_reset_calls;
+    return true;
+}
+bool restore_persisted_hide_rules(std::string&) {
+    ++hide_apply_calls;
+    return true;
+}
 #include "sumh_build_features_under_test.inc"
 }  // namespace mount::sumh
 std::string arg_or_default(const std::vector<std::string>& args, std::size_t index,
@@ -214,13 +298,23 @@ bool parse_unsigned_long(const std::string&, unsigned long&) {
     return false;
 }
 void print_usage() {}
+int print_sumh_snapshot_json() {
+    ++snapshot_calls;
+    return 0;
+}
 #include "sumh_build_cli_under_test.inc"
+#include "sumh_config_apply_under_test.inc"
+#include "sumh_query_under_test.inc"
 std::string embedded_external_mount_owner() {
     return mount_owner;
 }
 int run_via_daemon(const std::vector<std::string>& args) {
-    assert((args == std::vector<std::string>{"hide", "apply"}));
-    ++hide_apply_calls;
+    if (args == std::vector<std::string>{"sumh", "maps", "apply"})
+        ++maps_boot_calls;
+    else {
+        assert((args == std::vector<std::string>{"hide", "apply"}));
+        ++hide_apply_calls;
+    }
     return 0;
 }
 #include "sumh_build_boot_under_test.inc"
@@ -308,6 +402,104 @@ void test_config() {
     // JSON config has no magic default token; only the CLI treats it specially.
     assert(merge_config_json(R"({"kernel_build_release":"default"})", error));
     assert(read_config_file(persisted, error) && persisted.kernel_build_release == "default");
+}
+
+void test_maps_config() {
+    using namespace sumhp;
+    std::string error;
+    Config config;
+    assert(parse_config_json(default_config_json(), config, error) && config.maps_rules.empty());
+    const std::string valid =
+        R"({"maps_rules":[{"target_path":"/target","replacement_path":"/replacement"}]})";
+    assert(parse_config_json(valid, config, error) && config.maps_rules.size() == 1);
+    assert(config.maps_rules[0].target_path == "/target");
+    for (
+        const auto* invalid :
+        {R"({"enable_maps_spoof":"true"})", R"({"maps_rules":{}})", R"({"maps_rules":[1]})",
+         R"({"maps_rules":[{"target_path":"/target"}]})",
+         R"({"maps_rules":[{"target_path":"relative","replacement_path":"/replacement"}]})",
+         R"({"maps_rules":[{"target_path":"/target","replacement_path":""}]})",
+         R"({"maps_rules":[{"target_path":"/target","replacement_path":"/r","extra":1}]})",
+         R"({"maps_rules":[{"target_path":"/target\u0000","replacement_path":"/r"}]})",
+         R"({"maps_rules":[{"target_path":"/target","replacement_path":"/r\n"}]})",
+         R"({"maps_rules":[{"target_path":"/target\r","replacement_path":"/r"}]})",
+         R"({"maps_rules":[{"target_path":"/target","replacement_path":"/r"},{"target_path":"/target","replacement_path":"/r2"}]})"}) {
+        assert(!parse_config_json(invalid, config, error));
+        assert(config.maps_rules.size() == 1 && config.maps_rules[0].target_path == "/target");
+    }
+    std::vector<MapsPathRule> rules{{"/" + std::string(4094, 't'), "/" + std::string(254, 'r')}};
+    assert(validate_maps_path_rules(rules, error));
+    rules[0].replacement_path += "r";
+    assert(!validate_maps_path_rules(rules, error));
+    rules[0].replacement_path = "/r";
+    rules[0].target_path += "t";
+    assert(!validate_maps_path_rules(rules, error));
+    rules.clear();
+    for (unsigned int index = 0; index < SUMH_MANAGED_MAPS_MAX_RULES; ++index)
+        rules.push_back({"/target/" + std::to_string(index), "/replacement"});
+    assert(validate_maps_path_rules(rules, error));
+    rules.push_back({"/one-too-many", "/replacement"});
+    assert(!validate_maps_path_rules(rules, error));
+    const auto encode_rules = [](const std::vector<MapsPathRule>& values) {
+        JsonValue array;
+        array.type = JsonValue::Type::Array;
+        for (const auto& rule : values) {
+            JsonValue item = JsonValue::object();
+            item.o["target_path"] = rule.target_path;
+            item.o["replacement_path"] = rule.replacement_path;
+            array.a.push_back(std::move(item));
+        }
+        return array;
+    };
+    const auto encoded_size = [&](const std::vector<MapsPathRule>& values) {
+        std::size_t size = json_quote(stringify_json(encode_rules(values))).size();
+        for (const auto& rule : values) {
+            size += 3 * static_cast<std::size_t>(
+                            std::count(rule.target_path.begin(), rule.target_path.end(), '/') +
+                            std::count(rule.replacement_path.begin(), rule.replacement_path.end(),
+                                       '/'));
+        }
+        return size;
+    };
+    // Android SDK 35 gives 83 bytes; our writer additionally retains one
+    // comma space for this object. The Manager budgets these spaces too.
+    assert(encoded_size({{"/\xe4\xb8\xad/\"\\\t", "/plain"}}) == 84);
+    // Exercise the actual double-escaped transport representation at its byte
+    // boundary, using quotes/backslashes/control bytes and multibyte UTF-8.
+    rules.clear();
+    for (int index = 0; index < 7; ++index)
+        rules.push_back({"/" + std::to_string(index) + std::string(1900, '\\'), "/r\t\"\xc3\xa9"});
+    rules.push_back({"/boundary", "/r"});
+    const auto base_size = encoded_size(rules);
+    assert(base_size < MAPS_RULES_MAX_ENCODED_BYTES);
+    const auto padding = MAPS_RULES_MAX_ENCODED_BYTES - base_size;
+    assert(padding + rules.back().target_path.size() < SUMH_USER_HIDE_PATH_MAX);
+    rules.back().target_path.append(padding, 'x');
+    assert(encoded_size(rules) == MAPS_RULES_MAX_ENCODED_BYTES);
+    assert(validate_maps_path_rules(rules, error));
+    rules.back().target_path += 'x';
+    assert(!validate_maps_path_rules(rules, error));
+    JsonValue oversized = JsonValue::object();
+    oversized.o["maps_rules"] = encode_rules(rules);
+    assert(!parse_config_json(stringify_json(oversized), config, error));
+    assert(config.maps_rules.size() == 1 && config.maps_rules[0].target_path == "/target");
+    saved_config = default_config_json();
+    saved = false;
+    assert(!merge_config_json(stringify_json(oversized), error) && !saved);
+    rules.clear();
+    for (int index = 0; index < 16; ++index)
+        rules.push_back({"/" + std::to_string(index) + std::string(3900, 'x'), "/r"});
+    assert(!validate_maps_path_rules(rules, error));
+    saved_config = default_config_json();
+    assert(merge_config_json(valid, error));
+    const auto before = saved_config;
+    saved = false;
+    assert(!merge_config_json(R"({"maps_rules":[{}]})", error));
+    assert(!saved && saved_config == before);
+    assert(merge_config_json(R"({"debug":true})", error));
+    assert(read_config_file(config, error) && config.maps_rules.size() == 1);
+    assert(parse_config_json("{}", config, error) && config.maps_rules.empty());
+    saved_config = default_config_json();
 }
 
 void test_kmi_source() {
@@ -443,6 +635,108 @@ void test_cli() {
     assert(run_cli({"sumh", "kernel-build", "reset"}) == 0);
 }
 
+void test_module_configure_cli() {
+    const std::string rules = R"([{"path":"/system/app/Example ","mode":"hide"}])";
+    ksud::CliArguments parsed;
+    assert(ksud::parse_cli({"sumhp", "module", "configure", "example.module", "sumh", rules},
+                           parsed) == -1);
+    assert((parsed.args ==
+            std::vector<std::string>{"module", "configure", "example.module", "sumh", rules}));
+    assert(ksud::parse_cli(
+               {"sumhp", "daemon", "call", "module", "configure", "example.module", "auto", "[]"},
+               parsed) == -1);
+    assert(ksud::parse_cli({"sumhp", "module", "configure", "example.module", "hide", "[]"},
+                           parsed) != -1);
+    assert(ksud::parse_cli({"sumhp", "module", "configure", "../example", "sumh", "[]"}, parsed) !=
+           -1);
+    for (const auto* invalid : {"{}", "null", "[", "[] trailing"})
+        assert(ksud::parse_cli({"sumhp", "module", "configure", "example.module", "sumh", invalid},
+                               parsed) != -1);
+    assert(ksud::parse_cli({"sumhp", "module", "configure", "example.module", "sumh"}, parsed) !=
+           -1);
+}
+
+void test_maps_cli_and_apply() {
+    using namespace sumhp;
+    saved_config = default_config_json();
+    maps_restore_calls = 0;
+    maps_restore_ok = true;
+    maps_enable_calls.clear();
+    assert(run_cli({"sumh", "maps", "add-path", "/target", "/replacement"}) == 0);
+    assert(maps_restore_calls == 1 && restored_maps.size() == 1);
+    assert(run_cli({"sumh", "maps", "add-path", "/target", "/changed"}) == 0);
+    assert(restored_maps.size() == 1 && restored_maps[0].replacement_path == "/changed");
+    assert(run_cli({"sumh", "maps", "list-paths"}) == 0);
+    assert(json::parse(cli_output).a[0].find("replacement_path")->s == "/changed");
+    assert(maps_restore_calls == 2);
+    assert(maps_enable_calls.empty());  // Editing rules does not change the feature switch.
+    std::string error;
+    assert(merge_config_json(R"({"enable_maps_spoof":true})", error));
+    assert(run_cli({"sumh", "maps", "apply"}) == 0 && maps_restore_calls == 3);
+    assert(maps_enable_calls.size() == 1 && maps_enable_calls.back());
+    maps_restore_ok = false;
+    assert(run_cli({"sumh", "maps", "apply"}) != 0);
+    assert(maps_enable_calls.size() == 1);  // Failed resolution cannot enable stale rules.
+    --maps_restore_calls;
+    maps_restore_ok = true;
+    const auto before = saved_config;
+    save_ok = false;
+    assert(run_cli({"sumh", "maps", "add-path", "/second", "/r2"}) != 0);
+    assert(saved_config == before && maps_restore_calls == 3);
+    save_ok = true;
+    maps_restore_ok = false;
+    assert(run_cli({"sumh", "maps", "add-path", "/second", "/r2"}) != 0);
+    assert(errno == ENOENT && maps_restore_calls == 4);
+    assert(json::parse(cli_output).find("saved")->b);
+    assert(!json::parse(cli_output).find("applied")->b);
+    Config config;
+    assert(read_config_file(config, error) && config.maps_rules.size() == 2);
+    maps_restore_ok = true;
+    assert(run_cli({"sumh", "maps", "remove-path", "/target"}) == 0);
+    assert(restored_maps.size() == 1 && restored_maps[0].target_path == "/second");
+    const auto persisted = saved_config;
+    const int calls_before = maps_restore_calls;
+    assert(run_cli({"sumh", "maps", "add-path", "relative", "/r"}) != 0);
+    assert(run_cli({"sumh", "maps", "apply", "unexpected"}) != 0);
+    assert(saved_config == persisted && maps_restore_calls == calls_before);
+    assert(run_cli({"sumh", "maps", "remove-path", "/second"}) == 0);
+    assert(restored_maps.empty());
+    assert(merge_config_json(R"({"enable_maps_spoof":false})", error));
+    maps_restore_ok = false;
+    const int before_disabled_apply = maps_restore_calls;
+    const int before_disabled_clear = maps_clear_calls;
+    assert(run_cli({"sumh", "maps", "apply"}) == 0);
+    assert(maps_restore_calls == before_disabled_apply &&
+           maps_clear_calls == before_disabled_clear + 1);
+    assert(!maps_enable_calls.back());
+    maps_restore_ok = true;
+    saved_config.reset();
+    const int before_missing_config = maps_restore_calls;
+    assert(run_cli({"sumh", "maps", "apply"}) != 0);
+    assert(maps_restore_calls == before_missing_config);
+
+    config = Config{};
+    config.enable_maps_spoof = true;
+    config.maps_rules = {{"/missing", "/replacement"}};
+    boot_completed = false;
+    maps_restore_ok = false;
+    maps_enable_calls.clear();
+    maps_restore_calls = 0;
+    assert(mount::sumh::apply_feature_config(config, error, false));
+    assert(maps_restore_calls == 0);
+    assert(!mount::sumh::apply_feature_config(config, error, true));
+    assert(maps_restore_calls == 1 && maps_enable_calls.back());
+    assert(std::find(maps_enable_calls.begin(), maps_enable_calls.end(), false) ==
+           maps_enable_calls.end());
+    config.enable_maps_spoof = false;
+    const int clear_calls_before = maps_clear_calls;
+    assert(mount::sumh::apply_feature_config(config, error, true));
+    assert(maps_restore_calls == 1 && !maps_enable_calls.back());
+    assert(maps_clear_calls == clear_calls_before + 1 && restored_maps.empty());
+    maps_restore_ok = true;
+    saved_config = default_config_json();
+}
+
 void test_boot_restore() {
     using namespace sumhp;
     mount_owner = "external.metamodule";
@@ -481,6 +775,7 @@ void test_boot_restore() {
     assert(build_apply_calls == 1);
     embedded_boot_completed();
     assert(build_apply_calls == 2);
+    assert(maps_boot_calls == 1);  // External mount owners still restore saved maps.
     boot_completed = true;
     assert(mount::sumh::apply_feature_config(late, error, false));
     assert(build_apply_calls == 3);
@@ -497,8 +792,10 @@ void test_boot_restore() {
 
     build_apply_calls = 0;
     safe_mode = true;
+    const int maps_before_safe_mode = maps_boot_calls;
     embedded_boot_completed();
     assert(build_apply_calls == 0 && hide_apply_calls == 0);
+    assert(maps_boot_calls == maps_before_safe_mode);
     safe_mode = false;
     kernel_available = false;
     embedded_boot_completed();
@@ -525,6 +822,95 @@ void test_boot_restore() {
     mount_owner.clear();
     embedded_boot_completed();
     assert(hide_apply_calls == 1 && !saved);
+}
+
+void test_maps_lifecycle_and_config_wrapper() {
+    using namespace sumhp;
+    Config config;
+    config.enable_maps_spoof = true;
+    config.maps_rules = {{"/target", "/replacement"}};
+    config.enable_kernel_build_spoof = true;
+    config.kernel_build_release = "release";
+    build_supported = apply_ok = kernel_available = true;
+    maps_restore_ok = true;
+    maps_switch_error = maps_clear_error = 0;
+    std::string error;
+    maps_operations.clear();
+    assert(mount::sumh::apply_maps_config(config, error));
+    assert((maps_operations == std::vector<std::string>{"restore", "enable"}));
+    maps_operations.clear();
+    maps_restore_ok = false;
+    assert(!mount::sumh::apply_maps_config(config, error));
+    assert(errno == ENOENT && error == "injected missing maps path");
+    assert((maps_operations == std::vector<std::string>{"restore"}));
+    maps_operations.clear();
+    maps_restore_ok = true;
+    maps_switch_error = EACCES;
+    assert(!mount::sumh::apply_maps_config(config, error));
+    assert(errno == EACCES && error.find("enable") != std::string::npos);
+    assert((maps_operations == std::vector<std::string>{"restore", "enable"}));
+    config.enable_maps_spoof = false;
+    maps_operations.clear();
+    assert(!mount::sumh::apply_maps_config(config, error));
+    assert(errno == EACCES && error.find("disable") != std::string::npos);
+    assert((maps_operations == std::vector<std::string>{"disable"}));
+    maps_switch_error = 0;
+    maps_clear_error = EIO;
+    maps_operations.clear();
+    assert(!mount::sumh::apply_maps_config(config, error));
+    assert(errno == EIO && error.find("clear") != std::string::npos);
+    assert((maps_operations == std::vector<std::string>{"disable", "clear"}));
+    maps_clear_error = 0;
+    maps_restore_ok = false;
+    maps_operations.clear();
+    assert(mount::sumh::apply_maps_config(config, error));
+    assert((maps_operations == std::vector<std::string>{"disable", "clear"}));
+    maps_operations.clear();
+    config.enable_maps_spoof = true;
+    assert(mount::sumh::apply_maps_config(config, error, false));
+    assert((maps_operations == std::vector<std::string>{"enable"}));
+
+    // Module orchestration applies Maps exactly once after the base features.
+    maps_operations.clear();
+    assert(mount::sumh::apply_feature_config(config, error, true, false));
+    assert(maps_operations.empty());
+
+    // Exercise the production config apply wrapper, not only the feature
+    // helper: its old outer cleanup turned a missing maps path into a global reset.
+    saved_config =
+        R"({"enable_maps_spoof":true,"enable_mount_hide":true,"enable_kernel_build_spoof":true,"kernel_build_release":"release","maps_rules":[{"target_path":"/target","replacement_path":"/replacement"}]})";
+    feature_reset_calls = snapshot_calls = xattr_restore_calls = 0;
+    replay_pending = false;
+    mount_hide_calls.clear();
+    maps_operations.clear();
+    assert(apply_config_file() != 0);
+    assert(feature_reset_calls == 0 && snapshot_calls == 0 && xattr_restore_calls == 0);
+    assert(live_build.enabled && mount_hide_calls.size() == 1 && mount_hide_calls[0].first);
+    assert((maps_operations == std::vector<std::string>{"restore"}));
+    maps_restore_ok = true;
+    maps_operations.clear();
+    assert(apply_config_file() == 0);
+    assert(snapshot_calls == 1 && xattr_restore_calls == 1 && feature_reset_calls == 0);
+    assert((maps_operations == std::vector<std::string>{"restore", "enable"}));
+    xattr_restore_ok = false;
+    assert(apply_config_file() != 0);
+    assert(feature_reset_calls == 1);  // Existing independent xattr failure cleanup remains.
+    xattr_restore_ok = true;
+    replay_pending = true;
+    replay_ok = false;
+    replay_calls = 0;
+    assert(apply_config_file() != 0 && replay_calls == 1);
+    assert(feature_reset_calls == 1);
+    replay_ok = true;
+    assert(apply_config_file() == 0 && replay_calls == 2);
+    replay_pending = false;
+    saved_config.reset();
+    const auto before_missing = maps_operations.size();
+    assert(apply_config_file() != 0 && maps_operations.size() == before_missing);
+    assert(is_query({"sumh", "maps", "list-paths"}));
+    assert(!is_query({"sumh", "maps", "apply"}));
+    assert(!is_query({"sumh", "maps", "add-path", "/target", "/replacement"}));
+    saved_config = default_config_json();
 }
 
 void test_retired_mount_mode_restore() {
@@ -594,9 +980,13 @@ void test_date_suggestion() {
 
 int main() {
     test_config();
+    test_maps_config();
     test_kmi_source();
     test_cli();
+    test_module_configure_cli();
+    test_maps_cli_and_apply();
     test_boot_restore();
+    test_maps_lifecycle_and_config_wrapper();
     test_retired_mount_mode_restore();
     test_date_suggestion();
     std::cout << "sumh_build_config_test: all checks passed\n";

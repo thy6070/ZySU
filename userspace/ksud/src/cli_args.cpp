@@ -258,6 +258,8 @@ const std::vector<Command>& commands() {
          {{"--all", "", "", "", "Include disabled modules"}},
          true},
         {"sumhp module set-mode", "Set a module's mount backend", "<ID> <MODE>", 2, 2},
+        {"sumhp module configure", "Atomically save a module's backend and path rules",
+         "<ID> <MODE> <RULES-JSON>", 3, 3},
         {"sumhp module add-rule", "Add a module path rule", "<ID> <ABSOLUTE-PATH> <MODE>", 3, 3},
         {"sumhp module remove-rule", "Remove a module path rule", "<ID> <ABSOLUTE-PATH>", 2, 2},
         {"sumhp module add", "Hot-mount a SUMH module", "<ID>", 1, 1},
@@ -291,6 +293,12 @@ const std::vector<Command>& commands() {
         {"sumhp sumh maps clear", "Clear maps spoofing rules", ""},
         {"sumhp sumh maps add", "Add a maps spoofing rule",
          "<TARGET-INO> <TARGET-DEV> <SPOOF-INO> <SPOOF-DEV> <PATH>", 5, 5},
+        {"sumhp sumh maps list-paths", "Read saved maps path definitions", ""},
+        {"sumhp sumh maps add-path", "Save and apply a maps path definition",
+         "<TARGET-PATH> <REPLACEMENT-PATH>", 2, 2},
+        {"sumhp sumh maps remove-path", "Remove a saved maps path definition", "<TARGET-PATH>", 1,
+         1},
+        {"sumhp sumh maps apply", "Resolve saved paths and replace managed maps rules", ""},
         {"sumhp debug", "Control kernel diagnostics", "<COMMAND>"},
         {"sumhp debug enable", "Enable kernel diagnostics", ""},
         {"sumhp debug disable", "Disable kernel diagnostics", ""},
@@ -422,6 +430,9 @@ std::string_view example(std::string_view path) {
         return "ksud flash image /sdcard/boot.img boot --slot a";
     if (path == "sumhp" || path == "sumhp module" || path == "sumhp module set-mode")
         return "ksud sumhp module list\n  ksud sumhp module set-mode example sumh";
+    if (path == "sumhp module configure")
+        return "ksud sumhp module configure example sumh "
+               "'[{\"path\":\"/system/app/Example\",\"mode\":\"hide\"}]'";
     if (path == "sumhp config" || path == "sumhp config merge-json")
         return "ksud sumhp config merge-json '{\"debug\":true}'";
     if (path == "sumhp daemon call")
@@ -688,9 +699,17 @@ int validate(const Command& command, const std::vector<std::string>& operands,
             if (!sumhp::validate_config_patch(object, error))
                 return bad(error);
         }
-        if (path == "sumhp module set-mode" && !one_of(operands[1], "auto|sumh|overlay|magic|none"))
+        if ((path == "sumhp module set-mode" || path == "sumhp module configure") &&
+            !one_of(operands[1], "auto|sumh|overlay|magic|none"))
             return bad("invalid mount mode '" + operands[1] +
                        "'; expected auto, sumh, overlay, magic or none");
+        if (path == "sumhp module configure") {
+            json::Value rules;
+            std::string error;
+            if (!json::parse_checked(operands[2], rules, error) || !rules.is_array())
+                return bad("invalid module rules JSON: " +
+                           (error.empty() ? std::string("expected an array") : error));
+        }
         if (path == "sumhp module add-rule" &&
             !one_of(operands[2], "auto|sumh|overlay|magic|none|hide"))
             return bad("invalid rule mode '" + operands[2] +

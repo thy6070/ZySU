@@ -17,6 +17,7 @@ on:
       - 'userspace/ksud/src/init_event.cpp'
       - 'userspace/ksud/tests/sumh*'
       - 'userspace/ksud/tests/run_sumh_host_tests.py'
+      - 'userspace/ksud/tests/run_sumh_planner_host_tests.py'
       - 'userspace/ksud/tests/run_sumhp_daemon_host_tests.py'
       - 'userspace/ksud/tests/mount_partition_alias_test.cpp'
       - 'userspace/ksud/tests/run_mount_alias_host_tests.py'
@@ -44,6 +45,7 @@ on:
       - 'userspace/ksud/src/init_event.cpp'
       - 'userspace/ksud/tests/sumh*'
       - 'userspace/ksud/tests/run_sumh_host_tests.py'
+      - 'userspace/ksud/tests/run_sumh_planner_host_tests.py'
       - 'userspace/ksud/tests/run_sumhp_daemon_host_tests.py'
       - 'userspace/ksud/tests/mount_partition_alias_test.cpp'
       - 'userspace/ksud/tests/run_mount_alias_host_tests.py'
@@ -85,12 +87,16 @@ jobs:
           python3 scripts/ci/test_sumh_unicode_guard.py --cc clang
           python3 scripts/ci/test_sumh_kernel_build.py --cc clang
           python3 scripts/ci/test_sumh_rules.py --cc clang
+          python3 scripts/ci/test_sumh_maps.py --cc clang
+          python3 scripts/ci/test_sumh_kstat.py --cc clang
       - name: Userspace client, configuration, CLI and restoration
         run: python3 userspace/ksud/tests/run_sumh_host_tests.py --cxx g++
       - name: Daemon framing, deadlines and retry handling
         run: python3 userspace/ksud/tests/run_sumhp_daemon_host_tests.py --cxx g++
       - name: Module partition aliases and mount planning
         run: python3 userspace/ksud/tests/run_mount_alias_host_tests.py --cxx g++
+      - name: SUMH module path compilation and preflight
+        run: python3 userspace/ksud/tests/run_sumh_planner_host_tests.py --cxx g++
       - name: Magic Mount lifecycle, registration and traversal
         run: python3 userspace/ksud/tests/run_magic_mount_host_tests.py --cxx g++
       - name: OverlayFS parent and child attribute registration

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="sumh_rules_runtime">Kernel rules</string>
+    <string name="sumh_rules_runtime_count">Showing %1$d kernel entries</string>
+    <string name="sumh_rules_runtime_hint">Kernel path rules, bound hidden paths and enabled features. Saved paths awaiting binding are managed in Hidden paths. The SUMH switch determines whether path views apply.</string>
+    <string name="sumh_rules_runtime_incomplete">Some kernel entries could not be read completely. The count covers only the entries shown. Refresh to check again.</string>
+    <string name="sumh_rules_runtime_empty">No kernel entries to display.</string>
+    <string name="sumh_rules_runtime_raw_operands">The kernel returned unescaped paths; the original path pair is shown together.</string>
+    <string name="sumh_rules_runtime_feature">Enabled feature</string>
+    <string name="sumh_rules_runtime_path">Kernel path rule</string>
+</resources>

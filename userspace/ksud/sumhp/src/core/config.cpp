@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <set>
 #include <sstream>
 #include <string>
 
@@ -74,6 +75,7 @@ std::string default_config_json() {
   "enable_mount_hide": false,
   "mount_hide_mode": "normal",
   "enable_maps_spoof": false,
+  "maps_rules": [],
   "enable_statfs_spoof": false,
   "enable_kernel_build_spoof": false,
   "kernel_build_release": "",
@@ -97,6 +99,85 @@ void prune_config_fields(json::Value& config) {
     }
 }
 
+json::Value maps_path_rules_json(const std::vector<MapsPathRule>& rules) {
+    JsonValue result;
+    result.type = JsonValue::Type::Array;
+    for (const auto& rule : rules) {
+        JsonValue item = JsonValue::object();
+        item.o["target_path"] = rule.target_path;
+        item.o["replacement_path"] = rule.replacement_path;
+        result.a.push_back(std::move(item));
+    }
+    return result;
+}
+
+bool validate_maps_path_rules(const std::vector<MapsPathRule>& rules, std::string& error) {
+    if (rules.size() > SUMH_MANAGED_MAPS_MAX_RULES) {
+        error =
+            "maps_rules supports at most " + std::to_string(SUMH_MANAGED_MAPS_MAX_RULES) + " rules";
+        return false;
+    }
+    std::set<std::string> targets;
+    std::size_t android_slash_escaping = 0;
+    for (std::size_t index = 0; index < rules.size(); ++index) {
+        const auto& rule = rules[index];
+        const auto valid_path = [](const std::string& path, std::size_t limit) {
+            return !path.empty() && path.front() == '/' && path.size() < limit &&
+                   path.find('\0') == std::string::npos &&
+                   path.find_first_of("\r\n") == std::string::npos;
+        };
+        if (!valid_path(rule.target_path, SUMH_USER_HIDE_PATH_MAX) ||
+            !valid_path(rule.replacement_path, SUMH_MAX_LEN_PATHNAME)) {
+            error = "invalid maps rule paths at index " + std::to_string(index) +
+                    ": absolute, NUL/CR/LF-free paths required; target < 4096 bytes, "
+                    "replacement < 256 bytes";
+            return false;
+        }
+        if (!targets.insert(rule.target_path).second) {
+            error = "duplicate maps target path at index " + std::to_string(index);
+            return false;
+        }
+        // Android JSONObject escapes '/' on both serialization passes: each
+        // slash uses four bytes rather than our JSON writer's single byte.
+        android_slash_escaping +=
+            3 * static_cast<std::size_t>(
+                    std::count(rule.target_path.begin(), rule.target_path.end(), '/') +
+                    std::count(rule.replacement_path.begin(), rule.replacement_path.end(), '/'));
+    }
+    if (json_quote(stringify_json(maps_path_rules_json(rules))).size() + android_slash_escaping >
+        MAPS_RULES_MAX_ENCODED_BYTES) {
+        error = "maps_rules exceeds the 56 KiB encoded configuration budget";
+        return false;
+    }
+    return true;
+}
+
+namespace {
+bool parse_maps_path_rules(const JsonValue& value, std::vector<MapsPathRule>& rules,
+                           std::string& error) {
+    if (!value.is_array()) {
+        error = "configuration field 'maps_rules' must be an array";
+        return false;
+    }
+    std::vector<MapsPathRule> parsed;
+    for (const auto& item : value.a) {
+        const auto* target = item.find("target_path");
+        const auto* replacement = item.find("replacement_path");
+        if (!item.is_object() || item.o.size() != 2 || !target || !replacement ||
+            !target->is_string() || !replacement->is_string()) {
+            error = "configuration field 'maps_rules' must contain only "
+                    "target_path/replacement_path string pairs";
+            return false;
+        }
+        parsed.push_back({target->s, replacement->s});
+    }
+    if (!validate_maps_path_rules(parsed, error))
+        return false;
+    rules = std::move(parsed);
+    return true;
+}
+}  // namespace
+
 bool validate_config_patch(const json::Value& patch, std::string& error) {
     if (!patch.is_object()) {
         error = "config updates must be a JSON object";
@@ -118,7 +199,7 @@ bool validate_config_patch(const json::Value& patch, std::string& error) {
             else if (expected->is_string())
                 type = "must be a string";
             else if (expected->is_array())
-                type = "must be an array of partition names";
+                type = "must be an array";
             return reject(key, type);
         }
         if (value.is_string() && value.s.find('\0') != std::string::npos)
@@ -157,6 +238,11 @@ bool validate_config_patch(const json::Value& patch, std::string& error) {
                     partition.s.find('\0') != std::string::npos)
                     return reject(key, "must contain relative partition names without slashes");
             }
+        }
+        if (key == "maps_rules") {
+            std::vector<MapsPathRule> rules;
+            if (!parse_maps_path_rules(value, rules, error))
+                return false;
         }
     }
     return true;
@@ -267,12 +353,13 @@ bool parse_config_json(const std::string& json, Config& config, std::string& err
         return false;
     }
 
-    // Validate these fields even when loading a manually edited config. A
-    // invalid enabled build must never be applied or silently replaced.
+    // Validate these fields even when loading a manually edited config. Invalid
+    // definitions must never be applied or silently replaced by an empty set.
     JsonValue build_fields;
     build_fields.type = JsonValue::Type::Object;
-    for (const auto* key : {"enable_kernel_build_spoof", "kernel_build_release",
-                            "kernel_build_version", "kernel_build_apply_stage"}) {
+    for (const auto* key :
+         {"enable_kernel_build_spoof", "kernel_build_release", "kernel_build_version",
+          "kernel_build_apply_stage", "enable_maps_spoof"}) {
         if (const auto* value = root.find(key))
             build_fields.o[key] = *value;
     }
@@ -287,6 +374,11 @@ bool parse_config_json(const std::string& json, Config& config, std::string& err
     if (build_enabled && build_release.empty() && build_version.empty()) {
         error = "kernel build spoof requires a custom kernel_build_release or kernel_build_version";
         return false;
+    }
+    std::vector<MapsPathRule> maps_rules;
+    if (const auto* value = root.find("maps_rules")) {
+        if (!parse_maps_path_rules(*value, maps_rules, error))
+            return false;
     }
 
     config.mount_source = json_string_or(&root, "mountsource", config.mount_source);
@@ -308,6 +400,7 @@ bool parse_config_json(const std::string& json, Config& config, std::string& err
     if (config.mount_hide_mode != "normal" && config.mount_hide_mode != "aggressive")
         config.mount_hide_mode = "normal";
     config.enable_maps_spoof = json_bool_or(&root, "enable_maps_spoof", config.enable_maps_spoof);
+    config.maps_rules = std::move(maps_rules);
     config.enable_statfs_spoof =
         json_bool_or(&root, "enable_statfs_spoof", config.enable_statfs_spoof);
     config.enable_kernel_build_spoof = build_enabled;

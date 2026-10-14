@@ -55,6 +55,317 @@
 #include "sumh_fake_mountinfo.h"
 #include "sumh_kernel_build.h"
 
+/* Both legacy commands upsert the same store; a supplied path is the
+ * authoritative identity, including after replacement or remount. */
+static int sumh_kstat_set(void __user *arg)
+{
+	struct sumh_spoof_kstat __user *u = arg;
+	struct sumh_spoof_kstat *k;
+	struct sumh_spoof_kstat_entry *entry = NULL, *old = NULL, *cursor;
+	struct path resolved;
+	struct inode *inode = NULL;
+	bool have_path, path_held = false;
+	size_t len;
+	int ret = 0;
+
+	k = kmalloc(sizeof(*k), GFP_KERNEL);
+	if (!k)
+		return -ENOMEM;
+	if (copy_from_user(k, u, sizeof(*k))) {
+		kfree(k);
+		return -EFAULT;
+	}
+	len = strnlen(k->target_pathname, sizeof(k->target_pathname));
+	have_path = len != 0;
+	if (len == sizeof(k->target_pathname) ||
+	    (have_path && k->target_pathname[0] != '/') ||
+	    (!have_path && !k->target_ino) || k->spoofed_size < 0 ||
+	    k->spoofed_dev > 0xffffffffULL ||
+	    k->spoofed_blksize > 0xffffffffULL || k->spoofed_atime_nsec < 0 ||
+	    k->spoofed_atime_nsec >= 1000000000L || k->spoofed_mtime_nsec < 0 ||
+	    k->spoofed_mtime_nsec >= 1000000000L || k->spoofed_ctime_nsec < 0 ||
+	    k->spoofed_ctime_nsec >= 1000000000L) {
+		ret = -EINVAL;
+		goto out;
+	}
+	entry = kzalloc(sizeof(*entry), GFP_KERNEL);
+	if (!entry) {
+		ret = -ENOMEM;
+		goto out;
+	}
+	if (have_path) {
+		ret = kern_path(k->target_pathname, LOOKUP_FOLLOW, &resolved);
+		if (ret)
+			goto out;
+		path_held = true;
+		inode = d_inode(resolved.dentry);
+		if (!inode || !inode->i_sb || !inode->i_mapping ||
+		    !inode->i_ino) {
+			ret = -EINVAL;
+			goto out;
+		}
+		k->target_ino = inode->i_ino;
+		entry->target_dev = inode->i_sb->s_dev;
+		entry->target_pathname =
+		    kstrdup(k->target_pathname, GFP_KERNEL);
+		if (!entry->target_pathname) {
+			ret = -ENOMEM;
+			goto out;
+		}
+		entry->path_hash =
+		    full_name_hash(NULL, k->target_pathname, len);
+	}
+	entry->target_ino = k->target_ino;
+	entry->spoofed_ino = k->spoofed_ino;
+	entry->spoofed_dev = k->spoofed_dev;
+	entry->spoofed_nlink = k->spoofed_nlink;
+	entry->spoofed_size = k->spoofed_size;
+	entry->spoofed_atime_sec = k->spoofed_atime_sec;
+	entry->spoofed_atime_nsec = k->spoofed_atime_nsec;
+	entry->spoofed_mtime_sec = k->spoofed_mtime_sec;
+	entry->spoofed_mtime_nsec = k->spoofed_mtime_nsec;
+	entry->spoofed_ctime_sec = k->spoofed_ctime_sec;
+	entry->spoofed_ctime_nsec = k->spoofed_ctime_nsec;
+	entry->spoofed_blksize = k->spoofed_blksize;
+	entry->spoofed_blocks = k->spoofed_blocks;
+	entry->is_static = k->is_static;
+
+	mutex_lock(&sumh_config_mutex);
+	if (have_path) {
+		hlist_for_each_entry(cursor,
+				     &sumh_spoof_kstat_path[hash_min(
+					 entry->path_hash, SUMH_HASH_BITS)],
+				     path_node)
+		{
+			if (cursor->path_hash == entry->path_hash &&
+			    !strcmp(cursor->target_pathname,
+				    entry->target_pathname)) {
+				old = cursor;
+				break;
+			}
+		}
+	}
+	hlist_for_each_entry(
+	    cursor,
+	    &sumh_spoof_kstat_ino[hash_min(entry->target_ino, SUMH_HASH_BITS)],
+	    ino_node)
+	{
+		if (cursor->target_ino != entry->target_ino || cursor == old)
+			continue;
+		if (!have_path && !cursor->target_pathname) {
+			old = cursor;
+			break;
+		}
+		if (have_path && cursor->target_pathname &&
+		    cursor->target_dev == entry->target_dev) {
+			ret = -EEXIST;
+			goto unlock;
+		}
+	}
+	/* Install a transparent wrapper first. Failure must not clear a flag
+	 * belonging to an existing rule or publish a partially installed rule.
+	 */
+	if (inode) {
+		ret = sumh_iop_install(inode);
+		if (ret)
+			goto unlock;
+	}
+	k->err = 0;
+	if (copy_to_user(u, k, sizeof(*k))) {
+		ret = -EFAULT;
+		goto unlock;
+	}
+	if (have_path) {
+		if (old)
+			hlist_replace_rcu(&old->path_node, &entry->path_node);
+		else
+			hlist_add_head_rcu(
+			    &entry->path_node,
+			    &sumh_spoof_kstat_path[hash_min(entry->path_hash,
+							    SUMH_HASH_BITS)]);
+	}
+	if (old && old->target_ino == entry->target_ino) {
+		hlist_replace_rcu(&old->ino_node, &entry->ino_node);
+	} else {
+		hlist_add_head_rcu(&entry->ino_node,
+				   &sumh_spoof_kstat_ino[hash_min(
+				       entry->target_ino, SUMH_HASH_BITS)]);
+		if (old && old->target_ino)
+			hlist_del_rcu(&old->ino_node);
+	}
+	if (old)
+		call_rcu(&old->rcu, sumh_spoof_kstat_entry_free_rcu);
+	else
+		atomic_inc(&sumh_spoof_kstat_count);
+	if (inode)
+		set_bit(AS_FLAGS_SUMH_SPOOF_KSTAT, &inode->i_mapping->flags);
+	entry = NULL;
+unlock:
+	mutex_unlock(&sumh_config_mutex);
+out:
+	if (path_held)
+		path_put(&resolved);
+	if (entry) {
+		kfree(entry->target_pathname);
+		kfree(entry);
+	}
+	if (ret) {
+		k->err = ret;
+		if (copy_to_user(u, k, sizeof(*k)))
+			ret = -EFAULT;
+	}
+	kfree(k);
+	return ret;
+}
+
+static int sumh_maps_rule_validate(const struct sumh_maps_rule *rule)
+{
+	size_t len =
+	    strnlen(rule->spoofed_pathname, sizeof(rule->spoofed_pathname));
+
+	if (rule->err || rule->target_dev > 0xffffffffULL ||
+	    rule->spoofed_dev > 0xffffffffULL ||
+	    len == sizeof(rule->spoofed_pathname) ||
+	    memchr(rule->spoofed_pathname, '\n', len) ||
+	    memchr(rule->spoofed_pathname, '\r', len))
+		return -EINVAL;
+	return 0;
+}
+
+static struct sumh_maps_rule_entry *
+sumh_maps_rule_alloc(const struct sumh_maps_rule *rule, bool managed)
+{
+	struct sumh_maps_rule_entry *entry =
+	    kmalloc(sizeof(*entry), GFP_KERNEL);
+
+	if (!entry)
+		return NULL;
+	entry->managed = managed;
+	entry->target_ino = rule->target_ino;
+	entry->target_dev = rule->target_dev;
+	entry->spoofed_ino = rule->spoofed_ino;
+	entry->spoofed_dev = rule->spoofed_dev;
+	strscpy(entry->spoofed_pathname, rule->spoofed_pathname,
+		sizeof(entry->spoofed_pathname));
+	return entry;
+}
+
+static void sumh_maps_free_list(struct list_head *head)
+{
+	struct sumh_maps_rule_entry *entry, *next;
+
+	list_for_each_entry_safe (entry, next, head, list) {
+		list_del(&entry->list);
+		kfree(entry);
+	}
+}
+
+static long sumh_maps_add_rule(void __user *user)
+{
+	struct sumh_maps_rule rule;
+	struct sumh_maps_rule_entry *entry, *existing, *old = NULL;
+	int ret;
+
+	if (copy_from_user(&rule, user, sizeof(rule)))
+		return -EFAULT;
+	ret = sumh_maps_rule_validate(&rule);
+	if (ret)
+		return ret;
+	entry = sumh_maps_rule_alloc(&rule, false);
+	if (!entry)
+		return -ENOMEM;
+	/* Preserve the legacy reply before publishing, including EFAULT's
+	 * guarantee that no rule was installed.
+	 */
+	if (copy_to_user(user, &rule, sizeof(rule))) {
+		kfree(entry);
+		return -EFAULT;
+	}
+	mutex_lock(&sumh_maps_mutex);
+	list_for_each_entry (existing, &sumh_maps_rules, list) {
+		if (!existing->managed &&
+		    existing->target_ino == rule.target_ino &&
+		    existing->target_dev == rule.target_dev) {
+			old = existing;
+			break;
+		}
+	}
+	if (old)
+		list_replace(&old->list, &entry->list);
+	else
+		list_add_tail(&entry->list, &sumh_maps_rules);
+	mutex_unlock(&sumh_maps_mutex);
+	kfree(old);
+	return 0;
+}
+
+static long sumh_maps_replace_managed(void __user *user)
+{
+	struct sumh_managed_maps_arg arg;
+	struct sumh_maps_rule *rules = NULL;
+	struct sumh_maps_rule_entry *entry, *next;
+	LIST_HEAD(prepared);
+	LIST_HEAD(retired);
+	unsigned int i, j;
+	int ret = 0;
+
+	if (copy_from_user(&arg, user, sizeof(arg)))
+		return -EFAULT;
+	if (arg.size != sizeof(arg) || arg.reserved[0] || arg.reserved[1] ||
+	    arg.count > SUMH_MANAGED_MAPS_MAX_RULES ||
+	    (arg.count && !arg.rules))
+		return -EINVAL;
+	if (!sumh_proc_proxy_registered)
+		return -EOPNOTSUPP;
+	if (arg.count) {
+		rules = kvmalloc_array(arg.count, sizeof(*rules), GFP_KERNEL);
+		if (!rules)
+			return -ENOMEM;
+		if (copy_from_user(rules, u64_to_user_ptr(arg.rules),
+				   arg.count * sizeof(*rules))) {
+			ret = -EFAULT;
+			goto out;
+		}
+	}
+	/* Validate the copied snapshot and allocate its entries before taking
+	 * the reader mutex. Any failure leaves both existing sets untouched.
+	 */
+	for (i = 0; i < arg.count; i++) {
+		if (!rules[i].target_ino) {
+			ret = -EINVAL;
+			goto out;
+		}
+		ret = sumh_maps_rule_validate(&rules[i]);
+		if (ret)
+			goto out;
+		for (j = 0; j < i; j++) {
+			if (rules[j].target_ino == rules[i].target_ino &&
+			    rules[j].target_dev == rules[i].target_dev) {
+				ret = -EINVAL;
+				goto out;
+			}
+		}
+		entry = sumh_maps_rule_alloc(&rules[i], true);
+		if (!entry) {
+			ret = -ENOMEM;
+			goto out;
+		}
+		list_add_tail(&entry->list, &prepared);
+	}
+	mutex_lock(&sumh_maps_mutex);
+	list_for_each_entry_safe (entry, next, &sumh_maps_rules, list) {
+		if (entry->managed)
+			list_move_tail(&entry->list, &retired);
+	}
+	list_splice_tail_init(&prepared, &sumh_maps_rules);
+	mutex_unlock(&sumh_maps_mutex);
+	sumh_maps_free_list(&retired);
+out:
+	sumh_maps_free_list(&prepared);
+	kvfree(rules);
+	return ret;
+}
+
 static int SUMH_NOCFI sumh_resolve_rule_path(char **pathname,
 					     struct inode **target_out,
 					     struct inode **parent_out)
@@ -372,239 +683,22 @@ static SUMH_NOCFI int sumh_dispatch_cmd(unsigned int cmd, void __user *arg)
 	}
 
 	if (cmd == SUMH_IOC_ADD_SPOOF_KSTAT ||
-	    cmd == SUMH_IOC_UPDATE_SPOOF_KSTAT) {
-		struct sumh_spoof_kstat __user *u =
-		    (struct sumh_spoof_kstat __user *)arg;
-		struct sumh_spoof_kstat *k;
-		struct sumh_spoof_kstat_entry *e, *existing = NULL;
-		size_t plen;
-		u32 phash = 0;
-		bool have_path;
-		struct path resolved;
-		unsigned long auto_ino = 0;
-
-		k = kmalloc(sizeof(*k), GFP_KERNEL);
-		if (!k)
-			return -ENOMEM;
-		if (copy_from_user(k, u, sizeof(*k))) {
-			kfree(k);
-			return -EFAULT;
-		}
-		k->target_pathname[SUMH_MAX_LEN_PATHNAME - 1] = '\0';
-		have_path = (k->target_pathname[0] != '\0');
-
-		/* Auto-resolve target_ino from path if userspace did not supply
-		 * one. */
-		if (have_path && k->target_ino == 0) {
-			if (kern_path(k->target_pathname, LOOKUP_FOLLOW,
-				      &resolved) == 0) {
-				if (resolved.dentry &&
-				    d_inode(resolved.dentry)) {
-					struct inode *inode =
-					    d_inode(resolved.dentry);
-
-					auto_ino = (unsigned long)inode->i_ino;
-					(void)sumh_iop_mark_spoof(inode);
-				}
-				path_put(&resolved);
-			}
-			if (auto_ino)
-				k->target_ino = auto_ino;
-		}
-		if (have_path && k->target_ino != 0) {
-			if (kern_path(k->target_pathname, LOOKUP_FOLLOW,
-				      &resolved) == 0) {
-				if (resolved.dentry && d_inode(resolved.dentry))
-					(void)sumh_iop_mark_spoof(
-					    d_inode(resolved.dentry));
-				path_put(&resolved);
-			}
-		}
-
-		if (!have_path && !k->target_ino) {
-			k->err = -EINVAL;
-			(void)copy_to_user(u, k, sizeof(*k));
-			kfree(k);
-			return -EINVAL;
-		}
-
-		if (have_path) {
-			plen = strlen(k->target_pathname);
-			phash = full_name_hash(NULL, k->target_pathname, plen);
-		}
-
-		mutex_lock(&sumh_config_mutex);
-
-		/* Look for existing entry by path, then by ino. */
-		if (have_path) {
-			hlist_for_each_entry(e,
-					     &sumh_spoof_kstat_path[hash_min(
-						 phash, SUMH_HASH_BITS)],
-					     path_node)
-			{
-				if (e->path_hash == phash &&
-				    e->target_pathname &&
-				    strcmp(e->target_pathname,
-					   k->target_pathname) == 0) {
-					existing = e;
-					break;
-				}
-			}
-		}
-		if (!existing && k->target_ino) {
-			hlist_for_each_entry(
-			    e,
-			    &sumh_spoof_kstat_ino[hash_min(k->target_ino,
-							   SUMH_HASH_BITS)],
-			    ino_node)
-			{
-				if (e->target_ino == k->target_ino &&
-				    e->target_dev == 0) {
-					existing = e;
-					break;
-				}
-			}
-		}
-
-		if (existing && cmd == SUMH_IOC_ADD_SPOOF_KSTAT) {
-			/* Idempotent ADD: treat as UPDATE. */
-		}
-
-		if (!existing) {
-			e = kzalloc(sizeof(*e), GFP_KERNEL);
-			if (!e) {
-				mutex_unlock(&sumh_config_mutex);
-				k->err = -ENOMEM;
-				(void)copy_to_user(u, k, sizeof(*k));
-				kfree(k);
-				return -ENOMEM;
-			}
-			if (have_path) {
-				e->target_pathname =
-				    kstrdup(k->target_pathname, GFP_KERNEL);
-				if (!e->target_pathname) {
-					kfree(e);
-					mutex_unlock(&sumh_config_mutex);
-					k->err = -ENOMEM;
-					(void)copy_to_user(u, k, sizeof(*k));
-					kfree(k);
-					return -ENOMEM;
-				}
-				e->path_hash = phash;
-			}
-			e->target_ino = k->target_ino;
-			e->target_dev = 0;
-			e->spoofed_ino = k->spoofed_ino;
-			e->spoofed_dev = k->spoofed_dev;
-			e->spoofed_nlink = k->spoofed_nlink;
-			e->spoofed_size = k->spoofed_size;
-			e->spoofed_atime_sec = k->spoofed_atime_sec;
-			e->spoofed_atime_nsec = k->spoofed_atime_nsec;
-			e->spoofed_mtime_sec = k->spoofed_mtime_sec;
-			e->spoofed_mtime_nsec = k->spoofed_mtime_nsec;
-			e->spoofed_ctime_sec = k->spoofed_ctime_sec;
-			e->spoofed_ctime_nsec = k->spoofed_ctime_nsec;
-			e->spoofed_blksize = k->spoofed_blksize;
-			e->spoofed_blocks = k->spoofed_blocks;
-			e->is_static = k->is_static;
-
-			if (have_path)
-				hlist_add_head_rcu(
-				    &e->path_node,
-				    &sumh_spoof_kstat_path[hash_min(
-					phash, SUMH_HASH_BITS)]);
-			if (e->target_ino)
-				hlist_add_head_rcu(
-				    &e->ino_node,
-				    &sumh_spoof_kstat_ino[hash_min(
-					e->target_ino, SUMH_HASH_BITS)]);
-			atomic_inc(&sumh_spoof_kstat_count);
-			sumh_log("spoof_kstat: add path=%s ino=%lu->%lu\n",
-				 have_path ? k->target_pathname : "(none)",
-				 e->target_ino, e->spoofed_ino);
-		} else {
-			/* Update fields in place; readers may see torn values
-			 * briefly, acceptable for stat() spoof. */
-			existing->spoofed_ino = k->spoofed_ino;
-			existing->spoofed_dev = k->spoofed_dev;
-			existing->spoofed_nlink = k->spoofed_nlink;
-			existing->spoofed_size = k->spoofed_size;
-			existing->spoofed_atime_sec = k->spoofed_atime_sec;
-			existing->spoofed_atime_nsec = k->spoofed_atime_nsec;
-			existing->spoofed_mtime_sec = k->spoofed_mtime_sec;
-			existing->spoofed_mtime_nsec = k->spoofed_mtime_nsec;
-			existing->spoofed_ctime_sec = k->spoofed_ctime_sec;
-			existing->spoofed_ctime_nsec = k->spoofed_ctime_nsec;
-			existing->spoofed_blksize = k->spoofed_blksize;
-			existing->spoofed_blocks = k->spoofed_blocks;
-			existing->is_static = k->is_static;
-
-			/* If newly-resolved ino became available, link into ino
-			 * table. */
-			if (existing->target_ino == 0 && k->target_ino) {
-				existing->target_ino = k->target_ino;
-				hlist_add_head_rcu(
-				    &existing->ino_node,
-				    &sumh_spoof_kstat_ino[hash_min(
-					k->target_ino, SUMH_HASH_BITS)]);
-			}
-			sumh_log("spoof_kstat: update path=%s ino=%lu->%lu\n",
-				 have_path ? k->target_pathname : "(none)",
-				 existing->target_ino, existing->spoofed_ino);
-		}
-
-		mutex_unlock(&sumh_config_mutex);
-
-		k->err = 0;
-		if (copy_to_user(u, k, sizeof(*k))) {
-			kfree(k);
-			return -EFAULT;
-		}
-		kfree(k);
-		return 0;
-	}
+	    cmd == SUMH_IOC_UPDATE_SPOOF_KSTAT)
+		return sumh_kstat_set(arg);
 
 	if (cmd == SUMH_IOC_ADD_MAPS_RULE) {
-		struct sumh_maps_rule __user *u =
-		    (struct sumh_maps_rule __user *)arg;
-		struct sumh_maps_rule k;
-		struct sumh_maps_rule_entry *e;
-
-		if (copy_from_user(&k, u, sizeof(k)))
-			return -EFAULT;
-		e = kmalloc(sizeof(*e), GFP_KERNEL);
-		if (!e) {
-			k.err = -ENOMEM;
-			if (copy_to_user(u, &k, sizeof(k)))
-				return -EFAULT;
-			return -ENOMEM;
-		}
-		e->target_ino = k.target_ino;
-		e->target_dev = k.target_dev;
-		e->spoofed_ino = k.spoofed_ino;
-		e->spoofed_dev = k.spoofed_dev;
-		strscpy(e->spoofed_pathname, k.spoofed_pathname,
-			sizeof(e->spoofed_pathname));
-		k.err = 0;
-		if (copy_to_user(u, &k, sizeof(k))) {
-			kfree(e);
-			return -EFAULT;
-		}
-		mutex_lock(&sumh_maps_mutex);
-		list_add_tail(&e->list, &sumh_maps_rules);
-		mutex_unlock(&sumh_maps_mutex);
-		return 0;
+		return sumh_maps_add_rule(arg);
 	}
+	if (cmd == SUMH_IOC_SET_MANAGED_MAPS)
+		return sumh_maps_replace_managed(arg);
 
 	if (cmd == SUMH_IOC_CLEAR_MAPS_RULES) {
-		struct sumh_maps_rule_entry *e, *tmp;
+		LIST_HEAD(retired);
 
 		mutex_lock(&sumh_maps_mutex);
-		list_for_each_entry_safe (e, tmp, &sumh_maps_rules, list) {
-			list_del(&e->list);
-			kfree(e);
-		}
+		list_splice_tail_init(&sumh_maps_rules, &retired);
 		mutex_unlock(&sumh_maps_mutex);
+		sumh_maps_free_list(&retired);
 		return 0;
 	}
 
@@ -687,7 +781,8 @@ static SUMH_NOCFI int sumh_dispatch_cmd(unsigned int cmd, void __user *arg)
 		if (sumh_proc_proxy_registered && sumh_fake_mi_active())
 			features |= SUMH_FEATURE_FAKE_MOUNTINFO;
 		if (sumh_proc_proxy_registered)
-			features |= SUMH_FEATURE_MAPS_SPOOF;
+			features |=
+			    SUMH_FEATURE_MAPS_SPOOF | SUMH_FEATURE_MANAGED_MAPS;
 		if (sumh_statfs_view_available())
 			features |= SUMH_FEATURE_STATFS_SPOOF;
 		if (copy_to_user(arg, &features, sizeof(features)))
@@ -1253,8 +1348,8 @@ static SUMH_NOCFI int sumh_dispatch_cmd(unsigned int cmd, void __user *arg)
 		{
 			if (entry->src_hash == hash &&
 			    strcmp(entry->src, src) == 0) {
-				sumh_clear_inode_flags_for_path(
-				    entry->target, AS_FLAGS_SUMH_SPOOF_KSTAT);
+				/* Explicit kstat rules and other redirects may
+				 * still share this source's getattr wrapper. */
 				hlist_del_rcu(&entry->node);
 				atomic_dec(&sumh_rule_count);
 				sumh_log("del rule: src=%s\n", src);
@@ -1361,6 +1456,7 @@ long sumh_handle_ioctl(unsigned int cmd, void __user *arg)
 	case SUMH_IOC_SET_MIRROR_PATH:
 	case SUMH_IOC_GET_HOOKS:
 	case SUMH_IOC_ADD_MAPS_RULE:
+	case SUMH_IOC_SET_MANAGED_MAPS:
 	case SUMH_IOC_CLEAR_MAPS_RULES:
 	case SUMH_IOC_GET_FEATURES:
 	case SUMH_IOC_SET_MOUNT_HIDE:

@@ -163,11 +163,12 @@ ksud sumhp module set-mode example.module magic
 | `sumhp config` | `show`, `gen`, `merge-json <JSON>`, `apply`, `sync-partitions` |
 | `sumhp api` | `system`, `storage`, `sumh`, `features`, `hooks`, `mounts`, `backends`, `meta [--control-only]` |
 | `sumhp daemon` | `status`, `start`, `serve`, `ping`, `stop`, `call <COMMAND> [ARGS...]` |
-| `sumhp module` | `list [--all]`, `set-mode <ID> <MODE>`, `add-rule <ID> <ABSOLUTE-PATH> <MODE>`, `remove-rule <ID> <ABSOLUTE-PATH>`, `check-conflicts`, `normalize <PATH>` |
+| `sumhp module` | `list [--all]`, `configure <ID> <MODE> <RULES-JSON>`, `set-mode <ID> <MODE>`, `add-rule <ID> <ABSOLUTE-PATH> <MODE>`, `remove-rule <ID> <ABSOLUTE-PATH>`, `check-conflicts`, `normalize <PATH>` |
 | `sumhp module` runtime operations | `add` / `hot-mount <ID>`, `delete` / `hot-unmount <ID>`, `mount-all`, `unmount` |
 | `sumhp sumh` | `version`, `list`, `features`, `clear`, `hide-path <ABSOLUTE-PATH>`, `delete-rule <ABSOLUTE-PATH>`, `fix-mounts`, `hide-overlay-xattrs <ABSOLUTE-PATH>` |
 | `sumhp sumh` feature controls | `mount-hide off\|on\|normal\|aggressive`, `maps-spoof off\|on`, `statfs-spoof off\|on` |
 | `sumhp sumh maps` | `clear`, `add <TARGET-INO> <TARGET-DEV> <SPOOF-INO> <SPOOF-DEV> <PATH>` |
+| `sumhp sumh maps` saved paths | `list-paths`, `add-path <TARGET-PATH> <REPLACEMENT-PATH>`, `remove-path <TARGET-PATH>`, `apply` |
 | `sumhp sumh kernel-build` | `show`, `set <RELEASE> <VERSION>`, `reset` |
 | `sumhp hide` | `list`, `apply`, `add <ABSOLUTE-PATH>`, `remove <ABSOLUTE-PATH>` |
 | `sumhp debug` | `enable`, `disable`, `stealth enable\|disable` |
@@ -176,6 +177,10 @@ ksud sumhp module set-mode example.module magic
 Module modes are `auto`, `sumh`, `overlay`, `magic` and `none`; path rules also accept `hide`. A non-`auto` global `mount_backend` overrides individual module choices. `auto` follows **OverlayFS → Magic Mount → none**, selecting Magic Mount for files directly under a partition root, such as `system/build.prop`. SUMH is selected explicitly. Unavailable requested backends can resolve to fallback backends; inspect the actual plan and logs after boot.
 
 Hot operations replay only modules assigned to SUMH in the current boot. Changing a mode does not migrate live OverlayFS/Magic Mount state; reboot for backend changes. `mount-all` is restricted to the boot path and runs at most once per boot. Recovery protection disables mounting after three unconfirmed boot attempts. Inspect `recovery status`, fix the affected modules, then `recovery reset` and reboot.
+
+SUMH replay compiles the new module plan before clearing existing mappings; unsupported trees, metadata errors and conflicting path aliases fail before reset. Installation errors after reset still use partial-rule cleanup. Hot-operation state markers must be written successfully before replay. A failed mapping rebuild restores the previous marker or reports a separate restoration error; a Maps restoration failure after mappings have committed retains the requested marker and reports partial completion. Mount commands reject damaged or unreadable saved configuration; missing configuration alone permits defaults. Configured `partitions` extend the built-in partition set without duplicating it or replacing the defaults.
+
+`module configure` atomically saves a module mode and its complete rule array, for example `[{"path":"/system/app/Example","mode":"hide"}]`; `[]` clears that module's rules. Single-rule commands use the same locked store. Legacy modes and rule arrays are imported into the existing `module_rules.json` as `{ "mode": "sumh", "rules": [...] }` entries. Invalid input or persistence failures preserve the old configuration. Path rules only affect modules using SUMH; path-level `overlay` and `magic` remain compatibility values that map through SUMH. Module paths must be canonical absolute paths, with literal whitespace preserved, no NUL/CR/LF, and fewer than 4096 UTF-8 bytes. Each module allows 256 rules and a 56 KiB double-encoded JSON budget. See [module path rules](zh/guide/sumh-module-rules.md).
 
 `config merge-json` validates keys, types, enums, paths and numeric ranges. `config gen` writes defaults. `config apply` applies supported runtime settings; changing a mount layout still requires reboot. For kernel build overrides, either `set` operand may be `default`, but not both; `reset` restores both. See [kernel build overrides](zh/guide/sumh-kernel-build.md).
 

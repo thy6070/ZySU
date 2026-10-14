@@ -56,24 +56,28 @@ fs::path config_file() {
 }
 
 void print_usage() {
-    std::cout << "SUMHP " << ksud::VERSION_NAME << "\n"
-              << "usage:\n"
-              << "  ksud sumhp version\n"
-              << "  ksud sumhp config show\n"
-              << "  ksud sumhp config gen\n"
-              << "  ksud sumhp config merge-json JSON\n"
-              << "  ksud sumhp config apply\n"
-              << "  ksud sumhp daemon status|serve|call|ping|stop\n"
-              << "  ksud sumhp api system|storage|sumh|features|hooks|backends|meta\n"
-              << "  ksud sumhp module "
-                 "list|add|delete|set-mode|add-rule|remove-rule|hot-mount|hot-unmount|check-"
-                 "conflicts|mount-all|unmount|normalize\n"
-              << "  ksud sumhp recovery status|reset\n"
-              << "  ksud sumhp hide list|apply|add|remove\n"
-              << "  ksud sumhp sumh "
-                 "version|list|clear|fix-mounts|hide-overlay-xattrs|mount-hide "
-                 "off|normal|aggressive|maps\n"
-              << "  ksud sumhp sumh kernel-build show|set <release> <version>|reset\n";
+    std::cout
+        << "SUMHP " << ksud::VERSION_NAME << "\n"
+        << "usage:\n"
+        << "  ksud sumhp version\n"
+        << "  ksud sumhp config show\n"
+        << "  ksud sumhp config gen\n"
+        << "  ksud sumhp config merge-json JSON\n"
+        << "  ksud sumhp config apply\n"
+        << "  ksud sumhp daemon status|serve|call|ping|stop\n"
+        << "  ksud sumhp api system|storage|sumh|features|hooks|backends|meta\n"
+        << "  ksud sumhp module "
+           "list|add|delete|configure|set-mode|add-rule|remove-rule|hot-mount|hot-unmount|check-"
+           "conflicts|mount-all|unmount|normalize\n"
+        << "  ksud sumhp recovery status|reset\n"
+        << "  ksud sumhp hide list|apply|add|remove\n"
+        << "  ksud sumhp sumh "
+           "version|list|clear|fix-mounts|hide-overlay-xattrs|mount-hide "
+           "off|normal|aggressive|maps\n"
+        << "  ksud sumhp sumh kernel-build show|set <release> <version>|reset\n"
+        << "  ksud sumhp sumh maps list-paths|apply\n"
+        << "  ksud sumhp sumh maps add-path <target-path> <replacement-path>\n"
+        << "  ksud sumhp sumh maps remove-path <target-path>\n";
 }
 
 std::string arg_or_default(const std::vector<std::string>& args, std::size_t index,
@@ -113,17 +117,6 @@ std::string read_file(const fs::path& path) {
 bool is_builtin_partition(const std::string& name) {
     return std::find(managed_partitions().begin(), managed_partitions().end(), name) !=
            managed_partitions().end();
-}
-
-bool valid_module_id(const std::string& id) {
-    return !id.empty() && std::all_of(id.begin(), id.end(), [](unsigned char c) {
-        return std::isalnum(c) || c == '_' || c == '-' || c == '.';
-    });
-}
-
-bool valid_module_mode(const std::string& mode) {
-    return mode == "auto" || mode == "sumh" || mode == "overlay" || mode == "magic" ||
-           mode == "none" || mode == "hide";
 }
 
 bool parse_unsigned_long(const std::string& value, unsigned long& out) {
@@ -258,6 +251,77 @@ Config current_config() {
     return config;
 }
 
+// A fresh installation can use defaults; damaged saved mount settings cannot.
+bool read_mount_config(Config& config, std::string& error) {
+    errno = 0;
+    if (read_config_file(config, error))
+        return true;
+    if (errno != ENOENT)
+        return false;
+    config = Config{};
+    error.clear();
+    return true;
+}
+
+bool write_hot_mount_marker(const fs::path& marker, bool unmounted, std::string& error) {
+    if (unmounted) {
+        if (ksud::write_file_atomic(marker, "\n"))
+            return true;
+        error = "write hot-mount state: " + std::string(std::strerror(errno ? errno : EIO));
+        return false;
+    }
+    std::error_code ec;
+    fs::remove(marker, ec);
+    if (ec) {
+        error = "remove hot-mount state: " + ec.message();
+        return false;
+    }
+    return true;
+}
+
+bool change_module_mount_state(const std::string& id, bool unmounting, const Config& config,
+                               std::string& error) {
+    const fs::path marker = data_dir() / "run" / "hot_unmounted" / id;
+    std::error_code ec;
+    const auto status = fs::symlink_status(marker, ec);
+    if (ec && ec != std::errc::no_such_file_or_directory) {
+        error = "read hot-mount state: " + ec.message();
+        return false;
+    }
+    const bool existed = fs::exists(status);
+    if (existed && !fs::is_regular_file(status)) {
+        error = "hot-mount state is not a regular file: " + marker.string();
+        return false;
+    }
+    if (existed != unmounting) {
+        if (unmounting) {
+            ec.clear();
+            fs::create_directories(marker.parent_path(), ec);
+            if (ec) {
+                error = "prepare hot-mount state: " + ec.message();
+                return false;
+            }
+        }
+        if (!write_hot_mount_marker(marker, unmounting, error))
+            return false;
+    }
+    bool mappings_applied = false;
+    if (mount::refresh_sumh_modules(config, &mappings_applied))
+        return true;
+    if (mappings_applied) {
+        error = "module mappings updated, but SUMH feature restoration failed; "
+                "requested hot-mount state retained (see controller log)";
+        return false;
+    }
+    error = "failed to refresh SUMH mappings";
+    if (existed != unmounting) {
+        std::string rollback_error;
+        if (!write_hot_mount_marker(marker, existed, rollback_error))
+            error += "; previous hot-mount state could not be restored: " + rollback_error;
+    }
+    return false;
+}
+
 int print_storage_json() {
     const Config config = current_config();
     const std::string mirror_base = mount::storage::current_mirror_dir(config);
@@ -369,8 +433,8 @@ int apply_config_file() {
     }
 
     if (!mount::sumh::apply_feature_config(config, error, true)) {
-        std::string cleanup_error;
-        (void)mount::sumh::reset_feature_state(cleanup_error);
+        // Feature orchestration owns cleanup. Maps resolution failures preserve
+        // the previous rule set and must not disable unrelated active features.
         std::cerr << error << "\n";
         return 1;
     }
@@ -450,7 +514,8 @@ int print_system_json() {
 
 int print_meta_json(bool include_backends = true) {
     std::cout << "{"
-              << "\"embedded\":true,\"native_control\":true,\"external_mount_owner\":"
+              << "\"embedded\":true,\"native_control\":true,\"module_configure\":true,\"external_"
+                 "mount_owner\":"
               << json_quote(embedded_external_mount_owner()) << ","
               << "\"version\":" << json_quote(ksud::VERSION_NAME) << ","
               << "\"data_dir\":" << json_quote(runtime_data_dir().string()) << ","
@@ -688,12 +753,21 @@ int handle_api(const std::vector<std::string>& args) {
 int handle_module(const std::vector<std::string>& args) {
     const auto sub = arg_or_default(args, 1, "");
     if (sub == "list") {
-        const auto modes = mount::load_module_modes();
+        mount::ModuleModeMap modes;
+        mount::ModuleRuleMap rule_map;
+        std::string error;
+        if (!mount::load_module_configuration(modes, rule_map, error)) {
+            std::cerr << error << "\n";
+            return 1;
+        }
         const bool include_disabled = args.size() == 3 && args[2] == "--all";
-        const auto rule_map = mount::load_module_rules();
         const auto replayable = mount::sumh::replayable_module_ids();
         const std::set<std::string> sumh_boot_plan(replayable.begin(), replayable.end());
-        const Config cfg = current_config();
+        Config cfg;
+        if (!read_mount_config(cfg, error)) {
+            std::cerr << error << "\n";
+            return 1;
+        }
         const fs::path module_root = modules_dir();
         std::cout << "{\"modules\":[";
         bool first = true;
@@ -716,8 +790,7 @@ int handle_module(const std::vector<std::string>& args) {
                 // Only list modules that contribute mounts (have a managed
                 // partition tree); skip plain modules (zygisk, etc.).
                 bool has_mount_content = false;
-                const std::vector<std::string>& parts =
-                    cfg.partitions.empty() ? mount::fsutil::managed_partitions() : cfg.partitions;
+                const auto parts = mount::fsutil::managed_partitions(cfg.partitions);
                 for (const auto& part : parts) {
                     std::error_code ec;
                     if (fs::is_directory(entry.path() / part, ec)) {
@@ -777,83 +850,69 @@ int handle_module(const std::vector<std::string>& args) {
         std::cout << "]}\n";
         return 0;
     }
+    if (sub == "configure") {
+        if (args.size() != 5) {
+            std::cerr << "usage: ksud sumhp module configure <id> <mode> <rules-json-array>\n";
+            return 1;
+        }
+        std::vector<mount::ModuleRule> rules;
+        std::string error;
+        if (!mount::parse_module_rules(args[4], rules, error) ||
+            !mount::configure_module(args[2], args[3], rules, error)) {
+            std::cerr << error << "\n";
+            return 1;
+        }
+        return 0;
+    }
     if (sub == "set-mode") {
-        const std::string id = arg_or_default(args, 2, "");
-        const std::string mode = arg_or_default(args, 3, "");
-        if (!valid_module_id(id) || (mode != "auto" && mode != "sumh" && mode != "overlay" &&
-                                     mode != "magic" && mode != "none")) {
+        if (args.size() != 4) {
             std::cerr << "usage: ksud sumhp module set-mode <id> auto|sumh|overlay|magic|none\n";
             return 1;
         }
-        auto modes = mount::load_module_modes();
-        if (mode == "auto") {
-            modes.erase(id);
-        } else {
-            modes[id] = mode;
-        }
-        if (!mount::save_module_modes(modes)) {
-            std::cerr << "failed to save module modes\n";
+        std::string error;
+        if (!mount::set_module_mode(args[2], args[3], error)) {
+            std::cerr << error << "\n";
             return 1;
         }
         return 0;
     }
     if (sub == "add-rule") {
-        const std::string id = arg_or_default(args, 2, "");
-        const std::string path = arg_or_default(args, 3, "");
-        const std::string mode = arg_or_default(args, 4, "");
-        if (!valid_module_id(id) || path.empty() || path.front() != '/' ||
-            !valid_module_mode(mode)) {
+        if (args.size() != 5) {
             std::cerr << "usage: ksud sumhp module add-rule <id> <absolute-path> "
-                         "sumh|overlay|magic|none|hide\n";
+                         "auto|sumh|overlay|magic|none|hide\n";
             return 1;
         }
-        auto rules = mount::load_module_rules();
-        auto& module_rules = rules[id];
-        const auto existing = std::find_if(module_rules.begin(), module_rules.end(),
-                                           [&](const auto& rule) { return rule.path == path; });
-        if (existing == module_rules.end()) {
-            module_rules.push_back({path, mode});
-        } else {
-            existing->mode = mode;
-        }
-        if (!mount::save_module_rules(rules)) {
-            std::cerr << "failed to save module rules\n";
+        std::string error;
+        if (!mount::upsert_module_rule(args[2], {args[3], args[4]}, error)) {
+            std::cerr << error << "\n";
             return 1;
         }
         return 0;
     }
     if (sub == "remove-rule") {
-        const std::string id = arg_or_default(args, 2, "");
-        const std::string path = arg_or_default(args, 3, "");
-        if (!valid_module_id(id) || path.empty() || path.front() != '/') {
+        if (args.size() != 4) {
             std::cerr << "usage: ksud sumhp module remove-rule <id> <absolute-path>\n";
             return 1;
         }
-        auto rules = mount::load_module_rules();
-        const auto rules_it = rules.find(id);
-        if (rules_it == rules.end()) {
-            return 0;
-        }
-        auto& module_rules = rules_it->second;
-        module_rules.erase(std::remove_if(module_rules.begin(), module_rules.end(),
-                                          [&](const auto& rule) { return rule.path == path; }),
-                           module_rules.end());
-        if (module_rules.empty()) {
-            rules.erase(rules_it);
-        }
-        if (!mount::save_module_rules(rules)) {
-            std::cerr << "failed to save module rules\n";
+        std::string error;
+        if (!mount::remove_module_rule(args[2], args[3], error)) {
+            std::cerr << error << "\n";
             return 1;
         }
         return 0;
     }
     if (sub == "hot-mount" || sub == "hot-unmount" || sub == "add" || sub == "delete") {
         const std::string id = arg_or_default(args, 2, "");
-        if (!valid_module_id(id)) {
+        if (!mount::valid_module_id(id)) {
             std::cerr << "usage: ksud sumhp module " << sub << " <id>\n";
             return 1;
         }
-        const Config cfg = current_config();
+        Config cfg;
+        std::string error;
+        if (!read_mount_config(cfg, error)) {
+            std::cerr << error << "\n";
+            return 1;
+        }
         const fs::path module_root = modules_dir();
         const fs::path module_path = module_root / id;
         if (!fs::is_directory(module_path) || !fs::exists(module_path / "module.prop")) {
@@ -866,27 +925,9 @@ int handle_module(const std::vector<std::string>& args) {
                 << "module was not assigned to SUMH this boot; reboot to change its backend\n";
             return 1;
         }
-        const fs::path marker = data_dir() / "run" / "hot_unmounted" / id;
-        std::error_code ec;
         const bool unmounting = sub == "hot-unmount" || sub == "delete";
-        const bool existed = fs::exists(marker, ec);
-        fs::create_directories(marker.parent_path(), ec);
-        if (ec) {
-            std::cerr << "failed to prepare hot-mount state: " << ec.message() << "\n";
-            return 1;
-        }
-        if (unmounting) {
-            std::ofstream(marker, std::ios::trunc).put('\n');
-        } else {
-            fs::remove(marker, ec);
-        }
-        if (!mount::refresh_sumh_modules(cfg)) {
-            if (unmounting && !existed) {
-                fs::remove(marker, ec);
-            } else if (!unmounting && existed) {
-                std::ofstream(marker, std::ios::trunc).put('\n');
-            }
-            std::cerr << "failed to refresh SUMH mappings\n";
+        if (!change_module_mount_state(id, unmounting, cfg, error)) {
+            std::cerr << error << "\n";
             return 1;
         }
         std::cout << "{\"ok\":true,\"module\":" << json_quote(id)
@@ -894,10 +935,14 @@ int handle_module(const std::vector<std::string>& args) {
         return 0;
     }
     if (sub == "check-conflicts") {
-        const Config cfg = current_config();
+        Config cfg;
+        std::string error;
+        if (!read_mount_config(cfg, error)) {
+            std::cerr << error << "\n";
+            return 1;
+        }
         const auto modules = mount::enumerate_mountable_modules();
-        const std::vector<std::string>& parts =
-            cfg.partitions.empty() ? mount::fsutil::managed_partitions() : cfg.partitions;
+        const auto parts = mount::fsutil::managed_partitions(cfg.partitions);
         std::map<std::string, std::vector<std::string>> owners;
         for (const auto& module : modules) {
             for (const auto& part : parts) {
@@ -940,7 +985,10 @@ int handle_module(const std::vector<std::string>& args) {
         }
         Config config;
         std::string cfg_err;
-        read_config_file(config, cfg_err);  // defaults on error
+        if (!read_mount_config(config, cfg_err)) {
+            std::cerr << cfg_err << "\n";
+            return 1;
+        }
         const auto report = mount::mount_all_enabled(config);
         std::cout << "{"
                   << "\"ok\":" << (report.ok ? "true" : "false") << ","
@@ -965,7 +1013,10 @@ int handle_module(const std::vector<std::string>& args) {
         // Tear down SUMHP's own mounts (source-gated; never touches real partitions).
         Config config;
         std::string cfg_err;
-        read_config_file(config, cfg_err);  // defaults on error
+        if (!read_mount_config(config, cfg_err)) {
+            std::cerr << cfg_err << "\n";
+            return 1;
+        }
         const bool ok = mount::unmount_all(config);
         std::cout << "{\"ok\":" << (ok ? "true" : "false") << "}\n";
         return ok ? 0 : 1;
@@ -1075,7 +1126,84 @@ int handle_sumh(const std::vector<std::string>& args) {
     }
     if (sub == "maps") {
         const std::string op = arg_or_default(args, 2, "");
+        if (op == "list-paths" || op == "add-path" || op == "remove-path" || op == "apply") {
+            std::size_t expected = 3;
+            if (op == "add-path")
+                expected = 5;
+            else if (op == "remove-path")
+                expected = 4;
+            if (args.size() != expected) {
+                std::cerr
+                    << "usage: ksud sumhp sumh maps list-paths|apply|"
+                       "add-path <target-path> <replacement-path>|remove-path <target-path>\n";
+                return 1;
+            }
+            Config config;
+            std::string error;
+            if (!read_config_file(config, error)) {
+                std::cerr << error << "\n";
+                return 1;
+            }
+            if (op == "add-path") {
+                const auto found = std::find_if(
+                    config.maps_rules.begin(), config.maps_rules.end(),
+                    [&](const MapsPathRule& rule) { return rule.target_path == args[3]; });
+                if (found == config.maps_rules.end())
+                    config.maps_rules.push_back({args[3], args[4]});
+                else
+                    found->replacement_path = args[4];
+            } else if (op == "remove-path") {
+                if (args[3].empty() || args[3].front() != '/' ||
+                    args[3].find('\0') != std::string::npos ||
+                    args[3].find_first_of("\r\n") != std::string::npos) {
+                    std::cerr << "maps target must be an absolute, NUL/CR/LF-free path\n";
+                    return 1;
+                }
+                config.maps_rules.erase(
+                    std::remove_if(
+                        config.maps_rules.begin(), config.maps_rules.end(),
+                        [&](const MapsPathRule& rule) { return rule.target_path == args[3]; }),
+                    config.maps_rules.end());
+            }
+            JsonValue rules = maps_path_rules_json(config.maps_rules);
+            if (op == "list-paths") {
+                std::cout << stringify_json(rules) << "\n";
+                return 0;
+            }
+            const bool saving = op != "apply";
+            if (saving) {
+                JsonValue patch;
+                patch.type = JsonValue::Type::Object;
+                patch.o["maps_rules"] = std::move(rules);
+                if (!merge_config_json(stringify_json(patch), error)) {
+                    std::cerr << error << "\n";
+                    return 1;
+                }
+            }
+            // Automatic boot restoration uses apply too: disabled definitions
+            // must not resolve missing files or reinstall stale identities.
+            const bool applied = op == "apply"
+                                     ? mount::sumh::apply_maps_config(config, error)
+                                     : mount::sumh::restore_managed_maps_rules(config, error);
+            const int apply_errno = errno;
+            if (!applied && error.empty())
+                error = std::strerror(apply_errno);
+            std::cout << "{\"saved\":" << (saving ? "true" : "false")
+                      << ",\"applied\":" << (applied ? "true" : "false")
+                      << ",\"count\":" << config.maps_rules.size() << "}\n";
+            if (!applied) {
+                std::cerr << (saving ? "maps paths saved; apply failed: " : "maps apply failed: ")
+                          << error << "; retry with 'ksud sumhp sumh maps apply'\n";
+                errno = apply_errno;
+                return 1;
+            }
+            return 0;
+        }
         if (op == "clear") {
+            if (args.size() != 3) {
+                std::cerr << "usage: ksud sumhp sumh maps clear\n";
+                return 1;
+            }
             if (!sumh::clear_maps_rules()) {
                 std::cerr << "failed to clear SUMH maps rules\n";
                 return 1;
@@ -1083,7 +1211,7 @@ int handle_sumh(const std::vector<std::string>& args) {
             return 0;
         }
         if (op == "add") {
-            if (args.size() < 8) {
+            if (args.size() != 8) {
                 std::cerr << "usage: ksud sumhp sumh maps add <target-ino> <target-dev> "
                              "<spoof-ino> <spoof-dev> <spoof-path>\n";
                 return 1;
@@ -1105,7 +1233,8 @@ int handle_sumh(const std::vector<std::string>& args) {
             }
             return 0;
         }
-        std::cerr << "usage: ksud sumhp sumh maps clear|add ...\n";
+        std::cerr
+            << "usage: ksud sumhp sumh maps clear|add|list-paths|add-path|remove-path|apply ...\n";
         return 1;
     }
     if (sub == "clear") {
@@ -1327,6 +1456,7 @@ bool is_query(const std::vector<std::string>& args) {
            (args[0] == "hide" && sub == "list") ||
            (args[0] == "sumh" &&
             (sub == "version" || sub == "list" || sub == "features" || sub == "hooks" ||
+             (sub == "maps" && arg_or_default(args, 2, "") == "list-paths") ||
              (sub == "kernel-build" && arg_or_default(args, 2, "show") == "show"))) ||
            (args[0] == "recovery" && sub == "status");
 }
@@ -1366,7 +1496,7 @@ std::string operation_description(const std::vector<std::string>& args) {
         result += " target=" + json_quote(args[2]);
         if (args.size() > 3)
             result += " value=" + json_quote(args[3]);
-        if (args.size() > 4)
+        if (args.size() > 4 && args[1] != "configure")
             result += " mode=" + json_quote(args[4]);
     }
     return result;

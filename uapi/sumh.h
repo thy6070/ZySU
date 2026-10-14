@@ -55,16 +55,20 @@ struct sumh_syscall_list_arg {
 };
 
 /*
- * kstat spoofing structure - allows full control over stat() results
+ * Legacy explicit kstat overrides. Zero scalar fields preserve the original
+ * value; a zero timestamp pair preserves that timestamp. ADD and UPDATE upsert.
  * Similar to susfs sus_kstat but with SUMH conventions
  */
 struct sumh_spoof_kstat {
-  unsigned long target_ino; /* Target inode number (after mount/overlay) */
-  char target_pathname[SUMH_MAX_LEN_PATHNAME]; /* Path to spoof */
-  unsigned long spoofed_ino;                   /* Spoofed inode number */
-  unsigned long spoofed_dev;                   /* Spoofed device number */
-  unsigned int spoofed_nlink;                  /* Spoofed link count */
-  long long spoofed_size;                      /* Spoofed file size */
+  unsigned long
+      target_ino; /* Inode-only wildcard when target_pathname is empty */
+  /* A nonempty absolute path must resolve now and overrides target_ino with
+   * its current identity. Reissue either command after replacement/remount. */
+  char target_pathname[SUMH_MAX_LEN_PATHNAME];
+  unsigned long spoofed_ino;     /* Spoofed inode number */
+  unsigned long spoofed_dev;     /* Spoofed device number */
+  unsigned int spoofed_nlink;    /* Spoofed link count */
+  long long spoofed_size;        /* Spoofed file size */
   long spoofed_atime_sec;        /* Spoofed access time (seconds) */
   long spoofed_atime_nsec;       /* Spoofed access time (nanoseconds) */
   long spoofed_mtime_sec;        /* Spoofed modification time (seconds) */
@@ -73,7 +77,7 @@ struct sumh_spoof_kstat {
   long spoofed_ctime_nsec;       /* Spoofed change time (nanoseconds) */
   unsigned long spoofed_blksize; /* Spoofed block size */
   unsigned long long spoofed_blocks; /* Spoofed block count */
-  int is_static; /* If true, ino won't change after remount */
+  int is_static; /* Retained for ABI compatibility; no automatic rebinding */
   int err;       /* Error code for userspace feedback */
 };
 
@@ -98,6 +102,7 @@ struct sumh_spoof_kstat {
 #define SUMH_FEATURE_OVERLAY_XATTR_HIDE (1 << 13)
 #define SUMH_FEATURE_MANAGED_HIDE (1 << 14)
 #define SUMH_FEATURE_KERNEL_BUILD_SPOOF (1 << 15)
+#define SUMH_FEATURE_MANAGED_MAPS (1 << 16)
 
 #define SUMH_KERNEL_BUILD_MAX 65
 
@@ -156,6 +161,24 @@ struct sumh_maps_rule {
   unsigned long spoofed_dev;
   char spoofed_pathname[SUMH_MAX_LEN_PATHNAME];
   int err;
+};
+
+#define SUMH_MANAGED_MAPS_MAX_RULES 256
+
+/* Atomically replace the controller-owned maps rules. rules points to count
+ * sumh_maps_rule entries; count 0 clears only this owned set. size must equal
+ * sizeof(struct), reserved fields and each rule's err must be zero. Keys
+ * (target_ino, target_dev) must be unique and target_ino nonzero. Device values
+ * use the kernel's 32-bit MKDEV encoding (12 major and 20 minor bits).
+ * Pathnames must be NUL terminated and contain no CR/LF. Exact device matches
+ * take precedence over wildcard matches. Legacy ADD rules remain separate and
+ * win over managed rules with the same key; legacy CLEAR removes both sets.
+ */
+struct sumh_managed_maps_arg {
+  __u32 size;
+  __u32 count;
+  __aligned_u64 rules;
+  __u32 reserved[2];
 };
 
 /*
@@ -217,6 +240,7 @@ struct sumh_statfs_spoof_arg {
 #define SUMH_IOC_SET_ENABLED _IOW(SUMH_IOC_MAGIC, 20, int)
 #define SUMH_IOC_GET_HOOKS                                                     \
   _IOWR(SUMH_IOC_MAGIC, 22, struct sumh_syscall_list_arg)
+/* Upsert an unmanaged rule by (target_ino, target_dev). */
 #define SUMH_IOC_ADD_MAPS_RULE _IOW(SUMH_IOC_MAGIC, 23, struct sumh_maps_rule)
 #define SUMH_IOC_CLEAR_MAPS_RULES _IO(SUMH_IOC_MAGIC, 24)
 #define SUMH_IOC_SET_MOUNT_HIDE                                                \
@@ -246,5 +270,7 @@ struct sumh_statfs_spoof_arg {
 /* Bypass the spoof for internal KMI/payload selection. Same output format. */
 #define SUMH_IOC_GET_ORIGINAL_KERNEL_BUILD                                     \
   _IOR(SUMH_IOC_MAGIC, 47, struct sumh_kernel_build_arg)
+#define SUMH_IOC_SET_MANAGED_MAPS                                              \
+  _IOW(SUMH_IOC_MAGIC, 48, struct sumh_managed_maps_arg)
 
 #endif /* _SUMH_UAPI_H */

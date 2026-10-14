@@ -81,6 +81,7 @@ struct directory_iterator {
             entries.push_back({value / it->path().filename()});
     }
     const entry* operator->() const { return &entries[index]; }
+    const entry& operator*() const { return entries[index]; }
     void increment(std::error_code& ec) {
         ec.clear();
         ++index;
@@ -107,10 +108,7 @@ bool directory_is_opaque(const fs::path& path, bool& opaque) {
 std::string partition_mount_point(const std::string& part) {
     return "/" + part;
 }
-const std::vector<std::string>& managed_partitions() {
-    static const std::vector<std::string> parts{"system", "vendor", "product", "system_ext", "odm"};
-    return parts;
-}
+#include "partitions_under_test.inc"
 }  // namespace fsutil
 
 struct dirent {
@@ -181,6 +179,10 @@ struct ModuleEntry {
     std::string id;
     realfs::path path;
 };
+struct Config {
+    std::vector<std::string> partitions;
+};
+#include "backend_alias_under_test.inc"
 NType type_from_lstat(const std::string&, const struct stat& st) {
     return st.st_mode == fs::file_type::symlink     ? NType::Symlink
            : st.st_mode == fs::file_type::directory ? NType::Directory
@@ -220,6 +222,7 @@ int main() {
         assert(fsutil::module_partition_alias(module / "system" / part) == module / part);
     }
     assert(validate_partition_tree(module / "system", parts, true));
+    assert(!module_needs_magic({"module", module}, {}));
     const auto plan = plan_overlays(root.string(), {"module"}, parts);
     for (const auto& part : parts) {
         if (part == "system")
@@ -264,12 +267,14 @@ int main() {
     realfs::remove(module / "vendor/.replace");
     std::ofstream(module / "vendor/direct-file").close();
     assert(!validate_partition_tree(module / "system", parts, true));
+    assert(module_needs_magic({"module", module}, {}));
     realfs::remove(module / "vendor/direct-file");
     for (const auto& destination :
          {fs::path("../../lower/system/vendor"), fs::path("../missing"), fs::path("../product"),
           module / "vendor", fs::path("../system/../vendor")}) {
         fixture::links[fixture::key(module / "system/vendor")] = destination;
         assert(!fsutil::module_partition_alias(module / "system/vendor"));
+        assert(module_needs_magic({"module", module}, {}));
         assert(!validate_partition_tree(module / "system", parts, true));
         bool rejected = false;
         try {

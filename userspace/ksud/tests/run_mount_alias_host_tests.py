@@ -32,6 +32,14 @@ def main():
         (build / "magic_alias_under_test.inc").write_text(
             function(source, "bool collect_into(") +
             function(source, "std::optional<Node> collect_module_files("), encoding="utf-8")
+        source = (mount / "mount_fs.cpp").read_text(encoding="utf-8")
+        begin = source.index("const std::vector<std::string>& managed_partitions() {")
+        end = source.index("\nvoid mlog(", begin)
+        (build / "partitions_under_test.inc").write_text(source[begin:end], encoding="utf-8")
+        source = (mount / "backend.cpp").read_text(encoding="utf-8")
+        (build / "backend_alias_under_test.inc").write_text(
+            function(source, "bool dir_has_direct_files(") +
+            function(source, "bool module_needs_magic("), encoding="utf-8")
         source = (mount / "overlayfs.cpp").read_text(encoding="utf-8")
         (build / "overlay_alias_under_test.inc").write_text("\n".join(
             function(source, signature) for signature in [

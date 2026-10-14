@@ -22,6 +22,8 @@ static_assert(sizeof(sumh_user_hide_arg) == 4160);
 static_assert(offsetof(sumh_user_hide_arg, path) == 64);
 static_assert(sizeof(sumh_kernel_build_arg) == 148);
 static_assert(offsetof(sumh_kernel_build_arg, release) == 16);
+static_assert(sizeof(sumh_managed_maps_arg) == 24);
+static_assert(offsetof(sumh_managed_maps_arg, rules) == 8);
 
 static_assert(static_cast<std::uint32_t>(MountHideMode::Normal) == SUMH_MOUNT_HIDE_MODE_NORMAL);
 static_assert(static_cast<std::uint32_t>(MountHideMode::Aggressive) ==
@@ -140,6 +142,8 @@ std::vector<std::string> feature_names(int bitmask) {
         names.emplace_back("mount_hide");
     if (bitmask & SUMH_FEATURE_MAPS_SPOOF)
         names.emplace_back("maps_spoof");
+    if (bitmask & SUMH_FEATURE_MANAGED_MAPS)
+        names.emplace_back("managed_maps");
     if (bitmask & SUMH_FEATURE_STATFS_SPOOF)
         names.emplace_back("statfs_spoof");
     if (bitmask & SUMH_FEATURE_KSTAT_SPOOF)
@@ -498,6 +502,53 @@ bool add_maps_rule(unsigned long target_ino, unsigned long target_dev, unsigned 
 
 bool clear_maps_rules() {
     return execute(SUMH_IOC_CLEAR_MAPS_RULES, nullptr) == 0;
+}
+
+bool replace_managed_maps_rules(const std::vector<MapsRule>& rules) {
+    if (rules.size() > SUMH_MANAGED_MAPS_MAX_RULES) {
+        errno = E2BIG;
+        return false;
+    }
+    std::vector<sumh_maps_rule> encoded;
+    encoded.reserve(rules.size());
+    std::set<std::pair<unsigned long, unsigned long>> targets;
+    for (const auto& rule : rules) {
+        if (!rule.target_ino || !rule.target_dev || !rule.spoofed_ino || !rule.spoofed_dev ||
+            rule.spoofed_path.empty() || rule.spoofed_path.front() != '/' ||
+            rule.spoofed_path.find('\0') != std::string::npos ||
+            rule.spoofed_path.find_first_of("\r\n") != std::string::npos ||
+            !targets.emplace(rule.target_ino, rule.target_dev).second) {
+            errno = EINVAL;
+            return false;
+        }
+        if (rule.spoofed_path.size() >= SUMH_MAX_LEN_PATHNAME) {
+            errno = ENAMETOOLONG;
+            return false;
+        }
+        sumh_maps_rule item = {};
+        item.target_ino = rule.target_ino;
+        item.target_dev = rule.target_dev;
+        item.spoofed_ino = rule.spoofed_ino;
+        item.spoofed_dev = rule.spoofed_dev;
+        std::memcpy(item.spoofed_pathname, rule.spoofed_path.c_str(), rule.spoofed_path.size() + 1);
+        encoded.push_back(item);
+    }
+    const auto caps = feature_capabilities();
+    if (!caps.ok) {
+        errno = caps.last_errno;
+        return false;
+    }
+    if (!(caps.bitmask & SUMH_FEATURE_MANAGED_MAPS)) {
+        if (rules.empty())
+            return true;
+        errno = EOPNOTSUPP;
+        return false;
+    }
+    sumh_managed_maps_arg arg = {};
+    arg.size = sizeof(arg);
+    arg.count = static_cast<std::uint32_t>(encoded.size());
+    arg.rules = encoded.empty() ? 0 : reinterpret_cast<std::uintptr_t>(encoded.data());
+    return execute(SUMH_IOC_SET_MANAGED_MAPS, &arg) == 0;
 }
 
 int enabled_state() {

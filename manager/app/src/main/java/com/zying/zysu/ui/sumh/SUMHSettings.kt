@@ -105,6 +105,8 @@ internal fun SettingsTab(
                 onClearMapRules = onClearMapRules,
                 onAddMapRule = onAddMapRule,
                 headingActions = headingActions,
+                onRetryApply = onRetryApply,
+                runtimeApplyPending = runtimeApplyPending,
             )
             SUMHSection.Debug -> ConfigSection(stringResource(R.string.sumh_workspace_debug), segmented = true, actions = headingActions) {
                 SettingSwitch(stringResource(R.string.sumh_debug), stringResource(R.string.sumh_debug_desc),

@@ -3,6 +3,7 @@
 #include "core/json.hpp"
 #include "core/runtime.hpp"
 #include "mount/mount_fs.hpp"
+#include "mount/partition_alias.hpp"
 #include "sumhp/sumh_client.hpp"
 #include "uapi/sumh.h"
 #include "utils.hpp"
@@ -14,6 +15,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <climits>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -72,77 +74,148 @@ bool has_nested_rule(const std::string& path, const std::vector<ModuleRule>& rul
 
 // Resolve symlinked partition paths (e.g. /system/vendor -> /vendor) without
 // discarding a non-existent leaf that a module adds.
-std::string resolve_virtual_path(const std::string& value) {
+bool resolve_virtual_path(const std::string& value, std::string& resolved, std::string& error,
+                          bool directory = false) {
     const fs::path path(value);
+    const auto missing = [](const std::error_code& ec) {
+        return !ec || ec == std::errc::no_such_file_or_directory ||
+               ec == std::errc::not_a_directory;
+    };
+    const auto fail = [&](const std::error_code& ec) {
+        error = "cannot resolve virtual path " + value + ": " + ec.message();
+        return false;
+    };
+    std::error_code ec;
+    if (directory) {
+        const bool is_directory = fs::is_directory(path, ec);
+        if (!missing(ec))
+            return fail(ec);
+        if (is_directory) {
+            const auto canonical = fs::canonical(path, ec);
+            if (ec)
+                return fail(ec);
+            resolved = canonical.generic_string();
+            return true;
+        }
+    }
     if (!path.has_parent_path()) {
-        return value;
+        resolved = value;
+        return true;
     }
     fs::path current = path.parent_path();
     std::vector<fs::path> suffix;
-    std::error_code ec;
-    while (!current.empty() && current != "/" && !fs::exists(current, ec)) {
-        if (ec) {
-            return value;
+    while (!current.empty()) {
+        ec.clear();
+        if (fs::exists(current, ec)) {
+            current = fs::canonical(current, ec);
+            if (ec)
+                return fail(ec);
+            break;
         }
+        if (!missing(ec))
+            return fail(ec);
+        if (current == "/")
+            break;
         suffix.push_back(current.filename());
         current = current.parent_path();
     }
-    if (fs::exists(current, ec) && !ec) {
-        current = fs::canonical(current, ec);
-        if (ec) {
-            return value;
-        }
-    }
-    for (auto it = suffix.rbegin(); it != suffix.rend(); ++it) {
+    for (auto it = suffix.rbegin(); it != suffix.rend(); ++it)
         current /= *it;
-    }
     current /= path.filename();
-    return current.string();
+    resolved = current.generic_string();
+    return true;
 }
 
-struct RuleBatch {
-    struct Mapping {
-        std::string path, source;
-        bool merge;
-    };
-    std::vector<Mapping> mappings;
-    std::set<std::string> hide;
-};
-
-bool merge_tree_supported(const fs::path& root) {
-    bool opaque;
-    if (!fsutil::directory_is_opaque(root.string(), opaque))
-        return false;
-    if (opaque) {
-        mlog("sumh: directory replacement is unsupported: " + root.string(), logging::Level::Error);
-        return false;
-    }
-    std::error_code ec;
-    for (fs::recursive_directory_iterator it(root, ec), end; it != end && !ec; it.increment(ec)) {
-        const auto status = it->symlink_status(ec);
-        if (ec)
+bool resolve_module_rules(const std::vector<ModuleRule>& input, std::vector<ModuleRule>& output,
+                          std::string& error) {
+    // Legacy lists accepted duplicate literal paths; their last entry wins.
+    // Resolve aliases after that reduction so upgrades preserve that contract.
+    std::map<std::string, std::string> literal;
+    for (const auto& rule : input)
+        literal[rule.path] = rule.mode;
+    std::map<std::string, std::string> resolved;
+    for (const auto& [literal_path, mode] : literal) {
+        // A legacy trailing slash only matches descendants, not the directory
+        // itself. Preserve that boundary while resolving its directory alias.
+        const bool descendants_only = literal_path.size() > 1 && literal_path.back() == '/';
+        std::string path;
+        if (!resolve_virtual_path(literal_path, path, error, true))
             return false;
-        if (it->path().filename() == ".replace" ||
-            (fs::is_directory(status) &&
-             (!fsutil::directory_is_opaque(it->path().string(), opaque) || opaque))) {
-            mlog("sumh: unsupported replacement metadata: " + it->path().string(),
-                 logging::Level::Error);
+        if (descendants_only && path.back() != '/')
+            path += '/';
+        const auto [it, inserted] = resolved.emplace(path, mode);
+        if (!inserted && it->second != mode) {
+            error = "conflicting module rule aliases resolve to " + path;
             return false;
         }
     }
+    output.clear();
+    for (const auto& [path, mode] : resolved)
+        output.push_back({path, mode});
+    return true;
+}
+
+// Bulk MERGE materialization cannot process whiteouts or apply per-entry
+// partition aliases. Fall back to the same compiler's ADD/HIDE walk for those
+// trees. Unsupported replacement metadata still fails before any ioctl.
+bool merge_tree_supported(const fs::path& root, const std::string& virtual_root, bool& merge,
+                          std::string& error) {
+    merge = true;
+    std::error_code ec;
+    for (fs::recursive_directory_iterator it(root, ec), end; it != end && !ec; it.increment(ec)) {
+        const auto source = it->path();
+        const auto status = it->symlink_status(ec);
+        if (ec)
+            break;
+        bool opaque = false;
+        if (source.filename() == ".replace" ||
+            (fs::is_directory(status) &&
+             (!fsutil::directory_is_opaque(source.string(), opaque) || opaque))) {
+            error = "unsupported replacement metadata: " + source.string();
+            return false;
+        }
+        bool whiteout = false;
+        if (!fsutil::path_is_whiteout(source.string(), whiteout)) {
+            error = "cannot read module entry metadata: " + source.string();
+            return false;
+        }
+        const auto virtual_path =
+            (fs::path(virtual_root) / source.lexically_relative(root)).generic_string();
+        std::string resolved;
+        if (!resolve_virtual_path(virtual_path, resolved, error, fs::is_directory(status)))
+            return false;
+        if (whiteout || it.depth() >= 8 || fs::is_symlink(status) || resolved != virtual_path)
+            merge = false;
+    }
+    if (ec)
+        error = "scan failed for " + root.string() + ": " + ec.message();
     return !ec;
 }
 
 bool compile_tree(const fs::path& source_root, const std::string& virtual_root,
-                  const std::vector<ModuleRule>& rules, RuleBatch& batch) {
+                  const std::vector<ModuleRule>& rules, ModuleMountPlan& batch,
+                  std::string& error) {
     std::error_code ec;
-    if (!fs::is_directory(source_root, ec)) {
-        return !ec || ec == std::errc::no_such_file_or_directory;
+    const auto root_status = fs::symlink_status(source_root, ec);
+    if (ec == std::errc::no_such_file_or_directory || (!ec && !fs::exists(root_status)))
+        return true;
+    if (ec) {
+        error = "cannot inspect module partition " + source_root.string() + ": " + ec.message();
+        return false;
     }
+    if (!fs::is_directory(root_status)) {
+        error = "module partition must be a real directory: " + source_root.string();
+        return false;
+    }
+    std::string resolved_root;
+    if (!resolve_virtual_path(virtual_root, resolved_root, error, true))
+        return false;
+    const auto root_mode = effective_mode(resolved_root, rules);
+    if (root_mode == "hide" || (root_mode == "none" && !has_nested_rule(resolved_root, rules)))
+        return true;
     bool root_opaque;
     if (!fsutil::directory_is_opaque(source_root.string(), root_opaque) || root_opaque) {
-        mlog("sumh: unsupported partition replacement: " + source_root.string(),
-             logging::Level::Error);
+        error = "unsupported partition replacement: " + source_root.string();
         return false;
     }
     auto it = fs::recursive_directory_iterator(source_root, ec);
@@ -153,8 +226,15 @@ bool compile_tree(const fs::path& source_root, const std::string& virtual_root,
         if (ec) {
             break;
         }
-        const std::string virtual_path =
-            resolve_virtual_path((fs::path(virtual_root) / relative).string());
+        const auto source_status = it->symlink_status(ec);
+        if (ec)
+            break;
+        if (fs::is_symlink(source_status) && fsutil::module_partition_alias(source))
+            continue;  // The installer alias is compiled through the top-level partition.
+        std::string virtual_path;
+        if (!resolve_virtual_path((fs::path(virtual_root) / relative).generic_string(),
+                                  virtual_path, error, fs::is_directory(source_status)))
+            return false;
         std::string mode = effective_mode(virtual_path, rules);
         if (mode == "hide") {
             batch.hide.insert(virtual_path);
@@ -178,25 +258,39 @@ bool compile_tree(const fs::path& source_root, const std::string& virtual_root,
         }
 
         if (source.filename() == ".replace") {
-            mlog("sumh: unsupported replacement marker: " + source.string(), logging::Level::Error);
+            error = "unsupported replacement marker: " + source.string();
             return false;
         }
         struct stat st = {};
         if (lstat(source.c_str(), &st) != 0) {
+            error = "cannot inspect module entry: " + source.string();
             return false;
         }
-        if (S_ISCHR(st.st_mode) && major(st.st_rdev) == 0 && minor(st.st_rdev) == 0) {
+        bool whiteout = false;
+        if (!fsutil::path_is_whiteout(source.string(), whiteout)) {
+            error = "cannot read module entry metadata: " + source.string();
+            return false;
+        }
+        if (whiteout) {
             batch.hide.insert(virtual_path);
             continue;
         }
         if (S_ISDIR(st.st_mode)) {
+            bool opaque = false;
+            if (!fsutil::directory_is_opaque(source.string(), opaque) || opaque) {
+                error = "unsupported replacement metadata: " + source.string();
+                return false;
+            }
             std::error_code target_ec;
             if (fs::is_directory(virtual_path, target_ec) && !target_ec &&
                 !has_nested_rule(virtual_path, rules)) {
-                if (!merge_tree_supported(source))
+                bool merge = false;
+                if (!merge_tree_supported(source, virtual_path, merge, error))
                     return false;
-                batch.mappings.push_back({virtual_path, source.string(), true});
-                it.disable_recursion_pending();
+                if (merge) {
+                    batch.mappings.push_back({virtual_path, source.string(), true});
+                    it.disable_recursion_pending();
+                }
             }
             continue;
         }
@@ -204,6 +298,12 @@ bool compile_tree(const fs::path& source_root, const std::string& virtual_root,
             if (S_ISLNK(st.st_mode)) {
                 std::error_code target_ec;
                 const auto target_status = fs::symlink_status(virtual_path, target_ec);
+                if (target_ec && target_ec != std::errc::no_such_file_or_directory &&
+                    target_ec != std::errc::not_a_directory) {
+                    error = "cannot inspect virtual symlink " + virtual_path + ": " +
+                            target_ec.message();
+                    return false;
+                }
                 if (!target_ec && fs::is_symlink(target_status)) {
                     std::error_code link_ec;
                     const fs::path module_link = fs::read_symlink(source, link_ec);
@@ -225,9 +325,14 @@ bool compile_tree(const fs::path& source_root, const std::string& virtual_root,
                 }
                 target_ec.clear();
                 if (fs::is_directory(virtual_path, target_ec) && !target_ec) {
-                    mlog("sumh: refusing to replace directory with symlink " + virtual_path +
-                             " from " + source.string(),
-                         logging::Level::Error);
+                    error = "refusing to replace directory with symlink " + virtual_path +
+                            " from " + source.string();
+                    return false;
+                }
+                if (target_ec && target_ec != std::errc::no_such_file_or_directory &&
+                    target_ec != std::errc::not_a_directory) {
+                    error = "cannot resolve virtual symlink " + virtual_path + ": " +
+                            target_ec.message();
                     return false;
                 }
             }
@@ -235,8 +340,7 @@ bool compile_tree(const fs::path& source_root, const std::string& virtual_root,
         }
     }
     if (ec) {
-        mlog("sumh: scan failed for " + source_root.string() + ": " + ec.message(),
-             logging::Level::Error);
+        error = "scan failed for " + source_root.string() + ": " + ec.message();
     }
     return !ec;
 }
@@ -262,7 +366,102 @@ bool disable_kernel_features(std::string* error = nullptr) {
 
 }  // namespace
 
-bool apply_feature_config(const Config& config, std::string& error, bool apply_immediately) {
+bool restore_managed_maps_rules(const Config& config, std::string& error) {
+    if (!validate_maps_path_rules(config.maps_rules, error))
+        return false;
+    // Probe before resolving paths so an old kernel is reported accurately.
+    const auto caps = ::sumhp::sumh::feature_capabilities();
+    if (!caps.ok) {
+        errno = caps.last_errno;
+        error = "failed to query managed maps support: " + std::string(std::strerror(errno));
+        return false;
+    }
+    if (!(caps.bitmask & SUMH_FEATURE_MANAGED_MAPS)) {
+        if (config.maps_rules.empty())
+            return true;
+        errno = EOPNOTSUPP;
+        error = "this kernel does not support managed maps rules";
+        return false;
+    }
+    const bool ok = fsutil::run_in_init_mount_ns(
+        [&]() {
+            std::vector<::sumhp::sumh::MapsRule> resolved;
+            std::set<std::pair<unsigned long, unsigned long>> targets;
+            for (const auto& rule : config.maps_rules) {
+                struct stat target = {};
+                struct stat replacement = {};
+                const auto read_identity = [&](const std::string& path, struct stat& info,
+                                               unsigned long& ino, unsigned long& dev) {
+                    if (::stat(path.c_str(), &info) != 0) {
+                        error = "cannot resolve maps path " + path + ": " + std::strerror(errno);
+                        return false;
+                    }
+                    if (!S_ISREG(info.st_mode)) {
+                        errno = EINVAL;
+                        error = "maps path must be a regular file: " + path;
+                        return false;
+                    }
+                    const auto device_major = static_cast<std::uint64_t>(major(info.st_dev));
+                    const auto device_minor = static_cast<std::uint64_t>(minor(info.st_dev));
+                    // Kernel dev_t uses MKDEV's 12:20 layout, unlike libc st_dev.
+                    const auto kernel_device = (device_major << 20) | device_minor;
+                    if (!info.st_ino || static_cast<std::uint64_t>(info.st_ino) > ULONG_MAX ||
+                        device_major > 0xfff || device_minor > 0xfffff || !kernel_device) {
+                        errno = EOVERFLOW;
+                        error = "maps file identity is not representable: " + path;
+                        return false;
+                    }
+                    ino = static_cast<unsigned long>(info.st_ino);
+                    dev = static_cast<unsigned long>(kernel_device);
+                    return true;
+                };
+                ::sumhp::sumh::MapsRule item;
+                if (!read_identity(rule.target_path, target, item.target_ino, item.target_dev) ||
+                    !read_identity(rule.replacement_path, replacement, item.spoofed_ino,
+                                   item.spoofed_dev))
+                    return false;
+                if (!targets.emplace(item.target_ino, item.target_dev).second) {
+                    errno = EEXIST;
+                    error = "maps target paths resolve to the same file: " + rule.target_path;
+                    return false;
+                }
+                item.spoofed_path = rule.replacement_path;
+                resolved.push_back(std::move(item));
+            }
+            if (!::sumhp::sumh::replace_managed_maps_rules(resolved)) {
+                error =
+                    "failed to replace managed maps rules: " + std::string(std::strerror(errno));
+                return false;
+            }
+            return true;
+        },
+        error);
+    if (!ok && error.empty())
+        error = "failed to enter init mount namespace for managed maps rules";
+    return ok;
+}
+
+bool apply_maps_config(const Config& config, std::string& error, bool restore_rules) {
+    error.clear();
+    if (restore_rules && config.enable_maps_spoof && !restore_managed_maps_rules(config, error))
+        return false;
+    if (!::sumhp::sumh::set_maps_spoof(config.enable_maps_spoof)) {
+        error = std::string("failed to ") + (config.enable_maps_spoof ? "enable" : "disable") +
+                " SUMH maps spoof: " + std::strerror(errno);
+        return false;
+    }
+    // Disabling must work even if a saved path has disappeared. Discard stale
+    // managed identities while retaining saved paths and unmanaged numeric rules.
+    if (restore_rules && !config.enable_maps_spoof &&
+        !::sumhp::sumh::replace_managed_maps_rules({})) {
+        error = "failed to clear managed maps rules: " + std::string(std::strerror(errno));
+        return false;
+    }
+    return true;
+}
+
+bool apply_feature_config(const Config& config, std::string& error, bool apply_immediately,
+                          bool apply_maps) {
     mlog("apply features: mount_hide=" + std::to_string(config.enable_mount_hide) +
          " mode=" + config.mount_hide_mode + " maps=" + std::to_string(config.enable_maps_spoof) +
          " statfs=" + std::to_string(config.enable_statfs_spoof) +
@@ -294,7 +493,6 @@ bool apply_feature_config(const Config& config, std::string& error, bool apply_i
                                                       ::sumhp::sumh::MountHideMode::Normal);
     }
     apply(mount_hide_ok, "mount hide");
-    apply(::sumhp::sumh::set_maps_spoof(config.enable_maps_spoof), "maps spoof");
     apply(::sumhp::sumh::set_statfs_spoof(config.enable_statfs_spoof), "statfs spoof");
     if (apply_immediately || !config.enable_kernel_build_spoof ||
         config.kernel_build_apply_stage == "post-fs-data" ||
@@ -306,8 +504,12 @@ bool apply_feature_config(const Config& config, std::string& error, bool apply_i
     }
     if (!ok) {
         (void)disable_kernel_features();
+        return false;
     }
-    return ok;
+    if (!apply_maps)
+        return true;
+    return apply_maps_config(config, error,
+                             apply_immediately || ksud::getprop("sys.boot_completed") == "1");
 }
 
 bool reset_feature_state(std::string& error) {
@@ -428,45 +630,48 @@ bool reset_runtime_state(std::string& error) {
     return ok;
 }
 
-bool mount_modules(const std::vector<ModuleEntry>& modules, const Config& config,
-                   const ModuleRuleMap& rules) {
+bool prepare_modules(const std::vector<ModuleEntry>& modules, const Config& config,
+                     const ModuleRuleMap& rules, ModuleMountPlan& plan, std::string& error) {
     if (!::sumhp::sumh::is_available()) {
-        mlog("sumh: backend requested but protocol is unavailable");
+        error = "SUMH backend requested but protocol is unavailable";
         return false;
     }
-    // SUMH redirects each target straight to the real module tree under
-    // /data/adb/modules; the vnode clones the source inode's SELinux SID, so no
-    // relabeled mirror is needed (unlike OverlayFS, which exposes the lowerdir's
-    // context). SUMH therefore mounts no workdir.
-    const std::vector<std::string>& partitions =
-        config.partitions.empty() ? fsutil::managed_partitions() : config.partitions;
-
-    RuleBatch batch;
+    const auto partitions = fsutil::managed_partitions(config.partitions);
+    ModuleMountPlan batch;
+    ModuleRuleMap resolved_rules;
     for (const auto& module : modules) {
         const auto rule_it = rules.find(module.id);
-        const std::vector<ModuleRule> empty_rules;
-        const auto& module_rules = rule_it == rules.end() ? empty_rules : rule_it->second;
+        if (rule_it == rules.end())
+            continue;
+        auto& module_rules = resolved_rules[module.id];
+        if (!resolve_module_rules(rule_it->second, module_rules, error)) {
+            error.insert(0, ": ");
+            error.insert(0, module.id);
+            return false;
+        }
         for (const auto& rule : module_rules) {
-            if (rule.mode == "hide" && !rule.path.empty() && rule.path.front() == '/') {
-                batch.hide.insert(resolve_virtual_path(rule.path));
+            if (rule.mode == "hide")
+                batch.hide.insert(rule.path);
+        }
+    }
+    // Kernel rules use last-write-wins semantics. Enumerated modules are sorted
+    // by id, so emit them backwards to retain the existing module priority.
+    for (auto it = modules.rbegin(); it != modules.rend(); ++it) {
+        const auto& module_rules = resolved_rules[it->id];
+        for (const auto& partition : partitions) {
+            if (!compile_tree(it->path / partition, "/" + partition, module_rules, batch, error)) {
+                error.insert(0, ": ");
+                error.insert(0, it->id);
+                return false;
             }
         }
     }
+    plan = std::move(batch);
+    error.clear();
+    return true;
+}
 
-    // Kernel rules use last-write-wins semantics. Enumerated modules are sorted
-    // by id, so emit them backwards to retain the same deterministic priority as
-    // ZySU's hymo planner.
-    for (auto it = modules.rbegin(); it != modules.rend(); ++it) {
-        const auto rule_it = rules.find(it->id);
-        const std::vector<ModuleRule> empty_rules;
-        const auto& module_rules = rule_it == rules.end() ? empty_rules : rule_it->second;
-        const fs::path source = it->path;
-        for (const auto& partition : partitions) {
-            if (!compile_tree(source / partition, "/" + partition, module_rules, batch))
-                return false;
-        }
-    }
-
+bool apply_modules(const ModuleMountPlan& batch) {
     bool ok = true;
     size_t add_count = 0;
     size_t merge_count = 0;
@@ -499,6 +704,17 @@ bool mount_modules(const std::vector<ModuleEntry>& modules, const Config& config
         mlog("sumh: one or more rule operations failed", logging::Level::Error);
     }
     return ok;
+}
+
+bool mount_modules(const std::vector<ModuleEntry>& modules, const Config& config,
+                   const ModuleRuleMap& rules) {
+    ModuleMountPlan plan;
+    std::string error;
+    if (!prepare_modules(modules, config, rules, plan, error)) {
+        mlog("sumh: " + error, logging::Level::Error);
+        return false;
+    }
+    return apply_modules(plan);
 }
 
 bool unmount_all(const Config& config) {

@@ -4,7 +4,7 @@
 
 ## 后端选择
 
-模块后端由 SUMHP 的全局 `mount_backend` 和 `module_mode.json` 共同决定：全局值不是 `auto` 时覆盖单模块设置；否则使用单模块模式，默认 `auto`。`auto` 的顺序是 OverlayFS → Magic Mount → none。模块在分区根放置直属文件（例如 `system/build.prop`）时，OverlayFS 不会替换分区根，规划器会选择 Magic Mount。显式请求不可用后端时，规划器会尝试回退到可用后端。
+模块后端由 SUMHP 的全局 `mount_backend` 和保存的模块模式共同决定：全局值不是 `auto` 时覆盖单模块设置；否则使用单模块模式，默认 `auto`。模式与路径规则现在一并保存在 `module_rules.json`，旧 `module_mode.json` 作为升级输入。`auto` 的顺序是 OverlayFS → Magic Mount → none。模块在分区根放置直属文件（例如 `system/build.prop`）时，OverlayFS 不会替换分区根，规划器会选择 Magic Mount；显式 Overlay 也检查布局条件。显式请求不可用后端时，规划器会尝试回退到可用后端。
 
 ```sh
 ksud sumhp api backends

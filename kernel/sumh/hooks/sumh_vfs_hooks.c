@@ -165,21 +165,34 @@ passthrough:
 				  d_type);
 }
 
+/* Caller holds RCU. Retired explicit rules can leave an installed wrapper
+ * and an inode flag; only live redirects justify the generic projection. */
+static bool sumh_kstat_has_redirect_source(struct inode *inode)
+{
+	struct sumh_entry *entry;
+	int bucket;
+
+	if (!inode)
+		return false;
+	hash_for_each_rcu(sumh_paths, bucket, entry, node)
+	{
+		if ((entry->source_path_valid &&
+		     entry->source_inode == inode) ||
+		    (entry->source_nofollow_path_valid &&
+		     d_inode(entry->source_nofollow_path.dentry) == inode))
+			return true;
+	}
+	return false;
+}
+
 /*
- * vfs_getattr kretprobe ret: spoof kstat for redirect targets.
- * Makes the file appear to belong to /system with root ownership.
- */
-/*
- * Apply kstat spoofing in place. Shared by:
- *   - vfs_getattr kretprobe ret handler (legacy slow path)
- *   - sumh_shadow_getattr in sumh_iop_override.c (fast path after install)
- *
- * Note: `inode` may be NULL for the legacy path (we still have stat / mapping
- * via the kretprobe ri data); the shadow path always provides it.
+ * Apply explicit attributes or the existing redirect projection from shadow
+ * getattr. A real inode is needed to establish ownership; NULL is a no-op.
  */
 void sumh_apply_kstat_spoof(struct inode *inode, struct kstat *stat)
 {
 	struct sumh_spoof_kstat_entry *e = NULL;
+	bool explicit_rule = false, redirect_source;
 
 	if (!stat)
 		return;
@@ -189,11 +202,13 @@ void sumh_apply_kstat_spoof(struct inode *inode, struct kstat *stat)
 		return;
 
 	/* Explicit per-inode spoof rule (api15) takes precedence. */
-	if (inode && atomic_read(&sumh_spoof_kstat_count) > 0) {
-		rcu_read_lock();
-		e = sumh_spoof_kstat_lookup_by_ino((unsigned long)inode->i_ino,
-						   (unsigned long)stat->dev);
+	rcu_read_lock();
+	if (inode && inode->i_sb && atomic_read(&sumh_spoof_kstat_count) > 0) {
+		e = sumh_spoof_kstat_lookup_by_ino(
+		    (unsigned long)inode->i_ino,
+		    (unsigned long)inode->i_sb->s_dev);
 		if (e) {
+			explicit_rule = true;
 			if (e->spoofed_dev)
 				stat->dev = e->spoofed_dev;
 			if (e->spoofed_ino)
@@ -219,10 +234,14 @@ void sumh_apply_kstat_spoof(struct inode *inode, struct kstat *stat)
 				stat->ctime.tv_nsec = e->spoofed_ctime_nsec;
 			}
 		}
-		rcu_read_unlock();
 	}
+	redirect_source =
+	    !explicit_rule && sumh_kstat_has_redirect_source(inode);
+	rcu_read_unlock();
+	if (!explicit_rule && !redirect_source)
+		return;
 
-	if (!e) {
+	if (!explicit_rule) {
 		dev_t system_dev = READ_ONCE(sumh_system_dev);
 
 		/* Generic fallback: add_rule redirect targets reaching the
@@ -249,7 +268,7 @@ void sumh_apply_kstat_spoof(struct inode *inode, struct kstat *stat)
 	stat->gid = GLOBAL_ROOT_GID;
 
 	sumh_log("kstat: spoofed ino %lu (explicit=%d)\n",
-		 (unsigned long)stat->ino, e ? 1 : 0);
+		 (unsigned long)stat->ino, explicit_rule);
 
 	if (inode && inode->i_mapping)
 		set_bit(AS_FLAGS_SUMH_SPOOF_KSTAT, &inode->i_mapping->flags);

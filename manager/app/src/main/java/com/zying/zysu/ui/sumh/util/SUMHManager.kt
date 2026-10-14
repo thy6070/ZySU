@@ -206,21 +206,14 @@ object SUMHManager {
 
     suspend fun saveModule(id: String, mode: String, rules: List<ModuleRule>) = mutate {
         require(mode in mountModes)
-        require(rules.all { it.path.startsWith('/') && it.mode in ruleModes })
-        require(rules.map { it.path }.distinct().size == rules.size)
+        require(validateSUMHModuleRules(rules) == null) { "Invalid module path rules" }
         val meta = objectResult("api", "meta", "--control-only")
         check(meta.optString("external_mount_owner").isEmpty()) { "An external metamodule owns mounting" }
+        check(meta.optBoolean("module_configure")) { "Update ksud and restart the SUMHP controller to save module settings atomically" }
         val previous = parseModules(objectResult("module", "list", "--all"))[id]
         check(previous != null) { "Module is no longer mountable" }
-        if (mode != previous.mode) command("module", "set-mode", id, mode)
-        val paths = rules.mapTo(HashSet()) { it.path }
-        val previousRules = previous.rules.toHashSet()
-        previous.rules.filter { it.path !in paths }.forEach {
-            command("module", "remove-rule", id, it.path)
-        }
-        rules.filter { it !in previousRules }.forEach {
-            command("module", "add-rule", id, it.path, it.mode)
-        }
+        if (mode != previous.mode || rules != previous.rules)
+            command("module", "configure", id, mode, moduleRulesJson(rules).toString())
     }
 
     suspend fun saveHide(path: String, remove: Boolean = false) = mutate {
@@ -286,7 +279,9 @@ object SUMHManager {
         Natives.sumhRetryUserHide(path.toByteArray(Charsets.UTF_8))
     }
     suspend fun addMapsRule(numbers: List<String>, path: String) = mutate {
-        val parsed = numbers.map { parseSUMHMapsNumber(it) }
+        val parsed = numbers.mapIndexed { index, value ->
+            if (index == 1 || index == 3) parseSUMHMapsDevice(value) else parseSUMHMapsNumber(value)
+        }
         require(parsed.size == 4 && parsed.all { it != null } && validateSUMHMapsPath(path) == null)
         Natives.sumhAddMapsRule(parsed.map { requireNotNull(it).toLong() }.toLongArray(), path.toByteArray(Charsets.UTF_8))
     }

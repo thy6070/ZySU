@@ -30,6 +30,7 @@ import com.zying.zysu.ui.sumh.util.SUMHFeatureState
 import com.zying.zysu.ui.sumh.util.SUMHFeatureSupport
 import com.zying.zysu.ui.sumh.util.SUMHManagedFeature
 import com.zying.zysu.ui.sumh.util.sumhFeatureStates
+import com.zying.zysu.ui.sumh.util.sumhManagedMapsSupport
 import com.zying.zysu.ui.sumh.util.unsupportedConfiguredFeatures
 import ui.screen.moreSettings.component.MoreSettingsItemPosition
 import com.zying.zysu.ui.sumh.util.SUMHUiAdapter as Controller
@@ -104,6 +105,8 @@ internal fun IsolationFeatureSettings(
     onClearMapRules: () -> Unit,
     onAddMapRule: (Long, Long, Long, Long, String) -> Unit,
     headingActions: (@Composable RowScope.() -> Unit)?,
+    onRetryApply: () -> Unit,
+    runtimeApplyPending: Boolean,
 ) {
     val states = sumhFeatureStates(config.configuredSUMHFeatures(), kernelAvailable, features?.names?.toSet())
     val cleanup = unsupportedConfiguredFeatures(states)
@@ -130,7 +133,7 @@ internal fun IsolationFeatureSettings(
                     val mapControls = state.feature == SUMHManagedFeature.Maps && state.configuredEnabled &&
                         state.support == SUMHFeatureSupport.Supported
                     val position = when {
-                        group.size == 1 && !mapControls -> MoreSettingsItemPosition.Only
+                        group.size == 1 && state.feature != SUMHManagedFeature.Maps -> MoreSettingsItemPosition.Only
                         index == 0 -> MoreSettingsItemPosition.First
                         index == group.lastIndex -> MoreSettingsItemPosition.Last
                         else -> MoreSettingsItemPosition.Middle
@@ -154,6 +157,18 @@ internal fun IsolationFeatureSettings(
                         icon = state.feature.icon,
                         position = position,
                     )
+                    if (state.feature == SUMHManagedFeature.Maps) {
+                        ManagedMapsControls(
+                            rules = config.mapsRules,
+                            enabled = controlsEnabled,
+                            support = sumhManagedMapsSupport(kernelAvailable, features?.names?.toSet()),
+                            mapsEnabled = config.enableMapsSpoof,
+                            onRulesChanged = { onConfigChanged(config.copy(mapsRules = it)) },
+                            position = if (mapControls) MoreSettingsItemPosition.Middle else MoreSettingsItemPosition.Last,
+                            onRetryApply = onRetryApply,
+                            runtimeApplyPending = runtimeApplyPending,
+                        )
+                    }
                     if (mapControls) MapsSpoofControls(controlsEnabled && kernelAvailable, onClearMapRules, onAddMapRule)
                 }
             }
