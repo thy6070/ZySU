@@ -1,4 +1,5 @@
 #include "sumh_entrypoints.h"
+#include "sumh_dirhijack.h"
 #include "sumh_fop_bridge.h"
 #include "sumh_fop_override.h"
 #include "sumh_runtime.h"
@@ -8,6 +9,7 @@
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/rcupdate.h>
+#include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/srcu.h>
@@ -158,19 +160,47 @@ SUMH_NOCFI static int sumh_shadow_iterate_shared(struct file *file,
 		client_data = READ_ONCE(m->iterate_client_data);
 	}
 	rcu_read_unlock();
-	if (client && client_data) {
-		ret = client(file, ctx, orig, client_data);
-		goto out;
+	if (sumh_dirhijack_injected_context(ctx)) {
+		/* The native/merge phase is already drained. The client handles
+		 * its remaining names and policies without another path lookup,
+		 * merge scan or generic wrapper allocation. */
+		if (client && client_data) {
+			ret = client(file, ctx, orig, client_data);
+			goto out;
+		}
+		/* CLEAR may leave an open fd at a retired client's cookie. */
+		ctx->pos = 0;
 	}
-
 	wrapper = sumh_iterate_prepare_wrapper(file, ctx);
 	if (!wrapper) {
-		ret = orig->iterate_shared(file, ctx);
+		sumh_iterate_rewind_injected(ctx);
+		ret = client && client_data
+			  ? client(file, ctx, orig, client_data)
+			  : orig->iterate_shared(file, ctx);
 		goto out;
 	}
 
 	atomic64_inc(&sumh_hook_stats.iterate_fop_wrapped);
-	ret = orig->iterate_shared(file, &wrapper->wrap_ctx);
+	wrapper->has_iterate_client = client && client_data;
+	/* Compose the generic merge view with a specialized directory client.
+	 * Emit before entering the native iterator, including for empty dirs.
+	 */
+	sumh_iterate_emit_injected(wrapper);
+	ret = 0;
+	while (!wrapper->stopped) {
+		loff_t before = wrapper->wrap_ctx.pos;
+
+		ret = client && client_data
+			  ? client(file, &wrapper->wrap_ctx, orig, client_data)
+			  : orig->iterate_shared(file, &wrapper->wrap_ctx);
+		if (ret < 0 || wrapper->stopped || wrapper->emitted ||
+		    wrapper->wrap_ctx.pos == before)
+			break;
+		/* A lower iterator may return a batch containing only entries
+		 * removed by our filter. That is progress, not userspace EOF.
+		 */
+		cond_resched();
+	}
 	sumh_iterate_finish_wrapper(wrapper);
 out:
 	srcu_read_unlock(&sumh_fop_client_srcu, srcu_idx);

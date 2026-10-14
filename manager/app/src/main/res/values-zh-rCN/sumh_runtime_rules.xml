@@ -8,4 +8,23 @@
     <string name="sumh_rules_runtime_raw_operands">内核返回的路径未作转义，此处保留原始路径对。</string>
     <string name="sumh_rules_runtime_feature">已开启功能</string>
     <string name="sumh_rules_runtime_path">内核路径规则</string>
+    <string name="sumh_runtime_filter_all">全部</string>
+    <string name="sumh_runtime_filter_mappings">文件映射</string>
+    <string name="sumh_runtime_filter_hidden">隐藏路径</string>
+    <string name="sumh_runtime_filter_features">功能</string>
+    <string name="sumh_runtime_search">搜索可见路径或来源路径</string>
+    <string name="sumh_runtime_clear_search">清除搜索</string>
+    <string name="sumh_runtime_filtered_count">匹配 %1$d / %2$d 条内核记录</string>
+    <string name="sumh_runtime_no_matches">没有匹配的记录，试试其他路径或类型。</string>
+    <string name="sumh_runtime_reset_filters">清除筛选</string>
+    <string name="sumh_runtime_mapping">文件映射</string>
+    <string name="sumh_runtime_merge">目录合并</string>
+    <string name="sumh_runtime_hidden">路径隐藏</string>
+    <string name="sumh_runtime_details">查看完整路径</string>
+    <string name="sumh_runtime_visible_path">可见路径</string>
+    <string name="sumh_runtime_source_path">来源路径</string>
+    <string name="sumh_runtime_original_paths">原始路径对</string>
+    <string name="sumh_runtime_copy_visible">复制可见路径</string>
+    <string name="sumh_runtime_copy_source">复制来源路径</string>
+    <string name="sumh_runtime_copy_original">复制原始路径对</string>
 </resources>

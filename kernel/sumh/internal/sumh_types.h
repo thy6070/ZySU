@@ -10,6 +10,7 @@
 #include <linux/llist.h>
 #include <linux/mutex.h>
 #include <linux/path.h>
+#include <linux/rbtree.h>
 #include <linux/rcupdate.h>
 #include <linux/spinlock.h>
 #include <linux/xarray.h>
@@ -96,8 +97,10 @@ struct sumh_merge_target_node {
 struct sumh_name_list {
 	char *name;
 	u64 ino;
+	unsigned int name_len;
 	unsigned char type;
 	struct list_head list;
+	struct rb_node name_node;
 };
 
 struct sumh_filldir_wrapper {
@@ -109,6 +112,11 @@ struct sumh_filldir_wrapper {
 	const char *dir_path;
 	bool dir_has_inject;
 	bool inject_done;
+	bool inject_pending;
+	bool has_iterate_client;
+	bool stopped;
+	loff_t inject_pos;
+	unsigned int emitted;
 	bool view_allowed;
 	bool spoof_allowed;
 	int merge_target_count;

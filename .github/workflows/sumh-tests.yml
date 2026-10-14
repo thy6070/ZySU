@@ -78,6 +78,8 @@ jobs:
         run: |
           python3 scripts/ci/test_sumh_core.py --cc clang
           python3 scripts/ci/test_sumh_vfs_helpers.py --cc clang
+          python3 scripts/ci/test_sumh_directory_names.py --cc clang
+          python3 scripts/ci/test_sumh_directory_stream.py --cc clang
           python3 scripts/ci/test_sumh_mount_views.py --cc clang
           python3 scripts/ci/test_sumh_native_namespace.py --cc clang
           python3 scripts/ci/test_selinux_hide_status.py --cc clang

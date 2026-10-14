@@ -42,6 +42,7 @@
 #include "sumh_path_policy.h"
 #include "sumh_dirhijack.h"
 #include "sumh_hide_rules.h"
+#include "sumh_name_index.h"
 #include "policy/allowlist.h"
 
 #define SUMH_MEDIA_RW_GID 1023
@@ -737,6 +738,7 @@ int SUMH_NOCFI sumh_rule_vpath_child(const char *dir, const char *child,
 int SUMH_NOCFI sumh_rule_vpath_emit(const char *dir, struct list_head *out)
 {
 	struct sumh_entry *entry;
+	struct rb_root names;
 	size_t dlen;
 	int count = 0;
 	int bkt;
@@ -744,6 +746,7 @@ int SUMH_NOCFI sumh_rule_vpath_emit(const char *dir, struct list_head *out)
 	if (!dir || !out)
 		return 0;
 	dlen = strlen(dir);
+	sumh_name_index_init(&names, out);
 
 	rcu_read_lock();
 	hash_for_each_rcu(sumh_paths, bkt, entry, node)
@@ -752,8 +755,7 @@ int SUMH_NOCFI sumh_rule_vpath_emit(const char *dir, struct list_head *out)
 		const char *slash;
 		size_t seg_len;
 		bool is_leaf;
-		bool dup = false;
-		struct sumh_name_list *item, *ex;
+		struct sumh_name_list *item;
 		umode_t m;
 
 		if (!entry->src)
@@ -769,14 +771,7 @@ int SUMH_NOCFI sumh_rule_vpath_emit(const char *dir, struct list_head *out)
 		if (!seg_len)
 			continue;
 		is_leaf = (slash == NULL);
-		list_for_each_entry (ex, out, list) {
-			if (strlen(ex->name) == seg_len &&
-			    memcmp(ex->name, rest, seg_len) == 0) {
-				dup = true;
-				break;
-			}
-		}
-		if (dup)
+		if (sumh_name_index_contains(&names, rest, seg_len))
 			continue;
 		item = kmalloc(sizeof(*item), GFP_ATOMIC);
 		if (!item)
@@ -812,6 +807,7 @@ int SUMH_NOCFI sumh_rule_vpath_emit(const char *dir, struct list_head *out)
 				item->ino = 0;
 			}
 		}
+		sumh_name_index_add(&names, item);
 		list_add_tail(&item->list, out);
 		count++;
 	}

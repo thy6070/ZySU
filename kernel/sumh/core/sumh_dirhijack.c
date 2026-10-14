@@ -48,6 +48,11 @@ static inline u32 sumh_dh_unpack_pos(loff_t pos)
 	return (u32)(pos & 0xFFFFFFFFULL);
 }
 
+bool sumh_dirhijack_injected_context(const struct dir_context *ctx)
+{
+	return ctx && sumh_dh_virtual_pos(ctx->pos);
+}
+
 struct sumh_dh_iop {
 	struct inode_operations fake_iop; /* must stay first */
 	const struct inode_operations *orig_iop;
@@ -212,6 +217,18 @@ static bool sumh_dh_current_targets(const struct sumh_dh_child *child,
 	if (sumh_dh_current_hides(child, parent))
 		return true;
 	return child->legacy && !child->hide && sumh_dh_current_sees();
+}
+
+static bool sumh_dh_child_emitted(const struct sumh_dh_child *child,
+				  const struct inode *parent)
+{
+	if (child->hide || child->lookup_only ||
+	    sumh_dh_current_hides(child, parent))
+		return false;
+	return (child->flags & SUMH_VNODE_F_SU)
+		   ? (ksu_sucompat_vfs_current_ino(child->v_ino) &&
+		      ksu_sucompat_vfs_visible())
+		   : sumh_dh_current_sees();
 }
 
 static bool sumh_dh_hidden_name(struct inode *parent, const struct qstr *name)
@@ -539,14 +556,7 @@ static int sumh_dh_emit_children(struct dir_context *ctx,
 	{
 		u32 cur;
 		struct sumh_dh_emit_entry *entry;
-		if (!((c->flags & SUMH_VNODE_F_SU)
-			  ? (ksu_sucompat_vfs_current_ino(c->v_ino) &&
-			     ksu_sucompat_vfs_visible())
-			  : sumh_dh_current_sees()))
-			continue;
-
-		if (c->hide || c->lookup_only ||
-		    sumh_dh_current_hides(c, dir->dir_inode))
+		if (!sumh_dh_child_emitted(c, dir->dir_inode))
 			continue; /* suppress-only, or readdir owned by the
 				   * overlay filldir: occupies no readdir slot
 				   */
@@ -589,8 +599,11 @@ static int SUMH_NOCFI sumh_dh_iterate_inner(struct file *file,
 		return -ENOTDIR;
 	if (!dn || (!sumh_dh_current_sees() &&
 		    !sumh_policy_current_is_hide_target(dn->dir_inode) &&
-		    !ksu_sucompat_vfs_enabled()))
+		    !ksu_sucompat_vfs_enabled())) {
+		if (sumh_dh_virtual_pos(ctx->pos))
+			ctx->pos = 0;
 		return orig->iterate_shared(file, ctx);
+	}
 
 	if (sumh_dh_virtual_pos(ctx->pos))
 		return sumh_dh_emit_children(ctx, dn);
@@ -1946,6 +1959,27 @@ bool sumh_dirhijack_hidden(struct inode *parent, const char *name, int len)
 
 	srcu_read_unlock(&sumh_dh_srcu, idx);
 	return hidden;
+}
+
+bool sumh_dirhijack_emits(struct inode *parent, const char *name, int len)
+{
+	struct sumh_dh_iop *meta;
+	struct sumh_dh_child *child;
+	bool emits = false;
+	int idx = srcu_read_lock(&sumh_dh_srcu);
+
+	meta = sumh_dh_iop_of(parent);
+	if (!meta || !meta->dir || READ_ONCE(meta->dir->retiring))
+		goto out;
+	rcu_read_lock();
+	child = sumh_dh_find_child(meta->dir, name, (u16)len,
+				   full_name_hash(parent, name, len));
+	if (child)
+		emits = sumh_dh_child_emitted(child, parent);
+	rcu_read_unlock();
+out:
+	srcu_read_unlock(&sumh_dh_srcu, idx);
+	return emits;
 }
 
 int sumh_dirhijack_del(const char *visible_path)

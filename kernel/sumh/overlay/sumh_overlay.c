@@ -41,6 +41,7 @@
 #include "sumh_iop_override.h"
 #include "sumh_dirhijack.h"
 #include "sumh_vnode.h"
+#include "sumh_name_index.h"
 /* ======================================================================
  * Part 10: Inject Rule Helper
  * ====================================================================== */
@@ -86,6 +87,7 @@ void sumh_add_inject_rule(char *dir)
 struct sumh_merge_ctx {
 	struct dir_context ctx;
 	struct list_head *head;
+	struct rb_root *names;
 	const char *dir_path;
 	dev_t dir_dev;
 };
@@ -119,6 +121,8 @@ static SUMH_NOCFI bool sumh_merge_filldir(struct dir_context *ctx,
 	    container_of(ctx, struct sumh_merge_ctx, ctx);
 	struct sumh_name_list *item;
 
+	if (namlen <= 0 || namlen > NAME_MAX)
+		return true;
 	if (namlen == 1 && name[0] == '.')
 		return true;
 	if (namlen == 2 && name[0] == '.' && name[1] == '.')
@@ -148,15 +152,8 @@ static SUMH_NOCFI bool sumh_merge_filldir(struct dir_context *ctx,
 		}
 	}
 
-	/* Skip duplicates */
-	{
-		struct sumh_name_list *pos;
-		list_for_each_entry (pos, mctx->head, list) {
-			if ((size_t)namlen == strlen(pos->name) &&
-			    strncmp(pos->name, name, namlen) == 0)
-				return true;
-		}
-	}
+	if (sumh_name_index_contains(mctx->names, name, namlen))
+		return true;
 
 	item = kmalloc(sizeof(*item), GFP_KERNEL);
 	if (item) {
@@ -169,9 +166,10 @@ static SUMH_NOCFI bool sumh_merge_filldir(struct dir_context *ctx,
 				? sumh_vnode_source_ino(mctx->dir_dev, ino)
 				: ino;
 		item->type = (unsigned char)d_type;
-		if (item->name)
+		if (item->name) {
+			sumh_name_index_add(mctx->names, item);
 			list_add(&item->list, mctx->head);
-		else
+		} else
 			kfree(item);
 	}
 	return true;
@@ -195,6 +193,7 @@ SUMH_NOCFI void sumh_populate_injected_list(const char *dir_path,
 	struct sumh_name_list *item;
 	struct sumh_merge_target_node *target_node, *tmp_node;
 	struct list_head merge_targets;
+	struct rb_root names;
 	u32 hash;
 	int bkt;
 	bool should_inject = false;
@@ -216,6 +215,7 @@ SUMH_NOCFI void sumh_populate_injected_list(const char *dir_path,
 		return;
 
 	INIT_LIST_HEAD(&merge_targets);
+	sumh_name_index_init(&names, head);
 	dir_len = strlen(dir_path);
 	hash = full_name_hash(NULL, dir_path, dir_len);
 
@@ -302,8 +302,6 @@ SUMH_NOCFI void sumh_populate_injected_list(const char *dir_path,
 		hash_for_each_rcu(sumh_paths, bkt, entry, node)
 		{
 			const char *name;
-			struct sumh_name_list *pos;
-			bool duplicate = false;
 
 			name = sumh_direct_child_name(entry->src, dir_path,
 						      dir_len);
@@ -312,13 +310,8 @@ SUMH_NOCFI void sumh_populate_injected_list(const char *dir_path,
 				    entry->src, dpath_dir, dpath_dir_len);
 			if (!name)
 				continue;
-			list_for_each_entry (pos, head, list) {
-				if (strcmp(pos->name, name) == 0) {
-					duplicate = true;
-					break;
-				}
-			}
-			if (duplicate)
+			if (sumh_name_index_contains(&names, name,
+						     strlen(name)))
 				continue;
 			item = kmalloc(sizeof(*item), GFP_ATOMIC);
 			if (!item)
@@ -330,9 +323,10 @@ SUMH_NOCFI void sumh_populate_injected_list(const char *dir_path,
 							    S_IFMT) >>
 							   12)
 					 : entry->type;
-			if (item->name)
+			if (item->name) {
+				sumh_name_index_add(&names, item);
 				list_add(&item->list, head);
-			else
+			} else
 				kfree(item);
 		}
 	}
@@ -354,6 +348,7 @@ SUMH_NOCFI void sumh_populate_injected_list(const char *dir_path,
 						    .ctx.actor =
 							sumh_merge_filldir,
 						    .head = head,
+						    .names = &names,
 						    .dir_path =
 							target_node->target,
 						    .dir_dev =

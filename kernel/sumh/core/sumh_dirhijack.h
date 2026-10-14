@@ -5,6 +5,7 @@
 #include <linux/types.h>
 
 struct inode;
+struct dir_context;
 struct inode_operations;
 struct super_operations;
 
@@ -79,6 +80,9 @@ void sumh_dirhijack_hide_put(struct sumh_hide_binding *binding);
 bool sumh_dirhijack_hide_matches(const struct sumh_hide_binding *binding,
 				 const struct path *parent);
 bool sumh_dirhijack_hidden(struct inode *parent, const char *name, int len);
+/* Whether the specialized iterator emits this name for the current task. */
+bool sumh_dirhijack_emits(struct inode *parent, const char *name, int len);
+bool sumh_dirhijack_injected_context(const struct dir_context *ctx);
 
 /*
  * Restore every inode/file/dentry operation shadow, invalidate affected

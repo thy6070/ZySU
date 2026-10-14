@@ -462,6 +462,7 @@ typedef unsigned int u32;
 #define SUMH_ITERATE_PATH_BUF 128
 #define SUMH_MAX_MERGE_TARGETS 8
 #define SUMH_HASH_BITS 4
+#define SUMH_MAGIC_POS 0x1000000000000000ULL
 #define AS_FLAGS_SUMH_DIR_HAS_HIDDEN 0
 #define AS_FLAGS_SUMH_DIR_HAS_INJECT 1
 #define READ_ONCE(v) (v)
@@ -482,7 +483,10 @@ struct sumh_filldir_wrapper {
     int dir_path_len;
     bool dir_has_hidden;
     const char *dir_path;
-    bool dir_has_inject, inject_done, view_allowed, spoof_allowed;
+    bool dir_has_inject, inject_done, inject_pending, has_iterate_client, stopped;
+    loff_t inject_pos;
+    unsigned int emitted;
+    bool view_allowed, spoof_allowed;
     int merge_target_count;
     struct dentry *merge_target_dentries[SUMH_MAX_MERGE_TARGETS];
     char dir_path_buf[SUMH_ITERATE_PATH_BUF];
@@ -660,9 +664,10 @@ int main(void) {
 }
 """
     guard = function("kernel/sumh/overlay/sumh_overlay.c", "bool sumh_is_merge_context")
+    position = function("kernel/sumh/hooks/sumh_vfs_hooks.c", "static bool sumh_iterate_injected_pos(")
     prepare = function("kernel/sumh/hooks/sumh_vfs_hooks.c", "SUMH_NOCFI struct sumh_filldir_wrapper *")
     finish = function("kernel/sumh/hooks/sumh_vfs_hooks.c", "void sumh_iterate_finish_wrapper")
-    return COMMON + preamble + guard + prepare + finish + body
+    return COMMON + preamble + guard + position + prepare + finish + body
 
 
 def run_test(compiler, name, source):

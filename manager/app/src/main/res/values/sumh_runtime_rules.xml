@@ -1,11 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="sumh_rules_runtime">Kernel rules</string>
-    <string name="sumh_rules_runtime_count">Showing %1$d kernel entries</string>
+    <string name="sumh_rules_runtime_count">Kernel entries shown: %1$d</string>
     <string name="sumh_rules_runtime_hint">Kernel path rules, bound hidden paths and enabled features. Saved paths awaiting binding are managed in Hidden paths. The SUMH switch determines whether path views apply.</string>
     <string name="sumh_rules_runtime_incomplete">Some kernel entries could not be read completely. The count covers only the entries shown. Refresh to check again.</string>
     <string name="sumh_rules_runtime_empty">No kernel entries to display.</string>
     <string name="sumh_rules_runtime_raw_operands">The kernel returned unescaped paths; the original path pair is shown together.</string>
     <string name="sumh_rules_runtime_feature">Enabled feature</string>
     <string name="sumh_rules_runtime_path">Kernel path rule</string>
+    <string name="sumh_runtime_filter_all">All</string>
+    <string name="sumh_runtime_filter_mappings">File mappings</string>
+    <string name="sumh_runtime_filter_hidden">Hidden paths</string>
+    <string name="sumh_runtime_filter_features">Features</string>
+    <string name="sumh_runtime_search">Search visible or source path</string>
+    <string name="sumh_runtime_clear_search">Clear search</string>
+    <string name="sumh_runtime_filtered_count">Kernel entries matched: %1$d / %2$d</string>
+    <string name="sumh_runtime_no_matches">No matching entries. Try another path or type.</string>
+    <string name="sumh_runtime_reset_filters">Clear filters</string>
+    <string name="sumh_runtime_mapping">File mapping</string>
+    <string name="sumh_runtime_merge">Directory merge</string>
+    <string name="sumh_runtime_hidden">Hidden path</string>
+    <string name="sumh_runtime_details">View full path</string>
+    <string name="sumh_runtime_visible_path">Visible path</string>
+    <string name="sumh_runtime_source_path">Source path</string>
+    <string name="sumh_runtime_original_paths">Original path pair</string>
+    <string name="sumh_runtime_copy_visible">Copy visible path</string>
+    <string name="sumh_runtime_copy_source">Copy source path</string>
+    <string name="sumh_runtime_copy_original">Copy original path pair</string>
 </resources>

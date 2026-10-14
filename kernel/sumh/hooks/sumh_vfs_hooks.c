@@ -48,6 +48,66 @@
 
 #define SUMH_MAGIC_POS 0x1000000000000000ULL
 
+static bool sumh_iterate_injected_pos(loff_t pos)
+{
+	return (pos & 0xFFFFFFFF00000000ULL) == SUMH_MAGIC_POS;
+}
+
+void sumh_iterate_rewind_injected(struct dir_context *ctx)
+{
+	/* Rules can be removed while a directory fd retains an injection
+	 * cookie. Never forward that private cookie to the native filesystem.
+	 */
+	if (ctx && sumh_iterate_injected_pos(ctx->pos))
+		ctx->pos = 0;
+}
+
+SUMH_NOCFI void sumh_iterate_emit_injected(struct sumh_filldir_wrapper *w)
+{
+	struct list_head head;
+	struct sumh_name_list *item, *tmp;
+	struct inode *parent;
+	loff_t pos = SUMH_MAGIC_POS;
+
+	if (!w->view_allowed || !w->dir_has_inject || w->inject_done ||
+	    !w->dir_path || !w->parent_dentry)
+		return;
+
+	w->inject_done = true;
+	w->inject_pending = true;
+	parent = d_inode(w->parent_dentry);
+	INIT_LIST_HEAD(&head);
+	sumh_populate_injected_list(w->dir_path, w->parent_dentry, &head);
+	list_for_each_entry_safe (item, tmp, &head, list) {
+		int nlen = strlen(item->name);
+
+		if (parent && sumh_dirhijack_hidden(parent, item->name, nlen))
+			goto free_item;
+		/* Exact rules already owned by the specialized iterator appear
+		 * after the native stream. Merge-only children stay in this
+		 * list. */
+		if (w->has_iterate_client && parent &&
+		    sumh_dirhijack_emits(parent, item->name, nlen))
+			goto free_item;
+		if (pos++ < w->inject_pos || w->stopped)
+			goto free_item;
+		w->orig_ctx->pos = w->inject_pos;
+		if (!w->orig_ctx->actor(w->orig_ctx, item->name, nlen,
+					w->inject_pos, item->ino ?: 1,
+					item->type)) {
+			w->stopped = true;
+			goto free_item;
+		}
+		w->inject_pos++;
+		w->emitted++;
+		atomic64_inc(&sumh_hook_stats.filldir_injected);
+	free_item:
+		list_del(&item->list);
+		kfree(item->name);
+		kfree(item);
+	}
+}
+
 SUMH_NOCFI bool sumh_filldir_filter(struct dir_context *ctx, const char *name,
 				    int namlen, loff_t offset, u64 ino,
 				    unsigned int d_type)
@@ -58,52 +118,14 @@ SUMH_NOCFI bool sumh_filldir_filter(struct dir_context *ctx, const char *name,
 	struct inode *parent =
 	    w->parent_dentry ? d_inode(w->parent_dentry) : NULL;
 
-	/* Inject phase: before first real entry, emit entries from merge
-	 * targets and sumh_paths into the directory listing. */
-	if (w->view_allowed && w->dir_has_inject && !w->inject_done &&
-	    w->dir_path && w->parent_dentry) {
-		struct list_head head;
-		struct sumh_name_list *item, *tmp;
-		loff_t inj_pos = SUMH_MAGIC_POS;
-
-		w->inject_done = true;
-		INIT_LIST_HEAD(&head);
-		sumh_populate_injected_list(w->dir_path, w->parent_dentry,
-					    &head);
-
-		list_for_each_entry_safe (item, tmp, &head, list) {
-			int nlen = strlen(item->name);
-			if (parent &&
-			    sumh_dirhijack_hidden(parent, item->name, nlen)) {
-				list_del(&item->list);
-				kfree(item->name);
-				kfree(item);
-				continue;
-			}
-			if (unlikely(!w->orig_ctx || !w->orig_ctx->actor))
-				break;
-			ret = w->orig_ctx->actor(w->orig_ctx, item->name, nlen,
-						 inj_pos, item->ino ?: 1,
-						 item->type);
-			atomic64_inc(&sumh_hook_stats.filldir_injected);
-			list_del(&item->list);
-			kfree(item->name);
-			kfree(item);
-			if (!ret) {
-				list_for_each_entry_safe (item, tmp, &head,
-							  list) {
-					list_del(&item->list);
-					kfree(item->name);
-					kfree(item);
-				}
-				return ret;
-			}
-			inj_pos++;
-		}
-	}
-
 	if (parent && sumh_dirhijack_hidden(parent, name, namlen))
 		return true;
+	/* The specialized client suppresses the native copy before reaching
+	 * us. Its own emitted entry must not be removed as a merge duplicate.
+	 */
+	if (w->has_iterate_client && parent &&
+	    sumh_dirhijack_emits(parent, name, namlen))
+		goto passthrough;
 
 	if (unlikely(namlen <= 2 && name[0] == '.')) {
 		if (namlen == 1 || (namlen == 2 && name[1] == '.'))
@@ -131,7 +153,11 @@ SUMH_NOCFI bool sumh_filldir_filter(struct dir_context *ctx, const char *name,
 				struct dentry *child = sumh_d_hash_and_lookup(
 				    tgt, &(struct qstr)QSTR_INIT(name, namlen));
 				if (child) {
+					bool positive = d_inode(child) != NULL;
+
 					dput(child);
+					if (!positive)
+						continue;
 					atomic64_inc(
 					    &sumh_hook_stats.filldir_hidden);
 					return true;
@@ -161,8 +187,22 @@ SUMH_NOCFI bool sumh_filldir_filter(struct dir_context *ctx, const char *name,
 passthrough:
 	if (unlikely(!w->orig_ctx || !w->orig_ctx->actor))
 		return true;
-	return w->orig_ctx->actor(w->orig_ctx, name, namlen, offset, ino,
-				  d_type);
+	/* filldir writes this offset into the previous dirent. Preserve the
+	 * injection/native boundary even when the first native cookie is zero,
+	 * so seeking to the last injected dirent does not restart injection. */
+	if (w->inject_pending && offset == 0)
+		offset = w->inject_pos;
+	w->orig_ctx->pos = ctx->pos;
+	ret =
+	    w->orig_ctx->actor(w->orig_ctx, name, namlen, offset, ino, d_type);
+	ctx->pos = w->orig_ctx->pos;
+	if (ret) {
+		w->inject_pending = false;
+		w->emitted++;
+	} else {
+		w->stopped = true;
+	}
+	return ret;
 }
 
 /* Caller holds RCU. Retired explicit rules can leave an installed wrapper
@@ -332,10 +372,17 @@ sumh_iterate_prepare_wrapper(struct file *file, struct dir_context *orig_ctx)
 	w->orig_ctx = orig_ctx;
 	w->wrap_ctx.actor = sumh_filldir_filter;
 	w->wrap_ctx.pos = orig_ctx->pos;
+	/* The native iterator always starts at its own zero cookie while the
+	 * caller is still draining the separately indexed injected entries. */
+	if (sumh_iterate_injected_pos(orig_ctx->pos))
+		w->wrap_ctx.pos = 0;
 	w->view_allowed = scope == SUMH_POLICY_SCOPE_VIEW;
 	w->spoof_allowed = scope == SUMH_POLICY_SCOPE_SPOOF;
 	w->parent_dentry = parent;
-	w->inject_done = orig_ctx->pos != 0;
+	w->inject_done = w->wrap_ctx.pos != 0;
+	w->inject_pos = sumh_iterate_injected_pos(orig_ctx->pos)
+			    ? orig_ctx->pos
+			    : SUMH_MAGIC_POS;
 	w->dir_has_hidden = dir_has_hidden;
 	w->dir_has_inject = dir_has_inject;
 	w->dir_path_len = dir_path_len;
@@ -422,8 +469,12 @@ void sumh_iterate_finish_wrapper(struct sumh_filldir_wrapper *wrapper)
 
 	if (!wrapper)
 		return;
-	if (wrapper->orig_ctx)
-		wrapper->orig_ctx->pos = wrapper->wrap_ctx.pos;
+	if (wrapper->orig_ctx) {
+		wrapper->orig_ctx->pos =
+		    wrapper->inject_pending && !wrapper->wrap_ctx.pos
+			? wrapper->inject_pos
+			: wrapper->wrap_ctx.pos;
+	}
 	for (i = 0; i < wrapper->merge_target_count; i++)
 		dput(wrapper->merge_target_dentries[i]);
 	kmem_cache_free(sumh_filldir_cache, wrapper);

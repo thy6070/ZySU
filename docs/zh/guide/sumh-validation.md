@@ -22,6 +22,8 @@ SUMH 是内核中的 VFS 视图引擎；`ksud` 内置的 SUMHP 控制器负责�
 ```sh
 python3 scripts/ci/test_sumh_core.py --cc clang
 python3 scripts/ci/test_sumh_vfs_helpers.py --cc clang
+python3 scripts/ci/test_sumh_directory_names.py --cc clang
+python3 scripts/ci/test_sumh_directory_stream.py --cc clang
 python3 scripts/ci/test_sumh_mount_views.py --cc clang
 python3 scripts/ci/test_sumh_native_namespace.py --cc clang
 python3 scripts/ci/test_selinux_hide_status.py --cc clang
@@ -36,6 +38,8 @@ python3 scripts/ci/test_sumh_kstat.py --cc clang
 | --- | --- |
 | `test_sumh_core.py` | 规则回收、引用所有权、setattr 和错误分支 |
 | `test_sumh_vfs_helpers.py` | xattr 边界、目录遍历、无处理需求时的快速路径 |
+| `test_sumh_directory_names.py` | 目录名称索引、合并和虚拟目录去重、首条优先与输出顺序、非 NUL 结尾名称及分配失败恢复 |
+| `test_sumh_directory_stream.py` | 小缓冲目录续读、注入与原生目录 cookie 边界、合并规则与单独文件规则组合、负 dentry 及过滤后空批次 |
 | `test_sumh_mount_views.py` | 保留模块时的 proc 视图策略与过滤函数 |
 | `test_sumh_native_namespace.py` | 已撤除的 namespace 文本投影能力及 aggressive 模式拒绝行为 |
 | `test_selinux_hide_status.py` | 配置意图与实际 SELinux 运行状态、初始化失败 |
@@ -46,6 +50,8 @@ python3 scripts/ci/test_sumh_kstat.py --cc clang
 | `test_sumh_kstat.py` | 显式属性规则的设备身份、路径重绑定、RCU 替换、失败保留与残留 hook 标记 |
 
 这些脚本读取生产 C 函数或源文件，以 VFS、RCU、工作队列、锁等测试替身执行关键分支。它们不加载内核模块，也不进行真实并发压力测试。分支内分配或锁计数的改善不能换算为设备延迟提升比例。
+
+目录名称去重使用单次枚举内的红黑树索引，将该阶段的名称比较从平方级降为 O(N log N)，保留原列表顺序与首条规则优先级；这不是完整目录读取的耗时保证。文件视图的续读测试模拟 `getdents64` 将 offset 写入上一条记录的行为，并验证注入与原生目录之间的边界。设备上仍需在 ext4、f2fs 和 tmpfs 验证小缓冲 `getdents64`、`telldir`/`seekdir`、已有文件句柄下清空或重装规则，以及并发目录遍历。主机替身不能验证各文件系统的 `llseek` 和真实 SRCU 时序。
 
 kstat 设备回归需覆盖：两个文件系统中的同号 inode、精确规则与数字通配规则共存、文件替换后重新提交路径、硬链接别名冲突、更新失败保留旧规则，以及持有旧文件句柄时更新规则。并发读取 stat 时应只观察到完整的新或旧属性集；旧 inode 若没有剩余显式规则或有效虚拟映射，其残留 hook 应保留原始属性。`is_static` 不提供自动重绑定，零值字段仍遵循原 ABI，不能把它们当成新增的静态属性管理功能。
 
@@ -93,6 +99,10 @@ Windows 下，内核脚本可通过 `--cc` 指定 NDK 的 `clang.exe`，使用�
 ```
 
 ### 自定义隐藏规则的批量管理
+
+“内核规则”提供路径搜索和全部、文件映射、隐藏路径、功能四种类型筛选。搜索同时匹配可见路径与来源路径，保留空格和 Unicode，不规范化输入。映射卡片分别展示两个路径，点击后可查看和复制完整值；旧协议无法可靠分割的路径对仍按原文展示与复制。筛选后的数量只统计已读取记录，不完整列表的提示继续显示。控件与列表共同滚动，便于横屏和大字体使用；路径详情使用独立滚动区域。
+
+回归时覆盖来源路径搜索、组合筛选、无匹配后清除筛选、长路径详情、复制末尾空格、模糊路径对，以及横屏大字体与深色主题。对应测试为 `SUMHRuntimeRuleDisplayTest` 和 `SUMHRuntimeRuleFilterTest`；截图输出到 `manager/app/build/reports/sumh-layout`。
 
 “规则”页默认显示“隐藏路径”，可按路径搜索，并按已生效或需要处理的状态筛选；“内核规则”查看实际内核记录和已绑定的隐藏路径，等待绑定的保存定义不计入内核记录。同路径隐藏项去重，功能项单独标识；不完整的文本列表会显示提示，无法可靠分割的路径对按原文展示。点击已保存的路径即可直接编辑，保存时先添加新路径，再删除原路径；添加失败不会删除原规则，部分完成时保留输入并提示刷新检查新旧路径。
 
