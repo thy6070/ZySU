@@ -6,7 +6,6 @@
     <string name="sumh_check_conflicts">بررسی تداخل‌های اتصال</string>
     <string name="sumh_debug">ثبت لاگ اشکال‌زدایی</string>
     <string name="sumh_debug_desc">نمایش اطلاعات اشکال‌زدایی بیشتر SUMHP</string>
-    <string name="sumh_edit_rule">ویرایش قانون</string>
     <string name="sumh_external_mount">اتصال‌ها توسط %1$s مدیریت می‌شوند. گزینه‌های اتصال داخلی اثری ندارند.</string>
     <string name="sumh_filter_active">SUMH فعال است</string>
     <string name="sumh_filter_all">همه</string>
@@ -40,12 +39,8 @@
     <string name="sumh_logs_search">جستجو در گزارش‌ها</string>
     <string name="sumh_logs_actions">عملیات گزارش‌ها</string>
     <string name="sumh_maps_add_failed">افزودن قانون maps انجام نشد</string>
-    <string name="sumh_maps_add_rule">افزودن قانون</string>
     <string name="sumh_maps_add_action">افزودن</string>
-    <string name="sumh_maps_clear_action">پاک کردن</string>
     <string name="sumh_maps_add_success">قانون maps اضافه شد</string>
-    <string name="sumh_maps_clear">پاک کردن قوانین maps</string>
-    <string name="sumh_maps_clear_confirm">همه قوانین جعل maps پاک شوند؟</string>
     <string name="sumh_maps_clear_failed">پاک کردن قوانین maps انجام نشد</string>
     <string name="sumh_maps_cleared">قوانین maps پاک شدند</string>
     <string name="sumh_maps_desc">جعل inode، دستگاه و مسیر در maps پردازش.</string>
@@ -82,7 +77,6 @@
     <string name="sumh_overlay_xattr_desc">پنهان کردن نشانگرهای OverlayFS در نمای مجازی</string>
     <string name="sumh_retry_apply">تلاش دوباره برای اعمال</string>
     <string name="sumh_rule_maps_spoof">‏/proc/pid/maps ino/dev/pathname را جعل کن</string>
-    <string name="sumh_rule_module">قوانین ماژول / هسته</string>
     <string name="sumh_rule_mount_hide">مانت‌های overlay را از /proc/mounts پنهان کن</string>
     <string name="sumh_rule_save">اعمال ویرایش‌ها</string>
     <string name="sumh_rule_statfs_spoof">‏statfs f_type را برای دور زدن تشخیص جعل کن</string>
@@ -92,11 +86,6 @@
     <string name="sumh_rules_clear">پاک کردن</string>
     <string name="sumh_rules_clear_all">پاک کردن همه قوانین</string>
     <string name="sumh_rules_clear_confirm">آیا مطمئنید که می‌خواهید همه قوانین فعال SUMH را پاک کنید؟ این بلافاصله اعمال می‌شود.</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d قانون فعال</item>
-        <item quantity="other">%d قانون فعال</item>
-    </plurals>
-    <string name="sumh_rules_empty">هیچ قانون فعالی نیست</string>
     <string name="sumh_rules_not_available">کرنل SUMH در دسترس نیست. زبانه قوانین به پشتیبانی کرنل SUMH نیاز دارد.</string>
     <string name="sumh_rules_refresh">تازه‌سازی</string>
     <string name="sumh_saved_applied">ذخیره و روی هسته اعمال شد</string>

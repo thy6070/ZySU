@@ -23,10 +23,7 @@
     <string name="sumh_logs_filter_warn">Cảnh báo</string>
     <string name="sumh_logs_kernel">Nhật ký kernel</string>
     <string name="sumh_maps_add_failed">Không thể thêm quy tắc maps</string>
-    <string name="sumh_maps_add_rule">Thêm quy tắc</string>
     <string name="sumh_maps_add_success">Đã thêm quy tắc maps</string>
-    <string name="sumh_maps_clear">Xóa quy tắc maps</string>
-    <string name="sumh_maps_clear_confirm">Xóa tất cả quy tắc giả mạo maps?</string>
     <string name="sumh_maps_clear_failed">Không thể xóa quy tắc maps</string>
     <string name="sumh_maps_cleared">Đã xóa quy tắc maps</string>
     <string name="sumh_maps_spoof_dev">Thiết bị giả mạo</string>
@@ -56,7 +53,6 @@
     <string name="sumh_rules_clear">Xóa</string>
     <string name="sumh_rules_clear_all">Xóa tất cả quy tắc</string>
     <string name="sumh_rules_clear_confirm">Bạn có chắc muốn xóa tất cả quy tắc SUMH đang hoạt động không? Việc này sẽ có hiệu lực ngay lập tức.</string>
-    <string name="sumh_rules_empty">Không có quy tắc đang hoạt động</string>
     <string name="sumh_rules_not_available">Kernel SUMH không khả dụng. Tab Quy tắc cần hỗ trợ kernel SUMH.</string>
     <string name="sumh_rules_refresh">Làm mới</string>
     <string name="sumh_status_kernel_too_old">Kernel quá cũ</string>
@@ -78,7 +74,6 @@
     <string name="sumh_backend_enable_desc">Cho phép bộ lập kế hoạch gắn kết sử dụng backend này</string>
     <string name="sumh_check_conflicts">Kiểm tra xung đột gắn kết</string>
     <string name="sumh_debug_desc">Xuất thêm thông tin gỡ lỗi SUMHP</string>
-    <string name="sumh_edit_rule">Sửa quy tắc</string>
     <string name="sumh_external_mount">%1$s đang quản lý gắn kết. Các tùy chọn gắn kết tích hợp không có hiệu lực.</string>
     <string name="sumh_filter_active">SUMH đã có hiệu lực</string>
     <string name="sumh_fs_type_auto">Tự động</string>
@@ -91,7 +86,6 @@
     <string name="sumh_logs_search">Tìm nhật ký</string>
     <string name="sumh_logs_actions">Thao tác nhật ký</string>
     <string name="sumh_maps_add_action">Thêm</string>
-    <string name="sumh_maps_clear_action">Xóa</string>
     <string name="sumh_maps_desc">Giả mạo inode, thiết bị và đường dẫn trong maps của tiến trình.</string>
     <string name="sumh_maps_spoof">Giả mạo Maps</string>
     <string name="sumh_maps_spoof_desc">Ánh xạ đường dẫn, số thiết bị và inode của vùng nhớ</string>
@@ -106,12 +100,8 @@
     <string name="sumh_overlay_xattr">Ẩn thuộc tính mở rộng của OverlayFS</string>
     <string name="sumh_overlay_xattr_desc">Ẩn dấu hiệu OverlayFS trong khung nhìn ảo</string>
     <string name="sumh_retry_apply">Thử áp dụng lại</string>
-    <string name="sumh_rule_module">Quy tắc mô-đun/nhân</string>
     <string name="sumh_rule_save">Áp dụng chỉnh sửa</string>
     <string name="sumh_rule_user">Quy tắc người dùng</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="other">%d quy tắc đang hoạt động</item>
-    </plurals>
     <string name="sumh_saved_applied">Đã lưu và áp dụng vào nhân</string>
     <string name="sumh_saved_apply_failed">Đã lưu nhưng không thể áp dụng vào nhân: %1$s</string>
     <string name="sumh_saved_reboot">Đã lưu. Backend gắn kết có hiệu lực sau khi khởi động lại</string>

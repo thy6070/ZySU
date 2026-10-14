@@ -6,7 +6,6 @@
     <string name="sumh_check_conflicts">Koppelconflicten controleren</string>
     <string name="sumh_debug">Foutopsporingslogboek</string>
     <string name="sumh_debug_desc">Extra SUMHP-foutopsporingsinformatie uitvoeren</string>
-    <string name="sumh_edit_rule">Regel bewerken</string>
     <string name="sumh_external_mount">Koppelingen worden beheerd door %1$s. De ingebouwde koppelopties hebben geen effect.</string>
     <string name="sumh_filter_active">SUMH is actief</string>
     <string name="sumh_filter_all">Alle</string>
@@ -40,12 +39,8 @@
     <string name="sumh_logs_search">Logboeken doorzoeken</string>
     <string name="sumh_logs_actions">Logboekacties</string>
     <string name="sumh_maps_add_failed">Kan de maps-regel niet toevoegen</string>
-    <string name="sumh_maps_add_rule">Regel toevoegen</string>
     <string name="sumh_maps_add_action">Toevoegen</string>
-    <string name="sumh_maps_clear_action">Wissen</string>
     <string name="sumh_maps_add_success">Maps-regel toegevoegd</string>
-    <string name="sumh_maps_clear">Maps-regels wissen</string>
-    <string name="sumh_maps_clear_confirm">Alle maps-spoofingregels wissen?</string>
     <string name="sumh_maps_clear_failed">Kan de maps-regels niet wissen</string>
     <string name="sumh_maps_cleared">Maps-regels gewist</string>
     <string name="sumh_maps_desc">Inode, apparaat en pad in de maps van het proces vervalsen.</string>
@@ -82,7 +77,6 @@
     <string name="sumh_overlay_xattr_desc">OverlayFS-markeringen in de virtuele weergave verbergen</string>
     <string name="sumh_retry_apply">Opnieuw toepassen</string>
     <string name="sumh_rule_maps_spoof">Vervals ino/dev/pathname in /proc/pid/maps</string>
-    <string name="sumh_rule_module">Module-/kernelregels</string>
     <string name="sumh_rule_mount_hide">Verberg overlay-koppelingen voor /proc/mounts</string>
     <string name="sumh_rule_save">Wijzigingen toepassen</string>
     <string name="sumh_rule_statfs_spoof">Vervals f_type van statfs om detectie te omzeilen</string>
@@ -92,11 +86,6 @@
     <string name="sumh_rules_clear">Wissen</string>
     <string name="sumh_rules_clear_all">Alle regels wissen</string>
     <string name="sumh_rules_clear_confirm">Weet je zeker dat je alle actieve SUMH-regels wilt wissen? Dit wordt onmiddellijk van kracht.</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d actieve regel</item>
-        <item quantity="other">%d actieve regels</item>
-    </plurals>
-    <string name="sumh_rules_empty">Geen actieve regels</string>
     <string name="sumh_rules_not_available">SUMH-kernel niet beschikbaar. Het tabblad Regels vereist ondersteuning van de SUMH-kernel.</string>
     <string name="sumh_rules_refresh">Vernieuwen</string>
     <string name="sumh_saved_applied">Opgeslagen en op de kernel toegepast</string>

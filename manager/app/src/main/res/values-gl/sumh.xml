@@ -6,7 +6,6 @@
     <string name="sumh_check_conflicts">Comprobar conflitos de montaxe</string>
     <string name="sumh_debug">Rexistro de depuración</string>
     <string name="sumh_debug_desc">Xerar información adicional de depuración de SUMHP</string>
-    <string name="sumh_edit_rule">Editar regra</string>
     <string name="sumh_external_mount">%1$s xestiona as montaxes. As opcións de montaxe integradas non teñen efecto.</string>
     <string name="sumh_filter_active">SUMH está activo</string>
     <string name="sumh_filter_all">Todas</string>
@@ -40,12 +39,8 @@
     <string name="sumh_logs_search">Buscar nos rexistros</string>
     <string name="sumh_logs_actions">Accións dos rexistros</string>
     <string name="sumh_maps_add_failed">Erro ao engadir a regra de maps</string>
-    <string name="sumh_maps_add_rule">Engadir regra</string>
     <string name="sumh_maps_add_action">Engadir</string>
-    <string name="sumh_maps_clear_action">Limpar</string>
     <string name="sumh_maps_add_success">Regra de maps engadida</string>
-    <string name="sumh_maps_clear">Limpar regras de maps</string>
-    <string name="sumh_maps_clear_confirm">Limpar todas as regras de falsificación de maps?</string>
     <string name="sumh_maps_clear_failed">Erro ao limpar as regras de maps</string>
     <string name="sumh_maps_cleared">Regras de maps limpadas</string>
     <string name="sumh_maps_desc">Simular inode, dispositivo e ruta nos maps do proceso.</string>
@@ -82,7 +77,6 @@
     <string name="sumh_overlay_xattr_desc">Agochar as marcas de OverlayFS na vista virtual</string>
     <string name="sumh_retry_apply">Volver aplicar</string>
     <string name="sumh_rule_maps_spoof">Falsificar ino/dev/pathname en /proc/pid/maps</string>
-    <string name="sumh_rule_module">Regras de módulos e do núcleo</string>
     <string name="sumh_rule_mount_hide">Ocultar as montaxes overlay de /proc/mounts</string>
     <string name="sumh_rule_save">Aplicar cambios</string>
     <string name="sumh_rule_statfs_spoof">Falsificar f_type de statfs para evitar a detección</string>
@@ -92,11 +86,6 @@
     <string name="sumh_rules_clear">Limpar</string>
     <string name="sumh_rules_clear_all">Limpar todas as regras</string>
     <string name="sumh_rules_clear_confirm">Seguro que queres limpar todas as regras activas de SUMH? Terá efecto inmediato.</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d regra activa</item>
-        <item quantity="other">%d regras activas</item>
-    </plurals>
-    <string name="sumh_rules_empty">Ningunha regra activa</string>
     <string name="sumh_rules_not_available">Kernel SUMH non dispoñíbel. A lapela Regras require compatibilidade do kernel SUMH.</string>
     <string name="sumh_rules_refresh">Actualizar</string>
     <string name="sumh_saved_applied">Gardado e aplicado ao núcleo</string>

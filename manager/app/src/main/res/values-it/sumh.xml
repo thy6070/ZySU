@@ -6,7 +6,6 @@
     <string name="sumh_check_conflicts">Verifica conflitti di montaggio</string>
     <string name="sumh_debug">Registrazione di debug</string>
     <string name="sumh_debug_desc">Genera informazioni aggiuntive di debug di SUMHP</string>
-    <string name="sumh_edit_rule">Modifica regola</string>
     <string name="sumh_external_mount">I montaggi sono gestiti da %1$s. Le opzioni di montaggio integrate non hanno effetto.</string>
     <string name="sumh_filter_active">SUMH è attivo</string>
     <string name="sumh_filter_all">Tutte</string>
@@ -40,12 +39,8 @@
     <string name="sumh_logs_search">Cerca nei log</string>
     <string name="sumh_logs_actions">Azioni sui log</string>
     <string name="sumh_maps_add_failed">Impossibile aggiungere la regola maps</string>
-    <string name="sumh_maps_add_rule">Aggiungi regola</string>
     <string name="sumh_maps_add_action">Aggiungi</string>
-    <string name="sumh_maps_clear_action">Cancella</string>
     <string name="sumh_maps_add_success">Regola maps aggiunta</string>
-    <string name="sumh_maps_clear">Cancella regole maps</string>
-    <string name="sumh_maps_clear_confirm">Cancellare tutte le regole di spoofing maps?</string>
     <string name="sumh_maps_clear_failed">Impossibile cancellare le regole maps</string>
     <string name="sumh_maps_cleared">Regole maps cancellate</string>
     <string name="sumh_maps_desc">Simula inode, dispositivo e percorso nelle maps del processo.</string>
@@ -82,7 +77,6 @@
     <string name="sumh_overlay_xattr_desc">Nascondi i marcatori OverlayFS nella vista virtuale</string>
     <string name="sumh_retry_apply">Riprova ad applicare</string>
     <string name="sumh_rule_maps_spoof">Falsifica ino/dev/pathname in /proc/pid/maps</string>
-    <string name="sumh_rule_module">Regole dei moduli e del kernel</string>
     <string name="sumh_rule_mount_hide">Nascondi i montaggi overlay da /proc/mounts</string>
     <string name="sumh_rule_save">Applica modifiche</string>
     <string name="sumh_rule_statfs_spoof">Falsifica f_type di statfs per eludere il rilevamento</string>
@@ -92,12 +86,6 @@
     <string name="sumh_rules_clear">Cancella</string>
     <string name="sumh_rules_clear_all">Cancella tutte le regole</string>
     <string name="sumh_rules_clear_confirm">Vuoi davvero cancellare tutte le regole SUMH attive? Avrà effetto immediato.</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d regola attiva</item>
-        <item quantity="other">%d regole attive</item>
-        <item quantity="many">%d regole attive</item>
-    </plurals>
-    <string name="sumh_rules_empty">Nessuna regola attiva</string>
     <string name="sumh_rules_not_available">Kernel SUMH non disponibile. La scheda Regole richiede il supporto del kernel SUMH.</string>
     <string name="sumh_rules_refresh">Aggiorna</string>
     <string name="sumh_saved_applied">Salvato e applicato al kernel</string>

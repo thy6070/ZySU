@@ -6,7 +6,6 @@
     <string name="sumh_check_conflicts">Провери сукобе монтирања</string>
     <string name="sumh_debug">Евидентирање грешака</string>
     <string name="sumh_debug_desc">Исписуј додатне информације за отклањање грешака у SUMHP-ју</string>
-    <string name="sumh_edit_rule">Уреди правило</string>
     <string name="sumh_external_mount">Монтирањем управља %1$s. Поставке уграђеног монтирања немају учинка.</string>
     <string name="sumh_filter_active">SUMH је активан</string>
     <string name="sumh_filter_all">Све</string>
@@ -40,12 +39,8 @@
     <string name="sumh_logs_search">Претражи записник</string>
     <string name="sumh_logs_actions">Радње записника</string>
     <string name="sumh_maps_add_failed">Додавање правила мапа није успело</string>
-    <string name="sumh_maps_add_rule">Додај правило</string>
     <string name="sumh_maps_add_action">Додај</string>
-    <string name="sumh_maps_clear_action">Јасно</string>
     <string name="sumh_maps_add_success">Додато је правило мапа</string>
-    <string name="sumh_maps_clear">Обриши правила мапе</string>
-    <string name="sumh_maps_clear_confirm">Обрисати сва правила лажирања мапа?</string>
     <string name="sumh_maps_clear_failed">Брисање правила мапе није успело</string>
     <string name="sumh_maps_cleared">Правила мапа су обрисана</string>
     <string name="sumh_maps_desc">Прикрива inode, уређај и путању у maps процеса.</string>
@@ -82,7 +77,6 @@
     <string name="sumh_overlay_xattr_desc">Скрива ознаке OverlayFS-а у виртуалном приказу</string>
     <string name="sumh_retry_apply">Понови примену</string>
     <string name="sumh_rule_maps_spoof">Спооф /proc/pid/maps ино/dev/pathname</string>
-    <string name="sumh_rule_module">Правила модула / језгра</string>
     <string name="sumh_rule_mount_hide">Сакриј преклопне носаче из /proc/mounts</string>
     <string name="sumh_rule_save">Примени измене</string>
     <string name="sumh_rule_statfs_spoof">Спооф статфс ф_типе за обилазак детекције</string>
@@ -92,12 +86,6 @@
     <string name="sumh_rules_clear">Јасно</string>
     <string name="sumh_rules_clear_all">Обриши сва правила</string>
     <string name="sumh_rules_clear_confirm">Да ли сте сигурни да желите да обришете сва активна SUMH правила? Ово ће одмах ступити на снагу.</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d активно правило</item>
-        <item quantity="few">%d активна правила</item>
-        <item quantity="other">%d активних правила</item>
-    </plurals>
-    <string name="sumh_rules_empty">Нема активних правила</string>
     <string name="sumh_rules_not_available">SUMH језгро није доступно. Картица са правилима захтева подршку SUMH језгра.</string>
     <string name="sumh_rules_refresh">Освежи</string>
     <string name="sumh_saved_applied">Сачувано и примењено на језгро</string>

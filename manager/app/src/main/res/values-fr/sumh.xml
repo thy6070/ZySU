@@ -6,7 +6,6 @@
     <string name="sumh_check_conflicts">Vérifier les conflits de montage</string>
     <string name="sumh_debug">Journalisation de débogage</string>
     <string name="sumh_debug_desc">Produire des informations de débogage SUMHP supplémentaires</string>
-    <string name="sumh_edit_rule">Modifier la règle</string>
     <string name="sumh_external_mount">Les montages sont gérés par %1$s. Les options de montage intégrées sont sans effet.</string>
     <string name="sumh_filter_active">SUMH est actif</string>
     <string name="sumh_filter_all">Toutes</string>
@@ -40,12 +39,8 @@
     <string name="sumh_logs_search">Rechercher dans les journaux</string>
     <string name="sumh_logs_actions">Actions sur les journaux</string>
     <string name="sumh_maps_add_failed">Échec de l\'ajout de la règle maps</string>
-    <string name="sumh_maps_add_rule">Ajouter une règle</string>
     <string name="sumh_maps_add_action">Ajouter</string>
-    <string name="sumh_maps_clear_action">Effacer</string>
     <string name="sumh_maps_add_success">Règle maps ajoutée</string>
-    <string name="sumh_maps_clear">Effacer les règles maps</string>
-    <string name="sumh_maps_clear_confirm">Effacer toutes les règles d\'usurpation maps ?</string>
     <string name="sumh_maps_clear_failed">Échec de l\'effacement des règles maps</string>
     <string name="sumh_maps_cleared">Règles maps effacées</string>
     <string name="sumh_maps_desc">Simuler les inode, périphériques et chemins dans les maps des processus.</string>
@@ -82,7 +77,6 @@
     <string name="sumh_overlay_xattr_desc">Masquer les marqueurs OverlayFS dans la vue virtuelle</string>
     <string name="sumh_retry_apply">Réessayer l’application</string>
     <string name="sumh_rule_maps_spoof">Usurper ino/dev/pathname dans /proc/pid/maps</string>
-    <string name="sumh_rule_module">Règles des modules et du noyau</string>
     <string name="sumh_rule_mount_hide">Masquer les montages overlay de /proc/mounts</string>
     <string name="sumh_rule_save">Appliquer les modifications</string>
     <string name="sumh_rule_statfs_spoof">Usurper f_type de statfs pour contourner la détection</string>
@@ -92,12 +86,6 @@
     <string name="sumh_rules_clear">Effacer</string>
     <string name="sumh_rules_clear_all">Effacer toutes les règles</string>
     <string name="sumh_rules_clear_confirm">Voulez-vous vraiment effacer toutes les règles SUMH actives ? Cela prendra effet immédiatement.</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d règle active</item>
-        <item quantity="other">%d règles actives</item>
-        <item quantity="many">%d règles actives</item>
-    </plurals>
-    <string name="sumh_rules_empty">Aucune règle active</string>
     <string name="sumh_rules_not_available">Noyau SUMH non disponible. L\'onglet Règles nécessite la prise en charge du noyau SUMH.</string>
     <string name="sumh_rules_refresh">Actualiser</string>
     <string name="sumh_saved_applied">Enregistré et appliqué au noyau</string>

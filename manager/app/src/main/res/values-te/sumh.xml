@@ -23,10 +23,7 @@
     <string name="sumh_logs_filter_warn">హెచ్చరిక</string>
     <string name="sumh_logs_kernel">కెర్నల్ లాగ్</string>
     <string name="sumh_maps_add_failed">maps నియమం జోడించడం విఫలమైంది</string>
-    <string name="sumh_maps_add_rule">నియమం జోడించండి</string>
     <string name="sumh_maps_add_success">maps నియమం జోడించబడింది</string>
-    <string name="sumh_maps_clear">maps నియమాలను క్లియర్ చేయండి</string>
-    <string name="sumh_maps_clear_confirm">అన్ని maps స్పూఫ్ నియమాలను క్లియర్ చేయాలా?</string>
     <string name="sumh_maps_clear_failed">maps నియమాలను క్లియర్ చేయడం విఫలమైంది</string>
     <string name="sumh_maps_cleared">maps నియమాలు క్లియర్ చేయబడ్డాయి</string>
     <string name="sumh_maps_spoof_dev">స్పూఫ్ device</string>
@@ -56,7 +53,6 @@
     <string name="sumh_rules_clear">క్లియర్ చేయండి</string>
     <string name="sumh_rules_clear_all">అన్ని నియమాలను క్లియర్ చేయండి</string>
     <string name="sumh_rules_clear_confirm">మీరు ఖచ్చితంగా అన్ని క్రియాశీల SUMH నియమాలను క్లియర్ చేయాలనుకుంటున్నారా? ఇది వెంటనే అమలులోకి వస్తుంది.</string>
-    <string name="sumh_rules_empty">క్రియాశీల నియమాలు లేవు</string>
     <string name="sumh_rules_not_available">SUMH కెర్నల్ అందుబాటులో లేదు. నియమాల ట్యాబ్‌కు SUMH కెర్నల్ మద్దతు అవసరం.</string>
     <string name="sumh_rules_refresh">రిఫ్రెష్ చేయండి</string>
     <string name="sumh_status_kernel_too_old">కెర్నల్ చాలా పాతది</string>
@@ -78,7 +74,6 @@
     <string name="sumh_backend_enable_desc">ఈ బ్యాకెండ్‌ను ఉపయోగించడానికి మౌంట్ ప్లానర్‌ను అనుమతించండి</string>
     <string name="sumh_check_conflicts">మౌంట్ వైరుధ్యాలను తనిఖీ చేయండి</string>
     <string name="sumh_debug_desc">అదనపు SUMHP డీబగ్ సమాచారాన్ని చూపండి</string>
-    <string name="sumh_edit_rule">నియమాన్ని సవరించండి</string>
     <string name="sumh_external_mount">మౌంట్‌ను %1$s నిర్వహిస్తోంది. అంతర్నిర్మిత మౌంట్ ఎంపికలు అమలు కావు.</string>
     <string name="sumh_filter_active">SUMH అమలులో ఉంది</string>
     <string name="sumh_fs_type_auto">స్వయంచాలకం</string>
@@ -91,7 +86,6 @@
     <string name="sumh_logs_search">లాగ్‌లను వెతకండి</string>
     <string name="sumh_logs_actions">లాగ్ చర్యలు</string>
     <string name="sumh_maps_add_action">జోడించండి</string>
-    <string name="sumh_maps_clear_action">క్లియర్ చేయండి</string>
     <string name="sumh_maps_desc">ప్రాసెస్ mapsలో inode, పరికరం, పాత్ సమాచారాన్ని నకిలీగా చూపండి.</string>
     <string name="sumh_maps_spoof">Maps సమాచారం స్పూఫింగ్</string>
     <string name="sumh_maps_spoof_desc">మెమరీ ప్రాంతాల పాత్, పరికర సంఖ్య, inodeలను మ్యాప్ చేయండి</string>
@@ -106,13 +100,8 @@
     <string name="sumh_overlay_xattr">OverlayFS విస్తరించిన లక్షణాలను దాచండి</string>
     <string name="sumh_overlay_xattr_desc">వర్చువల్ వీక్షణలో OverlayFS గుర్తులను దాచండి</string>
     <string name="sumh_retry_apply">మళ్లీ వర్తింపజేయండి</string>
-    <string name="sumh_rule_module">మాడ్యూల్/కెర్నల్ నియమాలు</string>
     <string name="sumh_rule_save">సవరణలను వర్తింపజేయండి</string>
     <string name="sumh_rule_user">వినియోగదారు నియమాలు</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d క్రియాశీల నియమం</item>
-        <item quantity="other">%d క్రియాశీల నియమాలు</item>
-    </plurals>
     <string name="sumh_saved_applied">సేవ్ చేసి కెర్నల్‌కు వర్తింపజేయబడింది</string>
     <string name="sumh_saved_apply_failed">సేవ్ అయింది, కానీ కెర్నల్‌కు వర్తింపజేయడం విఫలమైంది: %1$s</string>
     <string name="sumh_saved_reboot">సేవ్ అయింది. మౌంట్ బ్యాకెండ్ పునఃప్రారంభం తర్వాత అమలవుతుంది</string>

@@ -6,7 +6,6 @@
     <string name="sumh_check_conflicts">Provjeri sukobe montiranja</string>
     <string name="sumh_debug">Bilježenje ispravljanja pogrešaka</string>
     <string name="sumh_debug_desc">Ispisuj dodatne informacije za otklanjanje pogrešaka u SUMHPju</string>
-    <string name="sumh_edit_rule">Uredi pravilo</string>
     <string name="sumh_external_mount">Montiranjem upravlja %1$s. Postavke ugrađenog montiranja nemaju učinka.</string>
     <string name="sumh_filter_active">SUMH je aktivan</string>
     <string name="sumh_filter_all">Svi</string>
@@ -40,12 +39,8 @@
     <string name="sumh_logs_search">Pretraži zapisnik</string>
     <string name="sumh_logs_actions">Radnje zapisnika</string>
     <string name="sumh_maps_add_failed">Dodavanje pravila maps nije uspjelo</string>
-    <string name="sumh_maps_add_rule">Dodaj pravilo</string>
     <string name="sumh_maps_add_action">Dodaj</string>
-    <string name="sumh_maps_clear_action">Očisti</string>
     <string name="sumh_maps_add_success">Pravilo maps dodano</string>
-    <string name="sumh_maps_clear">Očisti pravila maps</string>
-    <string name="sumh_maps_clear_confirm">Očistiti sva pravila lažiranja maps?</string>
     <string name="sumh_maps_clear_failed">Čišćenje pravila maps nije uspjelo</string>
     <string name="sumh_maps_cleared">Pravila maps očišćena</string>
     <string name="sumh_maps_desc">Prikriva inode, uređaj i putanju u maps procesa.</string>
@@ -82,7 +77,6 @@
     <string name="sumh_overlay_xattr_desc">Skriva oznake OverlayFS-a u virtualnom prikazu</string>
     <string name="sumh_retry_apply">Ponovi primjenu</string>
     <string name="sumh_rule_maps_spoof">Lažiraj ino/dev/pathname u /proc/pid/maps</string>
-    <string name="sumh_rule_module">Pravila modula / jezgre</string>
     <string name="sumh_rule_mount_hide">Sakrij overlay montiranja od /proc/mounts</string>
     <string name="sumh_rule_save">Primijeni izmjene</string>
     <string name="sumh_rule_statfs_spoof">Lažiraj f_type od statfs za zaobilaženje otkrivanja</string>
@@ -92,12 +86,6 @@
     <string name="sumh_rules_clear">Očisti</string>
     <string name="sumh_rules_clear_all">Očisti sva pravila</string>
     <string name="sumh_rules_clear_confirm">Jeste li sigurni da želite očistiti sva aktivna SUMH pravila? To će stupiti na snagu odmah.</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d aktivno pravilo</item>
-        <item quantity="few">%d aktivna pravila</item>
-        <item quantity="other">%d aktivnih pravila</item>
-    </plurals>
-    <string name="sumh_rules_empty">Nema aktivnih pravila</string>
     <string name="sumh_rules_not_available">Jezgra SUMH nije dostupna. Kartica Pravila zahtijeva podršku jezgre SUMH.</string>
     <string name="sumh_rules_refresh">Osvježi</string>
     <string name="sumh_saved_applied">Spremljeno i primijenjeno na jezgru</string>

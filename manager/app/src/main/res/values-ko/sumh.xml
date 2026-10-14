@@ -23,10 +23,7 @@
     <string name="sumh_logs_filter_warn">경고</string>
     <string name="sumh_logs_kernel">커널 로그</string>
     <string name="sumh_maps_add_failed">maps 규칙을 추가하지 못했습니다</string>
-    <string name="sumh_maps_add_rule">규칙 추가</string>
     <string name="sumh_maps_add_success">maps 규칙이 추가되었습니다</string>
-    <string name="sumh_maps_clear">maps 규칙 지우기</string>
-    <string name="sumh_maps_clear_confirm">모든 maps 스푸핑 규칙을 지우시겠습니까?</string>
     <string name="sumh_maps_clear_failed">maps 규칙을 지우지 못했습니다</string>
     <string name="sumh_maps_cleared">maps 규칙이 지워졌습니다</string>
     <string name="sumh_maps_spoof_dev">위조 장치</string>
@@ -56,7 +53,6 @@
     <string name="sumh_rules_clear">지우기</string>
     <string name="sumh_rules_clear_all">모든 규칙 지우기</string>
     <string name="sumh_rules_clear_confirm">활성 상태인 모든 SUMH 규칙을 지우시겠습니까? 즉시 적용됩니다.</string>
-    <string name="sumh_rules_empty">활성 규칙 없음</string>
     <string name="sumh_rules_not_available">SUMH 커널을 사용할 수 없습니다. 규칙 탭에는 SUMH 커널 지원이 필요합니다.</string>
     <string name="sumh_rules_refresh">새로고침</string>
     <string name="sumh_status_kernel_too_old">커널이 너무 오래됨</string>
@@ -78,7 +74,6 @@
     <string name="sumh_backend_enable_desc">마운트 계획기가 이 백엔드를 사용하도록 허용</string>
     <string name="sumh_check_conflicts">마운트 충돌 확인</string>
     <string name="sumh_debug_desc">추가 SUMHP 디버그 정보 출력</string>
-    <string name="sumh_edit_rule">규칙 편집</string>
     <string name="sumh_external_mount">%1$s에서 마운트를 관리하므로 내장 마운트 옵션은 적용되지 않습니다.</string>
     <string name="sumh_filter_active">SUMH 적용됨</string>
     <string name="sumh_fs_type_auto">자동</string>
@@ -91,7 +86,6 @@
     <string name="sumh_logs_search">로그 검색</string>
     <string name="sumh_logs_actions">로그 작업</string>
     <string name="sumh_maps_add_action">추가</string>
-    <string name="sumh_maps_clear_action">지우기</string>
     <string name="sumh_maps_desc">프로세스 maps의 inode, 장치 및 경로를 위장합니다.</string>
     <string name="sumh_maps_spoof">Maps 위장</string>
     <string name="sumh_maps_spoof_desc">메모리 영역의 경로, 장치 번호 및 inode 매핑</string>
@@ -106,12 +100,8 @@
     <string name="sumh_overlay_xattr">OverlayFS 확장 속성 숨기기</string>
     <string name="sumh_overlay_xattr_desc">가상 보기에서 OverlayFS 표시 숨기기</string>
     <string name="sumh_retry_apply">적용 재시도</string>
-    <string name="sumh_rule_module">모듈/커널 규칙</string>
     <string name="sumh_rule_save">편집 내용 적용</string>
     <string name="sumh_rule_user">사용자 규칙</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="other">활성 규칙 %d개</item>
-    </plurals>
     <string name="sumh_saved_applied">저장하고 커널에 적용했습니다</string>
     <string name="sumh_saved_apply_failed">저장했지만 커널 적용에 실패했습니다: %1$s</string>
     <string name="sumh_saved_reboot">저장했습니다. 마운트 백엔드는 재부팅 후 적용됩니다</string>

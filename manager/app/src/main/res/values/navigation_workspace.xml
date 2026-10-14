@@ -9,7 +9,6 @@
     <string name="nav_mount" tools:ignore="MissingTranslation">Mount</string>
     <string name="nav_kernel_policy" tools:ignore="MissingTranslation">Other settings</string>
     <string name="nav_isolation" tools:ignore="MissingTranslation">Isolation</string>
-    <string name="nav_active_rules" tools:ignore="MissingTranslation">Active rules</string>
     <string name="nav_umount_paths" tools:ignore="MissingTranslation">Unmount paths</string>
     <string name="nav_umount_paths_summary" tools:ignore="MissingTranslation">Manage paths detached from application mount namespaces</string>
     <string name="nav_diagnostics" tools:ignore="MissingTranslation">Diagnostics</string>

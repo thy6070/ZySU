@@ -6,7 +6,6 @@
     <string name="sumh_check_conflicts">Tikrinti prijungimo konfliktus</string>
     <string name="sumh_debug">Derinimo registravimas</string>
     <string name="sumh_debug_desc">Išvesti papildomą SUMHP derinimo informaciją</string>
-    <string name="sumh_edit_rule">Redaguoti taisyklę</string>
     <string name="sumh_external_mount">Prijungimą valdo %1$s; įtaisytosios prijungimo parinktys negalioja.</string>
     <string name="sumh_filter_active">SUMH aktyvus</string>
     <string name="sumh_filter_all">Visos</string>
@@ -40,12 +39,8 @@
     <string name="sumh_logs_search">Ieškoti žurnaluose</string>
     <string name="sumh_logs_actions">Žurnalo veiksmai</string>
     <string name="sumh_maps_add_failed">Nepavyko pridėti maps taisyklės</string>
-    <string name="sumh_maps_add_rule">Pridėti taisyklę</string>
     <string name="sumh_maps_add_action">Pridėti</string>
-    <string name="sumh_maps_clear_action">Išvalyti</string>
     <string name="sumh_maps_add_success">Maps taisyklė pridėta</string>
-    <string name="sumh_maps_clear">Išvalyti maps taisykles</string>
-    <string name="sumh_maps_clear_confirm">Išvalyti visas maps klastojimo taisykles?</string>
     <string name="sumh_maps_clear_failed">Nepavyko išvalyti maps taisyklių</string>
     <string name="sumh_maps_cleared">Maps taisyklės išvalytos</string>
     <string name="sumh_maps_desc">Maskuoti inode, įrenginių ir kelių informaciją proceso maps įrašuose.</string>
@@ -82,7 +77,6 @@
     <string name="sumh_overlay_xattr_desc">Slėpti OverlayFS žymenis virtualiajame rodinyje</string>
     <string name="sumh_retry_apply">Bandyti pritaikyti dar kartą</string>
     <string name="sumh_rule_maps_spoof">Klastoti ino/dev/pathname faile /proc/pid/maps</string>
-    <string name="sumh_rule_module">Modulio / branduolio taisyklės</string>
     <string name="sumh_rule_mount_hide">Slėpti overlay prijungimus nuo /proc/mounts</string>
     <string name="sumh_rule_save">Pritaikyti pakeitimus</string>
     <string name="sumh_rule_statfs_spoof">Klastoti statfs f_type, kad būtų apeitas aptikimas</string>
@@ -92,13 +86,6 @@
     <string name="sumh_rules_clear">Išvalyti</string>
     <string name="sumh_rules_clear_all">Išvalyti visas taisykles</string>
     <string name="sumh_rules_clear_confirm">Ar tikrai norite išvalyti visas aktyvias SUMH taisykles? Tai įsigalios nedelsiant.</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d aktyvi taisyklė</item>
-        <item quantity="other">%d aktyvių taisyklių</item>
-        <item quantity="few">%d aktyvios taisyklės</item>
-        <item quantity="many">%d aktyvios taisyklės</item>
-    </plurals>
-    <string name="sumh_rules_empty">Nėra aktyvių taisyklių</string>
     <string name="sumh_rules_not_available">SUMH branduolys nepasiekiamas. Taisyklių skirtukui reikia SUMH branduolio palaikymo.</string>
     <string name="sumh_rules_refresh">Atnaujinti</string>
     <string name="sumh_saved_applied">Išsaugota ir pritaikyta branduoliui</string>

@@ -23,10 +23,7 @@
     <string name="sumh_logs_filter_warn">Babala</string>
     <string name="sumh_logs_kernel">Kernel Log</string>
     <string name="sumh_maps_add_failed">Nabigong idagdag ang maps rule</string>
-    <string name="sumh_maps_add_rule">Magdagdag ng panuntunan</string>
     <string name="sumh_maps_add_success">Naidagdag ang maps rule</string>
-    <string name="sumh_maps_clear">I-clear ang mga maps rule</string>
-    <string name="sumh_maps_clear_confirm">I-clear ang lahat ng maps spoof rule?</string>
     <string name="sumh_maps_clear_failed">Nabigong i-clear ang mga maps rule</string>
     <string name="sumh_maps_cleared">Na-clear ang mga maps rule</string>
     <string name="sumh_maps_spoof_dev">Spoof na dev</string>
@@ -56,7 +53,6 @@
     <string name="sumh_rules_clear">I-clear</string>
     <string name="sumh_rules_clear_all">I-clear ang Lahat ng Panuntunan</string>
     <string name="sumh_rules_clear_confirm">Sigurado ka bang gusto mong i-clear ang lahat ng aktibong SUMH rule? Magkakabisa ito kaagad.</string>
-    <string name="sumh_rules_empty">Walang aktibong panuntunan</string>
     <string name="sumh_rules_not_available">Hindi available ang SUMH kernel. Kailangan ng Rules tab ang suporta ng SUMH kernel.</string>
     <string name="sumh_rules_refresh">I-refresh</string>
     <string name="sumh_status_kernel_too_old">Masyadong luma ang kernel</string>
@@ -78,7 +74,6 @@
     <string name="sumh_backend_enable_desc">Payagang gamitin ng tagaplano ng mount ang backend na ito</string>
     <string name="sumh_check_conflicts">Suriin ang mga salungatan sa mount</string>
     <string name="sumh_debug_desc">Maglabas ng karagdagang impormasyon sa pag-debug ng SUMHP</string>
-    <string name="sumh_edit_rule">I-edit ang panuntunan</string>
     <string name="sumh_external_mount">Pinamamahalaan ng %1$s ang pag-mount. Hindi magkakabisa ang mga built-in na opsyon sa mount.</string>
     <string name="sumh_filter_active">Nakalapat na ang SUMH</string>
     <string name="sumh_fs_type_auto">Awtomatiko</string>
@@ -91,7 +86,6 @@
     <string name="sumh_logs_search">Maghanap sa mga log</string>
     <string name="sumh_logs_actions">Mga aksyon sa log</string>
     <string name="sumh_maps_add_action">Idagdag</string>
-    <string name="sumh_maps_clear_action">Burahin</string>
     <string name="sumh_maps_desc">Itago ang tunay na inode, device at path sa maps ng proseso.</string>
     <string name="sumh_maps_spoof">Pagpapanggap ng Maps</string>
     <string name="sumh_maps_spoof_desc">I-map ang path, numero ng device at inode ng mga rehiyon ng memorya</string>
@@ -106,13 +100,8 @@
     <string name="sumh_overlay_xattr">Itago ang mga pinalawak na attribute ng OverlayFS</string>
     <string name="sumh_overlay_xattr_desc">Itago ang mga palatandaan ng OverlayFS sa virtual na view</string>
     <string name="sumh_retry_apply">Subukang ilapat muli</string>
-    <string name="sumh_rule_module">Mga panuntunan ng module/kernel</string>
     <string name="sumh_rule_save">Ilapat ang mga pag-edit</string>
     <string name="sumh_rule_user">Mga panuntunan ng user</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d aktibong panuntunan</item>
-        <item quantity="other">%d aktibong panuntunan</item>
-    </plurals>
     <string name="sumh_saved_applied">Na-save at nailapat sa kernel</string>
     <string name="sumh_saved_apply_failed">Na-save, ngunit hindi nailapat sa kernel: %1$s</string>
     <string name="sumh_saved_reboot">Na-save. Magkakabisa ang backend ng mount pagkatapos mag-restart</string>

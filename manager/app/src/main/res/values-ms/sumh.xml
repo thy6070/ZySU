@@ -23,10 +23,7 @@
     <string name="sumh_logs_filter_warn">Amaran</string>
     <string name="sumh_logs_kernel">Log Kernel</string>
     <string name="sumh_maps_add_failed">Gagal menambah peraturan maps</string>
-    <string name="sumh_maps_add_rule">Tambah peraturan</string>
     <string name="sumh_maps_add_success">Peraturan maps ditambah</string>
-    <string name="sumh_maps_clear">Kosongkan peraturan maps</string>
-    <string name="sumh_maps_clear_confirm">Kosongkan semua peraturan pemalsuan maps?</string>
     <string name="sumh_maps_clear_failed">Gagal mengosongkan peraturan maps</string>
     <string name="sumh_maps_cleared">Peraturan maps dikosongkan</string>
     <string name="sumh_maps_spoof_dev">Peranti palsu</string>
@@ -56,7 +53,6 @@
     <string name="sumh_rules_clear">Kosongkan</string>
     <string name="sumh_rules_clear_all">Kosongkan Semua Peraturan</string>
     <string name="sumh_rules_clear_confirm">Adakah anda pasti mahu mengosongkan semua peraturan SUMH yang aktif? Ini akan berkuat kuasa serta-merta.</string>
-    <string name="sumh_rules_empty">Tiada peraturan aktif</string>
     <string name="sumh_rules_not_available">Kernel SUMH tidak tersedia. Tab Peraturan memerlukan sokongan kernel SUMH.</string>
     <string name="sumh_rules_refresh">Muat semula</string>
     <string name="sumh_status_kernel_too_old">Kernel terlalu lama</string>
@@ -78,7 +74,6 @@
     <string name="sumh_backend_enable_desc">Benarkan perancang lekapan menggunakan backend ini</string>
     <string name="sumh_check_conflicts">Semak konflik lekapan</string>
     <string name="sumh_debug_desc">Keluarkan maklumat nyahpepijat SUMHP tambahan</string>
-    <string name="sumh_edit_rule">Sunting peraturan</string>
     <string name="sumh_external_mount">Lekapan diurus oleh %1$s. Pilihan lekapan terbina dalam tidak berkuat kuasa.</string>
     <string name="sumh_filter_active">SUMH telah berkuat kuasa</string>
     <string name="sumh_fs_type_auto">Automatik</string>
@@ -91,7 +86,6 @@
     <string name="sumh_logs_search">Cari log</string>
     <string name="sumh_logs_actions">Tindakan log</string>
     <string name="sumh_maps_add_action">Tambah</string>
-    <string name="sumh_maps_clear_action">Kosongkan</string>
     <string name="sumh_maps_desc">Samarkan inode, peranti dan laluan dalam maps proses.</string>
     <string name="sumh_maps_spoof">Penyamaran Maps</string>
     <string name="sumh_maps_spoof_desc">Petakan laluan, nombor peranti dan inode kawasan memori</string>
@@ -106,12 +100,8 @@
     <string name="sumh_overlay_xattr">Sembunyikan atribut lanjutan OverlayFS</string>
     <string name="sumh_overlay_xattr_desc">Sembunyikan penanda OverlayFS dalam paparan maya</string>
     <string name="sumh_retry_apply">Cuba gunakan semula</string>
-    <string name="sumh_rule_module">Peraturan modul/kernel</string>
     <string name="sumh_rule_save">Gunakan suntingan</string>
     <string name="sumh_rule_user">Peraturan pengguna</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="other">%d peraturan aktif</item>
-    </plurals>
     <string name="sumh_saved_applied">Disimpan dan digunakan pada kernel</string>
     <string name="sumh_saved_apply_failed">Disimpan, tetapi gagal digunakan pada kernel: %1$s</string>
     <string name="sumh_saved_reboot">Disimpan. Backend lekapan berkuat kuasa selepas but semula</string>

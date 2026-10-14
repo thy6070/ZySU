@@ -23,10 +23,7 @@
     <string name="sumh_logs_filter_warn">Peringatan</string>
     <string name="sumh_logs_kernel">Log kernel</string>
     <string name="sumh_maps_add_failed">Gagal menambahkan aturan maps</string>
-    <string name="sumh_maps_add_rule">Tambah aturan</string>
     <string name="sumh_maps_add_success">Aturan maps ditambahkan</string>
-    <string name="sumh_maps_clear">Hapus aturan maps</string>
-    <string name="sumh_maps_clear_confirm">Hapus semua aturan pemalsuan maps?</string>
     <string name="sumh_maps_clear_failed">Gagal menghapus aturan maps</string>
     <string name="sumh_maps_cleared">Aturan maps dihapus</string>
     <string name="sumh_maps_spoof_dev">Perangkat palsu</string>
@@ -56,7 +53,6 @@
     <string name="sumh_rules_clear">Hapus</string>
     <string name="sumh_rules_clear_all">Hapus semua aturan</string>
     <string name="sumh_rules_clear_confirm">Apakah Anda yakin ingin menghapus semua aturan SUMH yang aktif? Ini akan langsung berlaku.</string>
-    <string name="sumh_rules_empty">Tidak ada aturan aktif</string>
     <string name="sumh_rules_not_available">Kernel SUMH tidak tersedia. Tab Aturan memerlukan dukungan kernel SUMH.</string>
     <string name="sumh_rules_refresh">Segarkan</string>
     <string name="sumh_status_kernel_too_old">Kernel terlalu lama</string>
@@ -78,7 +74,6 @@
     <string name="sumh_backend_enable_desc">Izinkan perencana mount menggunakan backend ini</string>
     <string name="sumh_check_conflicts">Periksa konflik mount</string>
     <string name="sumh_debug_desc">Keluarkan informasi debug SUMHP tambahan</string>
-    <string name="sumh_edit_rule">Edit aturan</string>
     <string name="sumh_external_mount">Mount dikelola oleh %1$s. Opsi mount bawaan tidak berlaku.</string>
     <string name="sumh_filter_active">SUMH telah diterapkan</string>
     <string name="sumh_fs_type_auto">Otomatis</string>
@@ -91,7 +86,6 @@
     <string name="sumh_logs_search">Cari log</string>
     <string name="sumh_logs_actions">Tindakan log</string>
     <string name="sumh_maps_add_action">Tambah</string>
-    <string name="sumh_maps_clear_action">Bersihkan</string>
     <string name="sumh_maps_desc">Samarkan inode, perangkat, dan jalur dalam maps proses.</string>
     <string name="sumh_maps_spoof">Penyamaran Maps</string>
     <string name="sumh_maps_spoof_desc">Petakan jalur, nomor perangkat, dan inode area memori</string>
@@ -106,12 +100,8 @@
     <string name="sumh_overlay_xattr">Sembunyikan atribut tambahan OverlayFS</string>
     <string name="sumh_overlay_xattr_desc">Sembunyikan penanda OverlayFS dalam tampilan virtual</string>
     <string name="sumh_retry_apply">Coba terapkan lagi</string>
-    <string name="sumh_rule_module">Aturan modul/kernel</string>
     <string name="sumh_rule_save">Terapkan perubahan</string>
     <string name="sumh_rule_user">Aturan pengguna</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="other">%d aturan aktif</item>
-    </plurals>
     <string name="sumh_saved_applied">Disimpan dan diterapkan ke kernel</string>
     <string name="sumh_saved_apply_failed">Disimpan, tetapi gagal diterapkan ke kernel: %1$s</string>
     <string name="sumh_saved_reboot">Disimpan. Backend mount berlaku setelah mulai ulang</string>

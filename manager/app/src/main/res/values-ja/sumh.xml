@@ -23,10 +23,7 @@
     <string name="sumh_logs_filter_warn">警告</string>
     <string name="sumh_logs_kernel">カーネルログ</string>
     <string name="sumh_maps_add_failed">maps ルールの追加に失敗しました</string>
-    <string name="sumh_maps_add_rule">ルールを追加</string>
     <string name="sumh_maps_add_success">maps ルールを追加しました</string>
-    <string name="sumh_maps_clear">maps ルールを消去</string>
-    <string name="sumh_maps_clear_confirm">すべての maps 偽装ルールを消去しますか？</string>
     <string name="sumh_maps_clear_failed">maps ルールの消去に失敗しました</string>
     <string name="sumh_maps_cleared">maps ルールを消去しました</string>
     <string name="sumh_maps_spoof_dev">偽装デバイス</string>
@@ -56,7 +53,6 @@
     <string name="sumh_rules_clear">消去</string>
     <string name="sumh_rules_clear_all">すべてのルールを消去</string>
     <string name="sumh_rules_clear_confirm">アクティブなすべての SUMH ルールを消去してもよろしいですか？これは直ちに有効になります。</string>
-    <string name="sumh_rules_empty">アクティブなルールはありません</string>
     <string name="sumh_rules_not_available">SUMH カーネルが利用できません。ルールタブには SUMH カーネルのサポートが必要です。</string>
     <string name="sumh_rules_refresh">更新</string>
     <string name="sumh_status_kernel_too_old">カーネルが古すぎます</string>
@@ -78,7 +74,6 @@
     <string name="sumh_backend_enable_desc">マウントプランナーによるこのバックエンドの使用を許可</string>
     <string name="sumh_check_conflicts">マウントの競合を確認</string>
     <string name="sumh_debug_desc">SUMHP の追加デバッグ情報を出力</string>
-    <string name="sumh_edit_rule">ルールを編集</string>
     <string name="sumh_external_mount">マウントは %1$s が管理しています。内蔵マウントの設定は適用されません。</string>
     <string name="sumh_filter_active">SUMH 適用済み</string>
     <string name="sumh_fs_type_auto">自動</string>
@@ -91,7 +86,6 @@
     <string name="sumh_logs_search">ログを検索</string>
     <string name="sumh_logs_actions">ログの操作</string>
     <string name="sumh_maps_add_action">追加</string>
-    <string name="sumh_maps_clear_action">消去</string>
     <string name="sumh_maps_desc">プロセスの maps 内の inode、デバイス、パスを偽装します。</string>
     <string name="sumh_maps_spoof">Maps の偽装</string>
     <string name="sumh_maps_spoof_desc">メモリ領域のパス、デバイス番号、inode を対応付け</string>
@@ -106,12 +100,8 @@
     <string name="sumh_overlay_xattr">OverlayFS の拡張属性を隠す</string>
     <string name="sumh_overlay_xattr_desc">仮想ビューで OverlayFS マーカーを隠す</string>
     <string name="sumh_retry_apply">適用を再試行</string>
-    <string name="sumh_rule_module">モジュール／カーネルのルール</string>
     <string name="sumh_rule_save">編集を適用</string>
     <string name="sumh_rule_user">ユーザーのルール</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="other">%d 件の有効なルール</item>
-    </plurals>
     <string name="sumh_saved_applied">保存してカーネルに適用しました</string>
     <string name="sumh_saved_apply_failed">保存しましたが、カーネルへの適用に失敗しました：%1$s</string>
     <string name="sumh_saved_reboot">保存しました。マウントバックエンドは再起動後に反映されます</string>

@@ -6,7 +6,6 @@
     <string name="sumh_check_conflicts">Verifică conflictele de montare</string>
     <string name="sumh_debug">Jurnalizare depanare</string>
     <string name="sumh_debug_desc">Generează informații suplimentare de depanare SUMHP</string>
-    <string name="sumh_edit_rule">Editează regula</string>
     <string name="sumh_external_mount">Montările sunt gestionate de %1$s. Opțiunile de montare integrate nu au efect.</string>
     <string name="sumh_filter_active">SUMH este activ</string>
     <string name="sumh_filter_all">Toate</string>
@@ -40,12 +39,8 @@
     <string name="sumh_logs_search">Caută în jurnale</string>
     <string name="sumh_logs_actions">Acțiuni pentru jurnale</string>
     <string name="sumh_maps_add_failed">Adăugarea regulii maps a eșuat</string>
-    <string name="sumh_maps_add_rule">Adaugă regulă</string>
     <string name="sumh_maps_add_action">Adaugă</string>
-    <string name="sumh_maps_clear_action">Șterge</string>
     <string name="sumh_maps_add_success">Regulă maps adăugată</string>
-    <string name="sumh_maps_clear">Șterge regulile maps</string>
-    <string name="sumh_maps_clear_confirm">Ștergeți toate regulile de falsificare maps?</string>
     <string name="sumh_maps_clear_failed">Ștergerea regulilor maps a eșuat</string>
     <string name="sumh_maps_cleared">Reguli maps șterse</string>
     <string name="sumh_maps_desc">Simulează inode-ul, dispozitivul și calea în maps ale procesului.</string>
@@ -82,7 +77,6 @@
     <string name="sumh_overlay_xattr_desc">Ascunde marcajele OverlayFS în vizualizarea virtuală</string>
     <string name="sumh_retry_apply">Reîncearcă aplicarea</string>
     <string name="sumh_rule_maps_spoof">Falsifică ino/dev/pathname în /proc/pid/maps</string>
-    <string name="sumh_rule_module">Reguli ale modulelor/nucleului</string>
     <string name="sumh_rule_mount_hide">Ascunde montările overlay din /proc/mounts</string>
     <string name="sumh_rule_save">Aplică modificările</string>
     <string name="sumh_rule_statfs_spoof">Falsifică f_type din statfs pentru a ocoli detectarea</string>
@@ -92,12 +86,6 @@
     <string name="sumh_rules_clear">Șterge</string>
     <string name="sumh_rules_clear_all">Șterge toate regulile</string>
     <string name="sumh_rules_clear_confirm">Sigur doriți să ștergeți toate regulile SUMH active? Aceasta va avea efect imediat.</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d regulă activă</item>
-        <item quantity="other">%d de reguli active</item>
-        <item quantity="few">%d reguli active</item>
-    </plurals>
-    <string name="sumh_rules_empty">Nicio regulă activă</string>
     <string name="sumh_rules_not_available">Kernelul SUMH nu este disponibil. Fila Reguli necesită suport pentru kernelul SUMH.</string>
     <string name="sumh_rules_refresh">Reîmprospătează</string>
     <string name="sumh_saved_applied">Salvat și aplicat nucleului</string>

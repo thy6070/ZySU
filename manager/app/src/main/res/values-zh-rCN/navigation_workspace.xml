@@ -8,7 +8,6 @@
     <string name="nav_mount">挂载</string>
     <string name="nav_kernel_policy">其他设置</string>
     <string name="nav_isolation">隔离设置</string>
-    <string name="nav_active_rules">生效规则</string>
     <string name="nav_umount_paths">卸载路径</string>
     <string name="nav_umount_paths_summary">管理从应用挂载命名空间卸载的路径</string>
     <string name="nav_diagnostics">诊断与日志</string>

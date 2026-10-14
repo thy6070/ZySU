@@ -6,7 +6,6 @@
     <string name="sumh_check_conflicts">檢查掛載衝突</string>
     <string name="sumh_debug">偵錯日誌</string>
     <string name="sumh_debug_desc">輸出額外的 SUMHP 除錯資訊</string>
-    <string name="sumh_edit_rule">編輯規則</string>
     <string name="sumh_external_mount">掛載由 %1$s 接管，內建掛載選項不生效。</string>
     <string name="sumh_filter_active">SUMH 已生效</string>
     <string name="sumh_filter_all">全部</string>
@@ -40,12 +39,8 @@
     <string name="sumh_logs_search">搜尋日誌</string>
     <string name="sumh_logs_actions">日誌操作</string>
     <string name="sumh_maps_add_failed">新增 maps 規則失敗</string>
-    <string name="sumh_maps_add_rule">新增規則</string>
     <string name="sumh_maps_add_action">新增</string>
-    <string name="sumh_maps_clear_action">清除</string>
     <string name="sumh_maps_add_success">maps 規則已新增</string>
-    <string name="sumh_maps_clear">清除 maps 規則</string>
-    <string name="sumh_maps_clear_confirm">確定要清除所有 maps 偽裝規則嗎？</string>
     <string name="sumh_maps_clear_failed">清除 maps 規則失敗</string>
     <string name="sumh_maps_cleared">maps 規則已清除</string>
     <string name="sumh_maps_desc">偽裝行程 maps 中的 inode/裝置/路徑。</string>
@@ -82,7 +77,6 @@
     <string name="sumh_overlay_xattr_desc">在虛擬檢視中隱藏 OverlayFS 標記</string>
     <string name="sumh_retry_apply">重試套用</string>
     <string name="sumh_rule_maps_spoof">偽裝 /proc/pid/maps 的 ino/dev/pathname</string>
-    <string name="sumh_rule_module">模組／核心規則</string>
     <string name="sumh_rule_mount_hide">從 /proc/mounts 隱藏 overlay 掛載</string>
     <string name="sumh_rule_save">套用編輯</string>
     <string name="sumh_rule_statfs_spoof">偽裝 statfs f_type 以繞過偵測</string>
@@ -92,10 +86,6 @@
     <string name="sumh_rules_clear">清除</string>
     <string name="sumh_rules_clear_all">清空規則</string>
     <string name="sumh_rules_clear_confirm">確定要清除所有作用中的 SUMH 規則嗎？此操作將立即生效。</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="other">%d 條活動規則</item>
-    </plurals>
-    <string name="sumh_rules_empty">沒有作用中規則</string>
     <string name="sumh_rules_not_available">SUMH 內核不可用。規則頁面需要 SUMH 內核支援。</string>
     <string name="sumh_rules_refresh">重新整理</string>
     <string name="sumh_saved_applied">已儲存並套用至核心</string>

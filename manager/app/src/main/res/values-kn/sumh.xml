@@ -23,10 +23,7 @@
     <string name="sumh_logs_filter_warn">ಎಚ್ಚರಿಕೆ</string>
     <string name="sumh_logs_kernel">ಕರ್ನಲ್ ಲಾಗ್</string>
     <string name="sumh_maps_add_failed">maps ನಿಯಮ ಸೇರಿಸಲು ವಿಫಲವಾಗಿದೆ</string>
-    <string name="sumh_maps_add_rule">ನಿಯಮ ಸೇರಿಸಿ</string>
     <string name="sumh_maps_add_success">maps ನಿಯಮ ಸೇರಿಸಲಾಗಿದೆ</string>
-    <string name="sumh_maps_clear">maps ನಿಯಮಗಳನ್ನು ತೆರವುಗೊಳಿಸಿ</string>
-    <string name="sumh_maps_clear_confirm">ಎಲ್ಲಾ maps ಸ್ಪೂಫ್ ನಿಯಮಗಳನ್ನು ತೆರವುಗೊಳಿಸಬೇಕೆ?</string>
     <string name="sumh_maps_clear_failed">maps ನಿಯಮಗಳನ್ನು ತೆರವುಗೊಳಿಸಲು ವಿಫಲವಾಗಿದೆ</string>
     <string name="sumh_maps_cleared">maps ನಿಯಮಗಳನ್ನು ತೆರವುಗೊಳಿಸಲಾಗಿದೆ</string>
     <string name="sumh_maps_spoof_dev">ಸ್ಪೂಫ್ device</string>
@@ -56,7 +53,6 @@
     <string name="sumh_rules_clear">ತೆರವುಗೊಳಿಸಿ</string>
     <string name="sumh_rules_clear_all">ಎಲ್ಲಾ ನಿಯಮಗಳನ್ನು ತೆರವುಗೊಳಿಸಿ</string>
     <string name="sumh_rules_clear_confirm">ನೀವು ಎಲ್ಲಾ ಸಕ್ರಿಯ SUMH ನಿಯಮಗಳನ್ನು ತೆರವುಗೊಳಿಸಲು ಬಯಸುತ್ತೀರಿ ಎಂದು ಖಚಿತವೇ? ಇದು ತಕ್ಷಣ ಜಾರಿಗೆ ಬರುತ್ತದೆ.</string>
-    <string name="sumh_rules_empty">ಯಾವುದೇ ಸಕ್ರಿಯ ನಿಯಮಗಳಿಲ್ಲ</string>
     <string name="sumh_rules_not_available">SUMH ಕರ್ನಲ್ ಲಭ್ಯವಿಲ್ಲ. ನಿಯಮಗಳ ಟ್ಯಾಬ್‌ಗೆ SUMH ಕರ್ನಲ್ ಬೆಂಬಲ ಅಗತ್ಯವಿದೆ.</string>
     <string name="sumh_rules_refresh">ರಿಫ್ರೆಶ್ ಮಾಡಿ</string>
     <string name="sumh_status_kernel_too_old">ಕರ್ನಲ್ ತುಂಬಾ ಹಳೆಯದು</string>
@@ -78,7 +74,6 @@
     <string name="sumh_backend_enable_desc">ಈ ಬ್ಯಾಕೆಂಡ್ ಬಳಸಲು ಮೌಂಟ್ ಯೋಜಕಕ್ಕೆ ಅನುಮತಿಸಿ</string>
     <string name="sumh_check_conflicts">ಮೌಂಟ್ ಸಂಘರ್ಷಗಳನ್ನು ಪರಿಶೀಲಿಸಿ</string>
     <string name="sumh_debug_desc">ಹೆಚ್ಚುವರಿ SUMHP ಡೀಬಗ್ ಮಾಹಿತಿ ಹೊರಹಾಕಿ</string>
-    <string name="sumh_edit_rule">ನಿಯಮ ಸಂಪಾದಿಸಿ</string>
     <string name="sumh_external_mount">ಮೌಂಟ್ ಅನ್ನು %1$s ನಿರ್ವಹಿಸುತ್ತಿದೆ. ಅಂತರ್ನಿರ್ಮಿತ ಮೌಂಟ್ ಆಯ್ಕೆಗಳು ಅನ್ವಯಿಸುವುದಿಲ್ಲ.</string>
     <string name="sumh_filter_active">SUMH ಜಾರಿಗೆ ಬಂದಿದೆ</string>
     <string name="sumh_fs_type_auto">ಸ್ವಯಂಚಾಲಿತ</string>
@@ -91,7 +86,6 @@
     <string name="sumh_logs_search">ಲಾಗ್‌ಗಳನ್ನು ಹುಡುಕಿ</string>
     <string name="sumh_logs_actions">ಲಾಗ್ ಕ್ರಿಯೆಗಳು</string>
     <string name="sumh_maps_add_action">ಸೇರಿಸಿ</string>
-    <string name="sumh_maps_clear_action">ತೆರವುಗೊಳಿಸಿ</string>
     <string name="sumh_maps_desc">ಪ್ರಕ್ರಿಯೆಯ maps ನಲ್ಲಿ inode, ಸಾಧನ ಮತ್ತು ಪಥದ ನಕಲಿ ಮಾಹಿತಿ ತೋರಿಸಿ.</string>
     <string name="sumh_maps_spoof">Maps ಸ್ಪೂಫಿಂಗ್</string>
     <string name="sumh_maps_spoof_desc">ಮೆಮೊರಿ ಪ್ರದೇಶದ ಪಥ, ಸಾಧನ ಸಂಖ್ಯೆ ಮತ್ತು inode ಮ್ಯಾಪ್ ಮಾಡಿ</string>
@@ -106,13 +100,8 @@
     <string name="sumh_overlay_xattr">OverlayFS ವಿಸ್ತೃತ ಗುಣಲಕ್ಷಣಗಳನ್ನು ಮರೆಮಾಡಿ</string>
     <string name="sumh_overlay_xattr_desc">ವರ್ಚುವಲ್ ನೋಟದಲ್ಲಿ OverlayFS ಗುರುತುಗಳನ್ನು ಮರೆಮಾಡಿ</string>
     <string name="sumh_retry_apply">ಮತ್ತೆ ಅನ್ವಯಿಸಲು ಪ್ರಯತ್ನಿಸಿ</string>
-    <string name="sumh_rule_module">ಮಾಡ್ಯೂಲ್/ಕರ್ನಲ್ ನಿಯಮಗಳು</string>
     <string name="sumh_rule_save">ಸಂಪಾದನೆಗಳನ್ನು ಅನ್ವಯಿಸಿ</string>
     <string name="sumh_rule_user">ಬಳಕೆದಾರ ನಿಯಮಗಳು</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d ಸಕ್ರಿಯ ನಿಯಮ</item>
-        <item quantity="other">%d ಸಕ್ರಿಯ ನಿಯಮಗಳು</item>
-    </plurals>
     <string name="sumh_saved_applied">ಉಳಿಸಿ ಕರ್ನಲ್‌ಗೆ ಅನ್ವಯಿಸಲಾಗಿದೆ</string>
     <string name="sumh_saved_apply_failed">ಉಳಿಸಲಾಗಿದೆ, ಆದರೆ ಕರ್ನಲ್‌ಗೆ ಅನ್ವಯಿಸಲು ವಿಫಲವಾಗಿದೆ: %1$s</string>
     <string name="sumh_saved_reboot">ಉಳಿಸಲಾಗಿದೆ. ಮೌಂಟ್ ಬ್ಯಾಕೆಂಡ್ ಮರುಪ್ರಾರಂಭದ ನಂತರ ಜಾರಿಗೆ ಬರುತ್ತದೆ</string>

@@ -52,7 +52,8 @@ class SUMHRuntimeRuleDisplayTest {
         } } }
         compose.onNodeWithText(compose.activity.getString(R.string.sumh_kernel_build_spoof)).assertIsDisplayed()
         compose.onNodeWithText(compose.activity.getString(R.string.sumh_rules_runtime_feature)).assertIsDisplayed()
-        compose.onNodeWithText(compose.activity.getString(R.string.sumh_rule_module)).assertDoesNotExist()
+        // Legacy zh-rCN label: this regression fixture is no longer a production resource.
+        compose.onNodeWithText("模块／内核规则").assertDoesNotExist()
         compose.onNodeWithText(compose.activity.getString(R.string.sumh_rules_runtime_incomplete)).assertDoesNotExist()
     }
 

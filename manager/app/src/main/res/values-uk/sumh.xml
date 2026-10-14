@@ -6,7 +6,6 @@
     <string name="sumh_check_conflicts">Перевірити конфлікти монтування</string>
     <string name="sumh_debug">Журнал налагодження</string>
     <string name="sumh_debug_desc">Виводити додаткові відомості налагодження SUMHP</string>
-    <string name="sumh_edit_rule">Редагувати правило</string>
     <string name="sumh_external_mount">Монтуванням керує %1$s. Налаштування вбудованого монтування не діють.</string>
     <string name="sumh_filter_active">SUMH діє</string>
     <string name="sumh_filter_all">Усі</string>
@@ -40,12 +39,8 @@
     <string name="sumh_logs_search">Пошук у журналі</string>
     <string name="sumh_logs_actions">Дії з журналом</string>
     <string name="sumh_maps_add_failed">Не вдалося додати правило maps</string>
-    <string name="sumh_maps_add_rule">Додати правило</string>
     <string name="sumh_maps_add_action">Додати</string>
-    <string name="sumh_maps_clear_action">Очистити</string>
     <string name="sumh_maps_add_success">Правило maps додано</string>
-    <string name="sumh_maps_clear">Очистити правила maps</string>
-    <string name="sumh_maps_clear_confirm">Очистити всі правила підміни maps?</string>
     <string name="sumh_maps_clear_failed">Не вдалося очистити правила maps</string>
     <string name="sumh_maps_cleared">Правила maps очищено</string>
     <string name="sumh_maps_desc">Підміна inode, пристрою та шляху в maps процесу.</string>
@@ -82,7 +77,6 @@
     <string name="sumh_overlay_xattr_desc">Приховувати позначки OverlayFS у віртуальному поданні</string>
     <string name="sumh_retry_apply">Повторити застосування</string>
     <string name="sumh_rule_maps_spoof">Підміняти ino/dev/pathname у /proc/pid/maps</string>
-    <string name="sumh_rule_module">Правила модулів / ядра</string>
     <string name="sumh_rule_mount_hide">Приховувати монтування overlay від /proc/mounts</string>
     <string name="sumh_rule_save">Застосувати зміни</string>
     <string name="sumh_rule_statfs_spoof">Підміняти f_type statfs для обходу виявлення</string>
@@ -92,13 +86,6 @@
     <string name="sumh_rules_clear">Очистити</string>
     <string name="sumh_rules_clear_all">Очистити всі правила</string>
     <string name="sumh_rules_clear_confirm">Ви впевнені, що хочете очистити всі активні правила SUMH? Це набуде чинності негайно.</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%d активне правило</item>
-        <item quantity="few">%d активні правила</item>
-        <item quantity="many">%d активних правил</item>
-        <item quantity="other">%d активних правил</item>
-    </plurals>
-    <string name="sumh_rules_empty">Немає активних правил</string>
     <string name="sumh_rules_not_available">Ядро SUMH недоступне. Вкладка Правила потребує підтримки ядра SUMH.</string>
     <string name="sumh_rules_refresh">Оновити</string>
     <string name="sumh_saved_applied">Збережено та застосовано до ядра</string>

@@ -23,10 +23,7 @@
     <string name="sumh_logs_filter_warn">সতর্কতা</string>
     <string name="sumh_logs_kernel">কার্নেল লগ</string>
     <string name="sumh_maps_add_failed">maps নিয়ম যোগ করতে ব্যর্থ</string>
-    <string name="sumh_maps_add_rule">নিয়ম যোগ করুন</string>
     <string name="sumh_maps_add_success">maps নিয়ম যোগ করা হয়েছে</string>
-    <string name="sumh_maps_clear">maps নিয়ম সাফ করুন</string>
-    <string name="sumh_maps_clear_confirm">সমস্ত maps স্পুফ নিয়ম সাফ করবেন?</string>
     <string name="sumh_maps_clear_failed">maps নিয়ম সাফ করতে ব্যর্থ</string>
     <string name="sumh_maps_cleared">maps নিয়ম সাফ করা হয়েছে</string>
     <string name="sumh_maps_spoof_dev">স্পুফ device</string>
@@ -56,7 +53,6 @@
     <string name="sumh_rules_clear">সাফ করুন</string>
     <string name="sumh_rules_clear_all">সমস্ত নিয়ম সাফ করুন</string>
     <string name="sumh_rules_clear_confirm">আপনি কি নিশ্চিত যে আপনি সমস্ত সক্রিয় SUMH নিয়ম সাফ করতে চান? এটি অবিলম্বে কার্যকর হবে।</string>
-    <string name="sumh_rules_empty">কোনো সক্রিয় নিয়ম নেই</string>
     <string name="sumh_rules_not_available">SUMH কার্নেল উপলব্ধ নেই। নিয়ম ট্যাবের জন্য SUMH কার্নেল সমর্থন প্রয়োজন।</string>
     <string name="sumh_rules_refresh">রিফ্রেশ করুন</string>
     <string name="sumh_status_kernel_too_old">কার্নেল খুব পুরনো</string>
@@ -78,7 +74,6 @@
     <string name="sumh_backend_enable_desc">মাউন্ট পরিকল্পনাকারীকে এই ব্যাকএন্ড ব্যবহারের অনুমতি দিন</string>
     <string name="sumh_check_conflicts">মাউন্টের দ্বন্দ্ব পরীক্ষা করুন</string>
     <string name="sumh_debug_desc">অতিরিক্ত SUMHP ডিবাগ তথ্য দেখান</string>
-    <string name="sumh_edit_rule">নিয়ম সম্পাদনা করুন</string>
     <string name="sumh_external_mount">%1$s মাউন্ট পরিচালনা করছে। অন্তর্নির্মিত মাউন্টের বিকল্পগুলি কার্যকর হবে না।</string>
     <string name="sumh_filter_active">SUMH কার্যকর হয়েছে</string>
     <string name="sumh_fs_type_auto">স্বয়ংক্রিয়</string>
@@ -91,7 +86,6 @@
     <string name="sumh_logs_search">লগ খুঁজুন</string>
     <string name="sumh_logs_actions">লগের কাজ</string>
     <string name="sumh_maps_add_action">যোগ করুন</string>
-    <string name="sumh_maps_clear_action">মুছুন</string>
     <string name="sumh_maps_desc">প্রসেসের maps-এ inode, ডিভাইস ও পাথের ভুয়া তথ্য দেখান।</string>
     <string name="sumh_maps_spoof">Maps-এর ভুয়া তথ্য</string>
     <string name="sumh_maps_spoof_desc">মেমরি অঞ্চলের পাথ, ডিভাইস নম্বর ও inode ম্যাপ করুন</string>
@@ -106,13 +100,8 @@
     <string name="sumh_overlay_xattr">OverlayFS-এর বর্ধিত অ্যাট্রিবিউট লুকান</string>
     <string name="sumh_overlay_xattr_desc">ভার্চুয়াল ভিউতে OverlayFS-এর চিহ্ন লুকান</string>
     <string name="sumh_retry_apply">আবার প্রয়োগের চেষ্টা করুন</string>
-    <string name="sumh_rule_module">মডিউল/কার্নেলের নিয়ম</string>
     <string name="sumh_rule_save">সম্পাদনা প্রয়োগ করুন</string>
     <string name="sumh_rule_user">ব্যবহারকারীর নিয়ম</string>
-    <plurals name="sumh_rules_count">
-        <item quantity="one">%dটি সক্রিয় নিয়ম</item>
-        <item quantity="other">%dটি সক্রিয় নিয়ম</item>
-    </plurals>
     <string name="sumh_saved_applied">সংরক্ষণ করে কার্নেলে প্রয়োগ করা হয়েছে</string>
     <string name="sumh_saved_apply_failed">সংরক্ষিত হয়েছে, তবে কার্নেলে প্রয়োগ ব্যর্থ: %1$s</string>
     <string name="sumh_saved_reboot">সংরক্ষিত হয়েছে। মাউন্ট ব্যাকএন্ড পুনরায় চালুর পর কার্যকর হবে</string>
