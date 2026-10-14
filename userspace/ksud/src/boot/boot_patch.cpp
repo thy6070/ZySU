@@ -462,12 +462,10 @@ bool restore_legacy_ramdisk(const std::string& magiskboot, const std::string& wo
             return false;
         if (!do_cpio_cmd(magiskboot, workdir, ramdisk, "mv init.real init"))
             return false;
-        for (const char* entry : payload) {
-            if (exists(entry) &&
-                !do_cpio_cmd(magiskboot, workdir, ramdisk, "rm " + std::string(entry)))
-                return false;
-        }
-        return true;
+        return std::all_of(payload.begin(), payload.end(), [&](const char* entry) {
+            return !exists(entry) ||
+                   do_cpio_cmd(magiskboot, workdir, ramdisk, "rm " + std::string(entry));
+        });
     }
 
     // A formerly ramdisk-free boot gets a synthetic ramdisk with no init.real.
@@ -644,7 +642,10 @@ BootPatchArgs parse_boot_patch_args(const std::vector<std::string>& args) {
             take_value(value);
             if (result.valid && !(arg == "--force-feature" ? result.add_force_feature(value)
                                                            : result.add_block_modules(value)))
-                reject("invalid or oversized " + arg + " value: " + value);
+                reject(std::string("invalid or oversized ")
+                           .append(arg)
+                           .append(" value: ")
+                           .append(value));
         } else if (arg == "--adb-debug-prop") {
             take_value(result.adb_debug_prop);
         } else {

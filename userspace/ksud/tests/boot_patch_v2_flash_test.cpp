@@ -66,8 +66,8 @@ bool exec_dd(const std::string& image, const std::string& device) {
     const std::string data = read_file(image);
     const bool fail = failing_writes.count(attempts.size()) != 0;
     const bool patched = fs::path(image).filename().string().rfind("new-", 0) == 0;
-    const std::size_t count = fail ? std::min<std::size_t>(patched ? 23 : 7, data.size())
-                                   : data.size();
+    const std::size_t count =
+        fail ? std::min<std::size_t>(patched ? 23 : 7, data.size()) : data.size();
     // Simulate a block write: preserve the target's tail when the write fails
     // partway through. A failed rollback repairs fewer bytes than the original
     // failure changed, leaving observable damage until recovery succeeds.
@@ -94,10 +94,9 @@ int apply_images(const fs::path& work, const std::string& boot_device,
     const fs::path input_path = work / "boot-current.img";
     const fs::path repacked = work / "new-boot.img";
     const std::optional<CleanedRamdiskImage> cleaned_init_boot =
-        init_boot_state < 0
-            ? std::nullopt
-            : std::make_optional(CleanedRamdiskImage{init_boot_state > 0,
-                                                     work / "new-init_boot.img"});
+        init_boot_state < 0 ? std::nullopt
+                            : std::make_optional(CleanedRamdiskImage{init_boot_state > 0,
+                                                                     work / "new-init_boot.img"});
 #include "v2_apply_under_test.inc"
     cleanup();
     return 0;
@@ -125,15 +124,15 @@ void test_scenario(const fs::path& root, const std::string& name, int init_boot_
     logs.clear();
     failing_writes = std::move(failures);
 
-    const int status = apply_images(work, boot_device.string(), init_device.string(), init_boot_state);
+    const int status =
+        apply_images(work, boot_device.string(), init_device.string(), init_boot_state);
     assert((status == 0) == failing_writes.empty());
     assert(attempts.size() == expected_attempts);
     assert(attempts.front().image == work / "new-boot.img" &&
            attempts.front().device == boot_device);
     if (failing_writes.count(1) != 0) {
         // The failed first write is rolled back; init_boot is never written.
-        assert(attempts[1].image == work / "boot-current.img" &&
-               attempts[1].device == boot_device);
+        assert(attempts[1].image == work / "boot-current.img" && attempts[1].device == boot_device);
         assert(read_file(init_device) == original_init);
         assert((read_file(boot_device) == original_boot) == (failing_writes.count(2) == 0));
     } else if (!failing_writes.empty()) {
@@ -143,8 +142,7 @@ void test_scenario(const fs::path& root, const std::string& name, int init_boot_
                attempts[1].device == init_device);
         assert(attempts[2].image == work / "init_boot-input.img" &&
                attempts[2].device == init_device);
-        assert(attempts[3].image == work / "boot-current.img" &&
-               attempts[3].device == boot_device);
+        assert(attempts[3].image == work / "boot-current.img" && attempts[3].device == boot_device);
         assert((read_file(init_device) == original_init) == (failing_writes.count(3) == 0));
         assert((read_file(boot_device) == original_boot) == (failing_writes.count(4) == 0));
     } else {

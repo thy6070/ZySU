@@ -90,8 +90,7 @@ int run(int argc, char** argv) {
     LinkedBootstrap relocated;
     if (!ksud::boot::lkm_image::link_bootstrap(
             object, code_address + slide, definitions(code_address + slide), &relocated, &error) ||
-        relocated.data != linked.data ||
-        relocated.entry_address != linked.entry_address + slide ||
+        relocated.data != linked.data || relocated.entry_address != linked.entry_address + slide ||
         relocated.reserve_wrapper_address != linked.reserve_wrapper_address + slide ||
         relocated.strndup_adapter_address != linked.strndup_adapter_address + slide) {
         std::cerr << "bootstrap changes under a page-aligned kernel slide: " << error << '\n';
@@ -101,8 +100,8 @@ int run(int argc, char** argv) {
     missing_definition.erase(missing_definition.begin());
     LinkedBootstrap rejected;
     error.clear();
-    if (ksud::boot::lkm_image::link_bootstrap(object, code_address, missing_definition,
-                                             &rejected, &error) ||
+    if (ksud::boot::lkm_image::link_bootstrap(object, code_address, missing_definition, &rejected,
+                                              &error) ||
         error.find("undefined symbol") == std::string::npos) {
         std::cerr << "bootstrap accepted a missing required kernel symbol\n";
         return 1;

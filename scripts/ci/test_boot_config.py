@@ -61,7 +61,8 @@ static int copy_to_user(void *dest, const void *src, size_t size) { memcpy(dest,
 struct kernel_param {};
 struct kernel_param_ops { int flags; int (*set)(const char*, const struct kernel_param*); };
 #define module_param_cb(...)
-static const char *strchrnul(const char *s, int c) { const char *p = strchr(s, c); return p ? p : s + strlen(s); }
+static const char *zysu_test_strchrnul(const char *s, int c) { const char *p = strchr(s, c); return p ? p : s + strlen(s); }
+#define strchrnul zysu_test_strchrnul
 static int kstrtou64(const char *s, int base, u64 *out) {
     char *end;
     if (!*s || *s == '-' || *s == ' ') return -EINVAL;

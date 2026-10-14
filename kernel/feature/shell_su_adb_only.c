@@ -85,7 +85,7 @@ void __init ksu_shell_su_adb_only_init(void)
 	}
 }
 
-void __exit ksu_shell_su_adb_only_exit(void)
+void ksu_shell_su_adb_only_exit(void)
 {
 	ksu_unregister_feature_handler(KSU_FEATURE_SHELL_SU_ADB_ONLY);
 }

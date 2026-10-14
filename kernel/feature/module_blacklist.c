@@ -112,7 +112,7 @@ void __init ksu_module_blacklist_init(void)
 	pr_info("module_blacklist: blocking modules: %s\n", merged);
 }
 
-void __exit ksu_module_blacklist_exit(void)
+void ksu_module_blacklist_exit(void)
 {
 	// Intentionally does NOT restore the original module_blacklist pointer.
 	// The module loader reads module_blacklist in blacklisted() without any

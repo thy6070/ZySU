@@ -1,4 +1,3 @@
-#include "kernel_version.hpp"
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -13,6 +12,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include "kernel_version.hpp"
 
 namespace fs = std::filesystem;
 using ksud::is_supported_kmi;
@@ -43,8 +43,8 @@ bool copy_file_data(const std::string& src, const std::string& dst) {
     return contents && write_file(dst, *contents);
 }
 
-#include "boot_patch_parse_kmi_under_test.inc"
 #include "boot_patch_kernel_kmi_under_test.inc"
+#include "boot_patch_parse_kmi_under_test.inc"
 
 struct Options {
     std::string kernel, boot_image, kmi, adb_debug_prop;
@@ -61,7 +61,9 @@ std::string parse_kmi_from_boot(const std::string&, const std::string&, const st
     inspected_boot = path;
     return detected_kmi;
 }
-void cleanup() { ++cleanup_calls; }
+void cleanup() {
+    ++cleanup_calls;
+}
 int select_kmi(const Options& parsed, const std::string& workdir, std::string* selected) {
     const std::string magiskboot = "", ota_slot = "_b";
 #include "boot_patch_select_kmi_under_test.inc"
@@ -79,7 +81,8 @@ int magiskboot_query(const std::vector<std::string>& args) {
     assert(args.size() == 3 && args[2].rfind("exists ", 0) == 0);
     return entries.count(args[2].substr(7)) ? 0 : 1;
 }
-bool do_cpio_cmd(const std::string&, const std::string&, const std::string&, const std::string& cmd) {
+bool do_cpio_cmd(const std::string&, const std::string&, const std::string&,
+                 const std::string& cmd) {
     if (cmd == fail_cpio)
         return false;
     if (cmd.rfind("rm ", 0) == 0)
@@ -124,7 +127,7 @@ bool ensure_clean_dir(const std::string& directory) {
     return !error;
 }
 #include "boot_patch_detect_kmi_under_test.inc"
-}
+}  // namespace target_detection
 #include "boot_patch_restore_ramdisk_under_test.inc"
 int add_adb_props(const Options& parsed, const std::string& workdir) {
     const std::string magiskboot = "", ramdisk = "ramdisk";
@@ -155,10 +158,13 @@ int flash_images(const std::string& original, const std::string& patched,
 #include "boot_patch_flash_under_test.inc"
     return 0;
 }
-int flash_restore(const std::string& original, const std::string& restored, bool& preserve_workdir) {
+int flash_restore(const std::string& original, const std::string& restored,
+                  bool& preserve_workdir) {
     Options parsed;
     parsed.flash = true;
-    struct Backup { std::string stored_image; };
+    struct Backup {
+        std::string stored_image;
+    };
     const std::optional<Backup> used_backup;
     const std::string bootdevice = "primary", new_boot = restored, bootimage = original;
 #include "boot_restore_flash_under_test.inc"
@@ -241,14 +247,14 @@ void test_options(const fs::path& base) {
 void test_restore(const fs::path& base) {
     const auto ramdisk = (base / "ramdisk.cpio").string();
     const std::map<std::string, std::string> patched = {
-        {"init", "ksuinit"}, {"init.real", "original init"}, {"kernelsu.ko", "module"},
-        {"ksu_config", "config"}, {"adb_debug.prop", "props"}, {"force_debuggable", ""},
+        {"init", "ksuinit"},       {"init.real", "original init"}, {"kernelsu.ko", "module"},
+        {"ksu_config", "config"},  {"adb_debug.prop", "props"},    {"force_debuggable", ""},
         {"vendor.rc", "preserve"}, {"stock_image.sha1", "digest"},
     };
     entries = patched;
     assert(restore_legacy_ramdisk("", base.string(), ramdisk));
-    assert(entries == (std::map<std::string, std::string>{
-        {"init", "original init"}, {"vendor.rc", "preserve"}}));
+    assert(entries == (std::map<std::string, std::string>{{"init", "original init"},
+                                                          {"vendor.rc", "preserve"}}));
     for (const auto& failure : {"rm init", "mv init.real init", "rm kernelsu.ko"}) {
         entries = patched;
         fail_cpio = failure;
@@ -256,7 +262,9 @@ void test_restore(const fs::path& base) {
     }
     fail_cpio.clear();
     assert(write_file(ramdisk, "archive"));
-    entries = {{"init", "ksuinit"}, {"kernelsu.ko", "module"}, {".backup", ""},
+    entries = {{"init", "ksuinit"},
+               {"kernelsu.ko", "module"},
+               {".backup", ""},
                {"vendor.rc", "unknown original"}};
     const auto ambiguous = entries;
     assert(!restore_legacy_ramdisk("", base.string(), ramdisk));
