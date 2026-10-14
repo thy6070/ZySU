@@ -13,10 +13,49 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 ARCH_TO_TRIPLE = {
     "arm64-v8a": "aarch64-linux-android",
 }
+LEGACY_KSUD_LIBRARY_NAME = "libksud.so"
+KSUD_LIBRARY_MARKER = "assets/runtime/payload.txt"
 
 
 def workspace_root() -> Path:
     return Path(__file__).resolve().parent
+
+
+def ksud_library_name() -> str:
+    config = workspace_root() / "manager" / "ksud-library-name.txt"
+    name = config.read_text(encoding="utf-8").strip()
+    if not re.fullmatch(r"lib[A-Za-z0-9_]+\.so", name):
+        raise ValueError(f"Invalid manager native payload filename in {config}: {name!r}")
+    return name
+
+
+def reject_legacy_payload(names: Iterable[str]) -> None:
+    if any(
+        len(parts := name.split("/")) == 3
+        and parts[0] == "lib"
+        and parts[2] == LEGACY_KSUD_LIBRARY_NAME
+        for name in names
+    ):
+        raise RuntimeError(
+            f"Input APK contains legacy {LEGACY_KSUD_LIBRARY_NAME}; rebuild the Manager "
+            "from current sources before repacking so its runtime payload path matches."
+        )
+
+
+def validate_payload_marker(apk: ZipFile, library_name: str) -> None:
+    # Intermediate CI APKs may have no payload at all. This generated asset ties
+    # their compiled runtime path to the filename the repacker will inject.
+    rebuild_hint = "rebuild the Manager from current sources before repacking."
+    try:
+        marker_name = apk.read(KSUD_LIBRARY_MARKER).decode("utf-8").strip()
+    except (KeyError, UnicodeDecodeError) as exc:
+        raise RuntimeError(
+            f"APK has no valid UTF-8 {KSUD_LIBRARY_MARKER}; {rebuild_hint}"
+        ) from exc
+    if marker_name != library_name:
+        raise RuntimeError(
+            f"APK payload marker names {marker_name!r}, expected {library_name!r}; {rebuild_hint}"
+        )
 
 
 def normalize_arch_values(values: Iterable[str]) -> List[str]:
@@ -149,14 +188,17 @@ def collect_existing_arches(apk_path: Path) -> List[str]:
 
 
 def collect_existing_ksud_arches(apk_path: Path) -> List[str]:
+    library_name = ksud_library_name()
     arches: List[str] = []
     seen = set()
     with ZipFile(apk_path, "r") as zf:
+        validate_payload_marker(zf, library_name)
+        reject_legacy_payload(zf.namelist())
         for name in zf.namelist():
-            if not (name.startswith("lib/") and name.endswith("/libksud.so")):
+            if not (name.startswith("lib/") and name.endswith(f"/{library_name}")):
                 continue
             parts = name.split("/")
-            if len(parts) >= 3 and parts[1] not in seen:
+            if len(parts) == 3 and parts[1] not in seen:
                 seen.add(parts[1])
                 arches.append(parts[1])
     return arches
@@ -176,6 +218,21 @@ def repack_apk(
     ksud_by_arch: Dict[str, Path],
     strip_tool: Optional[Path],
 ) -> None:
+    library_name = ksud_library_name()
+    with ZipFile(apk_path, "r") as zin:
+        validate_payload_marker(zin, library_name)
+        names = set(zin.namelist())
+    reject_legacy_payload(names)
+    missing = [
+        arch for arch in arches
+        if arch not in ksud_by_arch and f"lib/{arch}/{library_name}" not in names
+    ]
+    if missing:
+        raise RuntimeError(
+            f"Missing {library_name} in APK and no ksud binary for architecture(s): "
+            + ", ".join(missing)
+        )
+
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
         ksud_bytes_by_arch: Dict[str, bytes] = {}
@@ -194,9 +251,9 @@ def repack_apk(
                     if len(parts) >= 3 and parts[1] not in arches:
                         continue
 
-                if name.startswith("lib/") and name.endswith("/libksud.so"):
+                if name.startswith("lib/") and name.endswith(f"/{library_name}"):
                     parts = name.split("/")
-                    if len(parts) >= 3 and parts[1] in ksud_bytes_by_arch:
+                    if len(parts) == 3 and parts[1] in ksud_bytes_by_arch:
                         continue
 
                 new_info = ZipInfo(filename=name, date_time=info.date_time)
@@ -215,17 +272,20 @@ def repack_apk(
                 ksud_bytes = ksud_bytes_by_arch.get(arch)
                 if ksud_bytes is None:
                     continue
-                entry = ZipInfo(filename=f"lib/{arch}/libksud.so")
+                entry = ZipInfo(filename=f"lib/{arch}/{library_name}")
                 entry.compress_type = ZIP_DEFLATED
                 zout.writestr(entry, ksud_bytes)
 
 
 def assert_required_libs(apk_path: Path, arches: List[str]) -> None:
+    library_name = ksud_library_name()
     with ZipFile(apk_path, "r") as zf:
+        validate_payload_marker(zf, library_name)
         names = set(zf.namelist())
-    missing = [arch for arch in arches if f"lib/{arch}/libksud.so" not in names]
+    reject_legacy_payload(names)
+    missing = [arch for arch in arches if f"lib/{arch}/{library_name}" not in names]
     if missing:
-        raise RuntimeError("Missing libksud.so in APK for architecture(s): " + ", ".join(missing))
+        raise RuntimeError(f"Missing {library_name} in APK for architecture(s): " + ", ".join(missing))
 
 
 def validate_signing_args(args: argparse.Namespace) -> None:
@@ -277,11 +337,13 @@ def verify_manager_certificate(apksigner: Path, apk: Path, expected: str) -> Non
 
 
 def do_repack(args: argparse.Namespace) -> int:
+    library_name = ksud_library_name()
     app_build_type = args.app_build_type or "release"
     ksud_build_type = args.ksud_build_type or "release"
     arches = normalize_arch_values(args.arch or [])
 
     apk = find_latest_apk(app_build_type)
+    existing_ksud = set(collect_existing_ksud_arches(apk))
     if not arches:
         arches = collect_existing_arches(apk) or ["arm64-v8a"]
         print(f"[INFO] No arch configured, using: {', '.join(arches)}")
@@ -298,17 +360,16 @@ def do_repack(args: argparse.Namespace) -> int:
     ksud_by_arch = find_ksud_binaries_by_arch(ksud_build_type, arches)
     missing_ksud = [arch for arch in arches if arch not in ksud_by_arch]
     if missing_ksud:
-        existing_ksud = set(collect_existing_ksud_arches(apk))
         missing_in_apk = [arch for arch in missing_ksud if arch not in existing_ksud]
         if missing_in_apk:
             raise RuntimeError(
-                "ksud binary not found and APK has no existing libksud.so for architecture(s): "
+                f"ksud binary not found and APK has no existing {library_name} for architecture(s): "
                 + ", ".join(missing_in_apk)
             )
         print(
             "[WARN] ksud binary not found for architecture(s): "
             + ", ".join(missing_ksud)
-            + ". Using existing libksud.so from input APK.",
+            + f". Using existing {library_name} from input APK.",
             file=sys.stderr,
         )
 
@@ -399,7 +460,7 @@ def build_parser() -> argparse.ArgumentParser:
     repack.add_argument("-S", "--key-pass", help="Private key password")
     repack.add_argument("-n", "--output-name", help="Base name for output APK")
     repack.add_argument("-o", "--out-dir", help="Output directory")
-    repack.add_argument("--strip", action="store_true", help="Strip libksud.so before packing")
+    repack.add_argument("--strip", action="store_true", help="Strip the native payload before packing")
     repack.add_argument("--expected-cert-sha256", help="Require the final APK to match the kernel's Manager certificate")
     repack.set_defaults(func=do_repack)
 

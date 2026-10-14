@@ -1,8 +1,11 @@
 package com.zying.zysu.ui.util.module
 
 import android.app.AppOpsManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -18,13 +21,72 @@ import androidx.core.net.toUri
 import com.topjohnwu.superuser.io.SuFile
 import com.topjohnwu.superuser.io.SuFileInputStream
 import com.zying.zysu.R
-import com.zying.zysu.ui.MainActivity
+import app.entry.Launcher
 import com.zying.zysu.ui.util.getRootShell
 import java.util.Locale
 
 object Shortcut {
 
     private const val TAG = "ModuleShortcut"
+
+    /** Repair persisted shortcut targets after the launcher component changes. */
+    fun migrateModuleShortcuts(context: Context) {
+        try {
+            val manager = context.getSystemService(ShortcutManager::class.java) ?: return
+            val launcher = ComponentName(context, Launcher::class.java)
+            val shortcuts = (manager.pinnedShortcuts + manager.dynamicShortcuts)
+                .distinctBy { it.id }
+                .filter {
+                    it.`package` == context.packageName &&
+                        (it.id.startsWith("module_action_") || it.id.startsWith("module_webui_")) &&
+                        !it.isImmutable &&
+                        it.disabledReason < ShortcutInfo.DISABLED_REASON_VERSION_LOWER
+                }
+            val updates = mutableListOf<ShortcutInfo>()
+            val recoverableIds = mutableListOf<String>()
+            for (shortcut in shortcuts) {
+                val intents = shortcut.intents ?: continue
+                if (intents.isEmpty()) continue
+                val isModuleAction = shortcut.id.startsWith("module_action_")
+                val migratedIntents = if (isModuleAction) intents.mapIndexed { index, intent ->
+                    Intent(intent).apply {
+                        // Preserve unrelated back-stack entries, actions, flags and extras.
+                        if (index == intents.lastIndex ||
+                            (shortcut.activity != null && component == shortcut.activity)
+                        ) {
+                            component = launcher
+                        }
+                    }
+                }.toTypedArray() else intents
+                if (shortcut.activity != launcher || intents.indices.any {
+                        intents[it].component != migratedIntents[it].component
+                    }
+                ) {
+                    // A partial update retains labels, rank and the icon stored by the system.
+                    // Queried ShortcutInfo objects do not necessarily contain that icon.
+                    updates += ShortcutInfo.Builder(context, shortcut.id)
+                        .setActivity(launcher)
+                        .apply {
+                            // WebUI launches its own activity; only its launcher association moved.
+                            if (isModuleAction) setIntents(migratedIntents)
+                        }
+                        .build()
+                }
+                if (!shortcut.isEnabled &&
+                    shortcut.disabledReason == ShortcutInfo.DISABLED_REASON_APP_CHANGED
+                ) {
+                    recoverableIds += shortcut.id
+                }
+            }
+            // Retry at the next launch if the system throttles updates or the user is locked.
+            if (updates.isNotEmpty() && !manager.updateShortcuts(updates)) return
+            // updateShortcuts never changes the enabled state. Keep deliberate app deletions
+            // disabled, but recover shortcuts disabled when their previous activity vanished.
+            if (recoverableIds.isNotEmpty()) manager.enableShortcuts(recoverableIds)
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not migrate module shortcuts", e)
+        }
+    }
 
     fun createModuleActionShortcut(
         context: Context,
@@ -33,7 +95,7 @@ object Shortcut {
         iconUri: String?
     ) {
         val shortcutId = "module_action_$moduleId"
-        val shortcutIntent = Intent(context, MainActivity::class.java).apply {
+        val shortcutIntent = Intent(context, Launcher::class.java).apply {
             action = Intent.ACTION_VIEW
             putExtra("shortcut_type", "module_action")
             putExtra("module_id", moduleId)

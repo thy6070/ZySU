@@ -1,4 +1,5 @@
 libksud.so
+libruntime.so
 libmagiskboot.so
 libkernelsu.so
 libsusfsd.so

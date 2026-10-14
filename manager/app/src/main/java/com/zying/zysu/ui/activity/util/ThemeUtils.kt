@@ -5,7 +5,7 @@ import android.database.ContentObserver
 import android.os.Handler
 import android.provider.Settings
 import androidx.core.content.edit
-import com.zying.zysu.ui.MainActivity
+import app.entry.Launcher
 import com.zying.zysu.ui.theme.CardConfig
 import com.zying.zysu.ui.theme.ThemeConfig
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,11 +22,11 @@ class ThemeChangeContentObserver(
 
 object ThemeUtils {
 
-    fun initializeThemeSettings(activity: MainActivity, settingsStateFlow: MutableStateFlow<MainActivity.SettingsState>) {
+    fun initializeThemeSettings(activity: Launcher, settingsStateFlow: MutableStateFlow<Launcher.SettingsState>) {
         val prefs = activity.getSharedPreferences("settings", Context.MODE_PRIVATE)
         val isFirstRun = prefs.getBoolean("is_first_run", true)
 
-        settingsStateFlow.value = MainActivity.SettingsState(
+        settingsStateFlow.value = Launcher.SettingsState(
             isHideOtherInfo = prefs.getBoolean("is_hide_other_info", false)
         )
 
@@ -44,7 +44,7 @@ object ThemeUtils {
         CardConfig.load(activity.applicationContext)
     }
 
-    fun registerThemeChangeObserver(activity: MainActivity): ThemeChangeContentObserver {
+    fun registerThemeChangeObserver(activity: Launcher): ThemeChangeContentObserver {
         val contentObserver = ThemeChangeContentObserver(Handler(activity.mainLooper)) {
             activity.runOnUiThread {
                 if (!ThemeConfig.preventBackgroundRefresh) {
@@ -63,11 +63,11 @@ object ThemeUtils {
         return contentObserver
     }
 
-    fun unregisterThemeChangeObserver(activity: MainActivity, observer: ThemeChangeContentObserver) {
+    fun unregisterThemeChangeObserver(activity: Launcher, observer: ThemeChangeContentObserver) {
         activity.contentResolver.unregisterContentObserver(observer)
     }
 
-    fun onActivityPause(activity: MainActivity) {
+    fun onActivityPause(activity: Launcher) {
         CardConfig.save(activity.applicationContext)
         activity.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE).edit {
             putBoolean("prevent_background_refresh", true)

@@ -73,7 +73,7 @@ Linux 查看 `bash scripts/build.sh --help`，Windows 查看 `.\scripts\build.ba
 
 Linux / macOS 的 shell 脚本要求设置 `ANDROID_NDK_HOME`；同时为 Gradle 配置 `JAVA_HOME` 和 Android SDK 路径，并确保 `cmake`、`ninja`、`python3`、`docker` 可调用。Windows 可用 `ANDROID_SDK_ROOT` / `ANDROID_HOME`、`ANDROID_NDK_HOME`、`JAVA_HOME`、`PYTHON` 指定工具；脚本从 SDK 目录寻找 CMake / Ninja，不会自动下载缺失的 SDK 包。
 
-从仓库根目录运行 `bash scripts/build.sh --kmi android14-6.1`，Windows 使用 `.\scripts\build.bat --kmi android14-6.1`。默认复用原生构建缓存；更换工具链后可使用 `--clean`。脚本会重新整理 `userspace/ksud/assets/` 中的生成资产，并把 ksud 复制为 Manager 的 `libksud.so`。
+从仓库根目录运行 `bash scripts/build.sh --kmi android14-6.1`，Windows 使用 `.\scripts\build.bat --kmi android14-6.1`。默认复用原生构建缓存；更换工具链后可使用 `--clean`。脚本会重新整理 `userspace/ksud/assets/` 中的生成资产，并把 ksud 复制为 Manager 的 `libruntime.so`。Gradle、重打包工具和两份本地构建脚本统一从 `manager/ksud-library-name.txt` 读取该文件名。Gradle 还会生成 `assets/runtime/payload.txt`，供重打包工具核对编译后的 Manager 实际使用的文件名。标记缺失、与当前配置不同或 APK 仍含 `libksud.so` 时必须重新编译 Manager；这也包括尚未注入载荷的旧中间 APK。
 
 | 本地产物 | 路径 |
 | --- | --- |

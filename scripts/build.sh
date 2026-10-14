@@ -53,6 +53,15 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+KSUD_LIBRARY_NAME_FILE="$REPO_ROOT/manager/ksud-library-name.txt"
+# Accept the normal LF or CRLF line ending, but no path separators or extra lines.
+KSUD_LIBRARY_NAME="$(cat "$KSUD_LIBRARY_NAME_FILE")"
+KSUD_LIBRARY_NAME="${KSUD_LIBRARY_NAME%$'\r'}"
+if [[ ! "$KSUD_LIBRARY_NAME" =~ ^lib[A-Za-z0-9_]+\.so$ ]]; then
+	echo "Invalid manager native payload filename in $KSUD_LIBRARY_NAME_FILE"
+	exit 1
+fi
+
 for kmi in "${KMI_TARGETS[@]}"; do
 	if [[ ! "$kmi" =~ ^[A-Za-z0-9._-]+$ || " ${SUPPORTED_KMIS[*]} " != *" $kmi "* ]]; then
 		echo "Unsupported KMI/DDK target: $kmi (requires Linux 6.1 or newer)"
@@ -209,7 +218,8 @@ echo ">>> [4/4] Build Manager App ..."
 MANAGER_DIR="$REPO_ROOT/manager"
 JNILIBS="$MANAGER_DIR/app/src/main/jniLibs/$ANDROID_ABI"
 mkdir -p "$JNILIBS"
-cp "$KSUD_DIR/build/ksud" "$JNILIBS/libksud.so"
+rm -f -- "$JNILIBS/libksud.so"
+cp "$KSUD_DIR/build/ksud" "$JNILIBS/$KSUD_LIBRARY_NAME"
 
 # Signing is passed through env, not gradle.properties.
 if [[ -n "${ZYSU_KEYSTORE:-}" && -n "${ZYSU_KEYSTORE_PASSWORD:-}" && -n "${ZYSU_KEY_ALIAS:-}" && -n "${ZYSU_KEY_PASSWORD:-}" ]]; then

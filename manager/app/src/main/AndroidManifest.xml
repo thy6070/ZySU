@@ -18,7 +18,7 @@
 
 
     <application
-        android:name=".KernelSUApplication"
+        android:name="app.entry.App"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
@@ -33,7 +33,7 @@
         android:directBootAware="true"
         tools:targetApi="34">
         <activity
-            android:name=".ui.MainActivity"
+            android:name="app.entry.Launcher"
             android:windowSoftInputMode="adjustResize"
             android:exported="true"
             android:enabled="true"

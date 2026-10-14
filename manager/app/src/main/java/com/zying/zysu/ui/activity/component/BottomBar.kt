@@ -41,7 +41,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.ramcosta.composedestinations.generated.NavGraphs
 import com.ramcosta.composedestinations.utils.isRouteOnBackStackAsState
 import com.ramcosta.composedestinations.utils.rememberDestinationsNavigator
-import com.zying.zysu.ui.MainActivity
+import app.entry.Launcher
 import com.zying.zysu.R
 import com.zying.zysu.ui.component.YukiIcon
 import com.zying.zysu.ui.component.LiquidGlassSurface
@@ -56,7 +56,7 @@ fun BottomBar(navController: NavHostController) {
     val navigationLeaveGuard = LocalNavigationLeaveGuard.current
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val isFullFeatured by AppData.DataRefreshManager.isFullFeatured.collectAsState()
-    val activity = LocalContext.current as MainActivity
+    val activity = LocalContext.current as Launcher
     val settings by activity.settingsStateFlow.collectAsState()
     val superuserCount by AppData.DataRefreshManager.superuserCount.collectAsState()
     val moduleCount by AppData.DataRefreshManager.moduleCount.collectAsState()

@@ -502,7 +502,7 @@ object ModuleRepositoryProvider {
         return instance ?: synchronized(this) {
             instance ?: ModuleRepositoryManager(
                 context = context,
-                client = (context.applicationContext as? com.zying.zysu.KernelSUApplication)
+                client = (context.applicationContext as? app.entry.App)
                     ?.okhttpClient
                     ?: ksuApp.okhttpClient,
             ).also { instance = it }

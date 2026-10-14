@@ -10,9 +10,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.edit
+import com.zying.zysu.BuildConfig
 import com.zying.zysu.Natives
 import com.zying.zysu.R
-import com.zying.zysu.ui.MainActivity
+import app.entry.Launcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,7 +60,7 @@ object KsudIntegrity {
     }
 
     fun verifyBundledDaemon(context: Context): KsudIntegrityStatus {
-        val source = context.applicationInfo.nativeLibraryDir + File.separator + "libksud.so"
+        val source = File(context.applicationInfo.nativeLibraryDir, BuildConfig.KSUD_LIBRARY_NAME).absolutePath
         return when (runCatching { Natives.verifyKsudDaemon(source) }.getOrDefault(
             Natives.KSUD_INTEGRITY_UNAVAILABLE,
         )) {
@@ -137,7 +138,7 @@ object KsudIntegrity {
         val pendingIntent = PendingIntent.getActivity(
             context,
             0,
-            Intent(context, MainActivity::class.java).apply {
+            Intent(context, Launcher::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,

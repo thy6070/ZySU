@@ -1,10 +1,12 @@
-package com.zying.zysu
+package app.entry
 
 import android.app.Application
 import android.system.Os
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
+import com.zying.zysu.BuildConfig
+import com.zying.zysu.ksuApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -20,9 +22,7 @@ import okhttp3.OkHttpClient
 import java.io.File
 import java.util.Locale
 
-lateinit var ksuApp: KernelSUApplication
-
-class KernelSUApplication : Application(), ViewModelStoreOwner {
+class App : Application(), ViewModelStoreOwner {
 
     lateinit var okhttpClient: OkHttpClient
     private val appViewModelStore by lazy { ViewModelStore() }

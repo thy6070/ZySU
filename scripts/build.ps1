@@ -252,6 +252,12 @@ try {
         }
     }
 
+    $payloadNameFile = Join-Path $script:RepoRoot 'manager\ksud-library-name.txt'
+    $ksudLibraryName = ([string](Get-Content -LiteralPath $payloadNameFile -Raw)).Trim()
+    if ($ksudLibraryName -cnotmatch '^lib[A-Za-z0-9_]+\.so$') {
+        throw "Invalid manager native payload filename in $payloadNameFile"
+    }
+
     foreach ($kmi in $kmiTargets) {
         if ($kmi -cnotin $supportedKmis) {
             throw "Unsupported KMI/DDK target: $kmi (requires Linux 6.1 or newer). Supported targets: $($supportedKmis -join ', ')"
@@ -421,7 +427,11 @@ try {
     Write-Host '>>> [4/4] Build Manager App ...' -ForegroundColor Cyan
     $managerDirectory = Join-Path $script:RepoRoot 'manager'
     $jniLibDirectory = Join-Path $managerDirectory "app\src\main\jniLibs\$script:AndroidAbi"
-    Copy-RequiredFile -Source $ksudOutput -Destination (Join-Path $jniLibDirectory 'libksud.so')
+    $legacyPayload = Join-Path $jniLibDirectory 'libksud.so'
+    if (Test-Path -LiteralPath $legacyPayload) {
+        Remove-Item -LiteralPath $legacyPayload -Force
+    }
+    Copy-RequiredFile -Source $ksudOutput -Destination (Join-Path $jniLibDirectory $ksudLibraryName)
 
     $signingMap = @{
         'KEYSTORE_FILE' = 'ZYSU_KEYSTORE'

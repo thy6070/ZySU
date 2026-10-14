@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.LifecycleCoroutineScope
 import com.zying.zysu.Natives
-import com.zying.zysu.ui.MainActivity
+import app.entry.Launcher
 import com.zying.zysu.ui.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -40,7 +40,7 @@ object AnimatedBottomBar {
 object UltraActivityUtils {
 
     suspend fun detectZipTypeAndShowConfirmation(
-        activity: MainActivity,
+        activity: Launcher,
         zipUris: ArrayList<Uri>,
         onResult: (List<ZipFileInfo>) -> Unit
     ) {
@@ -49,7 +49,7 @@ object UltraActivityUtils {
     }
 
     fun navigateToFlashScreen(
-        activity: MainActivity,
+        activity: Launcher,
         zipFiles: List<ZipFileInfo>,
         ak3Options: Ak3FlashOptions?,
         navigator: DestinationsNavigator
@@ -134,13 +134,13 @@ object DataRefreshUtils {
 
     fun startSettingsMonitorCoroutine(
         scope: LifecycleCoroutineScope,
-        activity: MainActivity,
-        settingsStateFlow: MutableStateFlow<MainActivity.SettingsState>
+        activity: Launcher,
+        settingsStateFlow: MutableStateFlow<Launcher.SettingsState>
     ) {
         scope.launch(Dispatchers.IO) {
             while (isActive) {
                 val prefs = activity.getSharedPreferences("settings", Context.MODE_PRIVATE)
-                val newState = MainActivity.SettingsState(
+                val newState = Launcher.SettingsState(
                     isHideOtherInfo = prefs.getBoolean("is_hide_other_info", false)
                 )
                 if (settingsStateFlow.value != newState) {

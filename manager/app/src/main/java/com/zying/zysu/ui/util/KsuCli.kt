@@ -45,7 +45,7 @@ import java.util.concurrent.TimeUnit
 private const val TAG = "KsuCli"
 
 private fun getKsuDaemonPath(): String {
-    return ksuApp.applicationInfo.nativeLibraryDir + File.separator + "libksud.so"
+    return File(ksuApp.applicationInfo.nativeLibraryDir, BuildConfig.KSUD_LIBRARY_NAME).absolutePath
 }
 
 /**
@@ -221,9 +221,9 @@ object KsuCli {
     private fun installOrUpdateKsudDaemon(): Boolean {
         if (!isBundledKsudUapiCompatible()) return false
         val nativeDir = ksuApp.applicationInfo.nativeLibraryDir
-        val ksudSo = File(nativeDir, "libksud.so")
+        val ksudSo = File(nativeDir, BuildConfig.KSUD_LIBRARY_NAME)
         if (!ksudSo.exists()) {
-            Log.e(TAG, "installOrUpdateKsudDaemon: libksud.so not found in $nativeDir")
+            Log.e(TAG, "installOrUpdateKsudDaemon: ${BuildConfig.KSUD_LIBRARY_NAME} not found in $nativeDir")
             return false
         }
 

@@ -1,4 +1,4 @@
-package com.zying.zysu.ui
+package app.entry
 
 import android.content.Context
 import android.content.Intent
@@ -66,6 +66,7 @@ import com.zying.zysu.ui.util.LocalNavigationLeaveGuard
 import com.zying.zysu.ui.util.LocalSnackbarHost
 import com.zying.zysu.ui.util.NavigationLeaveGuard
 import com.zying.zysu.ui.util.install
+import com.zying.zysu.ui.util.module.Shortcut
 import com.zying.zysu.ui.util.resetTaskDescriptionToAppName
 import com.zying.zysu.ui.viewmodel.HomeViewModel
 import com.zying.zysu.ui.viewmodel.SuperUserViewModel
@@ -77,7 +78,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ui.screen.moreSettings.util.LocaleHelper
 
-class MainActivity : ComponentActivity() {
+class Launcher : ComponentActivity() {
     private lateinit var superUserViewModel: SuperUserViewModel
     private lateinit var homeViewModel: HomeViewModel
     internal val settingsStateFlow = MutableStateFlow(SettingsState())
@@ -108,6 +109,9 @@ class MainActivity : ComponentActivity() {
 
             super.onCreate(savedInstanceState)
             resetTaskDescriptionToAppName()
+            lifecycleScope.launch(Dispatchers.IO) {
+                Shortcut.migrateModuleShortcuts(applicationContext)
+            }
 
             // Note: ksud installation moved to KsuCli.refreshShells()
             // which is called after SuperKey authentication succeeds.
@@ -177,7 +181,7 @@ class MainActivity : ComponentActivity() {
                             pendingZipFiles.value = emptyList()
                             showConfirmationDialog.value = false
                             lifecycleScope.launch {
-                                UltraActivityUtils.detectZipTypeAndShowConfirmation(this@MainActivity, zipUri) { infos ->
+                                UltraActivityUtils.detectZipTypeAndShowConfirmation(this@Launcher, zipUri) { infos ->
                                     if (intentState.value != intentStateValue) {
                                         ZipFileDetector.cleanupStagedFiles(infos)
                                         return@detectZipTypeAndShowConfirmation
@@ -290,7 +294,7 @@ class MainActivity : ComponentActivity() {
                     if (manager && !KsuCli.SHELL.isRoot) {
                         KsuCli.refreshShells(checkKsud = false)
                     }
-                    KsudIntegrity.refresh(this@MainActivity, notifyOnMismatch = false)
+                    KsudIntegrity.refresh(this@Launcher, notifyOnMismatch = false)
                 }
                 if (isInitialized) {
                     refreshData()

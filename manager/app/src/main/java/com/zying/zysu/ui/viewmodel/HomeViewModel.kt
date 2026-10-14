@@ -50,7 +50,7 @@ class HomeViewModel : ViewModel() {
         KsudCardState(
             bundledVersion = bundled,
             installedVersion = installed,
-            hasBundledDaemon = File(ksuApp.applicationInfo.nativeLibraryDir, "libksud.so").isFile,
+            hasBundledDaemon = File(ksuApp.applicationInfo.nativeLibraryDir, BuildConfig.KSUD_LIBRARY_NAME).isFile,
             loading = false,
         )
     }

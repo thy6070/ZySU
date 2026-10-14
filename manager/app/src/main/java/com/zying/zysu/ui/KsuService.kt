@@ -6,6 +6,7 @@ import android.content.pm.PackageInfo
 import android.os.*
 import android.util.Log
 import com.topjohnwu.superuser.ipc.RootService
+import com.zying.zysu.BuildConfig
 import com.zying.zysu.IKsuInterface
 import java.io.File
 import java.nio.file.Files
@@ -85,7 +86,7 @@ class KsuService : RootService() {
     }
 
     private fun runProfileCommand(vararg arguments: String): Boolean {
-        val daemon = File(applicationInfo.nativeLibraryDir, "libksud.so").absolutePath
+        val daemon = File(applicationInfo.nativeLibraryDir, BuildConfig.KSUD_LIBRARY_NAME).absolutePath
         val process = ProcessBuilder(listOf(daemon) + arguments)
             .redirectInput(ProcessBuilder.Redirect.from(File("/dev/null")))
             .redirectOutput(ProcessBuilder.Redirect.to(File("/dev/null")))

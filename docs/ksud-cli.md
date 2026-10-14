@@ -1,6 +1,6 @@
 # ksud command-line reference
 
-`ksud` is ZySU's C++ userspace entry point for modules, boot images, kernel features and the built-in SUMHP controller. Installed devices use `/data/adb/ksud`; the manager also invokes its packaged `libksud.so` executable. Operations on modules, kernel state and partitions require the corresponding root/kernel access.
+`ksud` is ZySU's C++ userspace entry point for modules, boot images, kernel features and the built-in SUMHP controller. Installed devices use `/data/adb/ksud`; the manager also invokes its packaged `libruntime.so` executable, whose name is defined in `manager/ksud-library-name.txt`. Operations on modules, kernel state and partitions require the corresponding root/kernel access.
 
 This reference follows [cli_args.cpp](../userspace/ksud/src/cli_args.cpp), [cli.cpp](../userspace/ksud/src/cli.cpp) and their implementations. Consult the help shipped with your binary when using another version:
 

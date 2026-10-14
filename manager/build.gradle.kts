@@ -43,6 +43,13 @@ val androidCmakeVersion = "3.22.1"
 val androidSourceCompatibility = JavaVersion.VERSION_21
 val androidTargetCompatibility = JavaVersion.VERSION_21
 private val repositoryRoot = rootProject.projectDir.parentFile
+val ksudLibraryName = providers.fileContents(
+    layout.projectDirectory.file("ksud-library-name.txt")
+).asText.get().trim().also { name ->
+    require(Regex("lib[A-Za-z0-9_]+\\.so").matches(name)) {
+        "ksud-library-name.txt must contain a native library filename"
+    }
+}
 private val dirtyVersionPattern = Regex(
     "(?:v?[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?|[0-9a-fA-F]{8})-nc(?:@ZySU)?(?:[^0-9A-Za-z]|$)"
 )
@@ -63,6 +70,7 @@ extra.set("androidCmakeVersion", androidCmakeVersion)
 extra.set("managerVersionCode", managerVersionCode)
 extra.set("managerVersionName", managerVersionName)
 extra.set("ksudBundledVersion", ksudBundledVersion)
+extra.set("ksudLibraryName", ksudLibraryName)
 
 fun versionNameOverride(variable: String): String? {
     val value = providers.environmentVariable(variable).orNull?.takeIf { it.isNotEmpty() }
@@ -130,7 +138,7 @@ fun hasKernelNc(): Boolean {
 fun hasBundledKsudNc(): Boolean {
     val jniDirectory = repositoryRoot.resolve("manager/app/src/main/jniLibs")
     return jniDirectory.walkTopDown().any { file ->
-        file.isFile && file.name == "libksud.so" && fileHasDirtyVersion(file)
+        file.isFile && file.name == ksudLibraryName && fileHasDirtyVersion(file)
     }
 }
 

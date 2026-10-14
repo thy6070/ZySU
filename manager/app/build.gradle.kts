@@ -46,6 +46,24 @@ plugins {
 
 }
 
+/** Binds a Gradle APK to the payload filename its compiled code expects. */
+@CacheableTask
+abstract class GeneratePayloadMetadataTask : DefaultTask() {
+    @get:Input
+    abstract val libraryName: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        outputDirectory.file("runtime/payload.txt").get().asFile.apply {
+            parentFile.mkdirs()
+            writeText("${libraryName.get()}\n", Charsets.UTF_8)
+        }
+    }
+}
+
 /** Replaces reflection-heavy library methods without changing their JVM interfaces. */
 abstract class WebUiReflectionPatch : AsmClassVisitorFactory<InstrumentationParameters.None> {
     override fun isInstrumentable(classData: ClassData): Boolean =
@@ -518,6 +536,7 @@ abstract class VerifyRectListPatchTask : DefaultTask() {
 val managerVersionCode = rootProject.extra["managerVersionCode"] as Int
 val managerVersionName = rootProject.extra["managerVersionName"] as String
 val ksudBundledVersion = rootProject.extra["ksudBundledVersion"] as String
+val ksudLibraryName = rootProject.extra["ksudLibraryName"] as String
 val androidCmakeVersion = rootProject.extra["androidCmakeVersion"] as String
 
 fun signingValue(propertyName: String, environmentName: String): String? {
@@ -581,6 +600,7 @@ android {
     defaultConfig {
         applicationId = "com.zying.zysu"
         buildConfigField("String", "KSUD_BUNDLED_VERSION", "\"$ksudBundledVersion\"")
+        buildConfigField("String", "KSUD_LIBRARY_NAME", "\"$ksudLibraryName\"")
     }
 
     buildTypes {
@@ -615,6 +635,8 @@ android {
         }
         jniLibs {
             useLegacyPackaging = true
+            // An older local build may have left the previous payload in jniLibs.
+            excludes += "lib/*/libksud.so"
             excludes += "lib/*/libandroidx.graphics.path.so"
         }
         resources {
@@ -696,6 +718,16 @@ androidComponents {
         ) {}
 
         val capitalizedVariant = variant.name.replaceFirstChar(Char::uppercaseChar)
+        val payloadMetadataTask = tasks.register<GeneratePayloadMetadataTask>(
+            "generatePayloadMetadata$capitalizedVariant"
+        ) {
+            libraryName.set(ksudLibraryName)
+            outputDirectory.set(layout.buildDirectory.dir("generated/payloadMetadata/${variant.name}"))
+        }
+        variant.sources.assets?.addGeneratedSourceDirectory(
+            payloadMetadataTask,
+            GeneratePayloadMetadataTask::outputDirectory,
+        )
         val verifyWebUiPatchTask = tasks.register<VerifyWebUiReflectionPatchTask>(
             "verifyWebUiReflectionPatch$capitalizedVariant"
         ) {

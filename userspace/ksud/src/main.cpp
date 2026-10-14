@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     // Dispatch by argv[0] basename (e.g. when invoked as /data/adb/ksu/bin/magiskboot ->
     // magiskboot)
     const char* base = (argc >= 1 && argv[0]) ? path_basename(argv[0]) : nullptr;
-    // When invoked as libksud.so (Manager loads .so path), argv[0] is the .so path; app passes tool
+    // When invoked via the Manager's packaged .so path, argv[0] is that path; app passes tool
     // name as argv[1]
     const char* first_arg = (argc >= 2 && argv[1]) ? argv[1] : nullptr;
 

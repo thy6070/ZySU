@@ -73,7 +73,7 @@ The current Manager toolchain specifies JDK 21, Android SDK 37, Build Tools 36.1
 
 On Linux / macOS, set `ANDROID_NDK_HOME`, configure `JAVA_HOME` and an Android SDK path for Gradle, and make `cmake`, `ninja`, `python3` and `docker` available. Windows accepts `ANDROID_SDK_ROOT` / `ANDROID_HOME`, `ANDROID_NDK_HOME`, `JAVA_HOME` and `PYTHON` overrides. Its script locates CMake / Ninja under the SDK and does not download missing SDK packages.
 
-From the repository root, run `bash scripts/build.sh --kmi android14-6.1`, or `.\scripts\build.bat --kmi android14-6.1` on Windows. Native caches are reused by default; use `--clean` after changing toolchains when needed. The scripts restage generated assets in `userspace/ksud/assets/` and copy ksud into Manager as `libksud.so`.
+From the repository root, run `bash scripts/build.sh --kmi android14-6.1`, or `.\scripts\build.bat --kmi android14-6.1` on Windows. Native caches are reused by default; use `--clean` after changing toolchains when needed. The scripts restage generated assets in `userspace/ksud/assets/` and copy ksud into Manager as `libruntime.so`. Gradle, the repacker, and both local build scripts read this filename from `manager/ksud-library-name.txt`. Gradle also embeds `assets/runtime/payload.txt` so the repacker can check which name the compiled Manager expects. Rebuild Manager if that marker is missing or differs from the current configuration, or if the APK still contains `libksud.so`; this includes older intermediate APKs with no payload yet.
 
 | Local output | Path |
 | --- | --- |
