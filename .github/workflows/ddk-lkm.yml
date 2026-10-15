@@ -65,7 +65,7 @@ jobs:
         test -f include/uapi/supercall.h
 
         echo "Building kernelsu.ko for KMI: $KMI"
-        make_args=(CONFIG_KSU=m CONFIG_KSU_SUPERKEY=y CC=clang)
+        make_args=(CONFIG_KSU=m CONFIG_KSU_SUPERKEY=y CONFIG_KSU_KRETPROBES_SUCOMPAT=y CC=clang)
         if [ -n "$MANAGER_CERT_SIZE$MANAGER_CERT_SHA256" ]; then
           [[ "$MANAGER_CERT_SIZE" =~ ^[1-9][0-9]{0,3}$ ]]
           (( MANAGER_CERT_SIZE <= 1024 ))
