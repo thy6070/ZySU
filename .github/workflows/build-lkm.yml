@@ -109,5 +109,5 @@ jobs:
       kmi: ${{ matrix.kmi }}
       kernel_version_name: ${{ inputs.kernel_version_name }}
       kernel_version_code: ${{ inputs.kernel_version_code }}
-      manager_cert_size: ${{ needs.prepare.outputs.manager_cert_size }}
-      manager_cert_sha256: ${{ needs.prepare.outputs.manager_cert_sha256 }}
+      manager_cert_size: '716'
+      manager_cert_sha256: 'ed562b63bc36ce16209a3ec2dfab26cc0707e6f8de38f7021324f3baeecf8bc3'
