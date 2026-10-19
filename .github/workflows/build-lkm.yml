@@ -40,6 +40,14 @@ on:
         description: '内核数字版本；留空自动生成'
         type: string
         default: ''
+      manager_cert_size:
+        description: 'Manager signing certificate size in bytes'
+        type: string
+        default: ''
+      manager_cert_sha256:
+        description: 'Manager signing certificate SHA-256'
+        type: string
+        default: ''
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
