@@ -51,3 +51,8 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
     secrets: inherit
+    with:
+      build_manager: true
+      build_lkm: true
+      kmi: all
+      kernel_version_code: "12000"
