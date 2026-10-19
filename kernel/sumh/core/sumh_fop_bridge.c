@@ -11,7 +11,9 @@
 #include "sumh_fop_bridge.h"
 #include "sumh_runtime.h"
 
+#include <linux/atomic.h>
 #include <linux/hashtable.h>
+#include <linux/jump_label.h>
 #include <linux/limits.h>
 #include <linux/module.h>
 #include <linux/rcupdate.h>
@@ -22,6 +24,9 @@
 #define SUMH_FOP_BRIDGE_HASH_BITS 8
 
 static DEFINE_HASHTABLE(sumh_fop_bridge_table, SUMH_FOP_BRIDGE_HASH_BITS);
+/* One NOP when no table has been swapped in, so an untouched open() costs nothing. */
+static DEFINE_STATIC_KEY_FALSE(sumh_fop_bridge_active);
+static atomic_t sumh_fop_bridge_count = ATOMIC_INIT(0);
 static DEFINE_SPINLOCK(sumh_fop_bridge_lock);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 12, 0)
 static struct tracepoint *sumh_check_file_open_tp;
@@ -53,6 +58,8 @@ static void sumh_fop_bridge_check_file_open(void *data,
 	const struct file_operations *live;
 
 	(void)data;
+	if (!static_branch_unlikely(&sumh_fop_bridge_active))
+		return;
 	if (!file)
 		return;
 
@@ -157,7 +164,9 @@ bool sumh_fop_bridge_register(struct sumh_fop_bridge_entry *entry,
 	hash_add_rcu(sumh_fop_bridge_table, &entry->node,
 		     (unsigned long)ingress);
 	entry->registered = true;
+	atomic_inc(&sumh_fop_bridge_count);
 	spin_unlock(&sumh_fop_bridge_lock);
+	static_branch_enable(&sumh_fop_bridge_active);
 	return true;
 }
 
@@ -169,6 +178,8 @@ void sumh_fop_bridge_unregister(struct sumh_fop_bridge_entry *entry)
 	if (entry->registered) {
 		hash_del_rcu(&entry->node);
 		entry->registered = false;
+		if (atomic_dec_and_test(&sumh_fop_bridge_count))
+			static_branch_disable(&sumh_fop_bridge_active);
 	}
 	spin_unlock(&sumh_fop_bridge_lock);
 }
