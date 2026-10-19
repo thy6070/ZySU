@@ -92,7 +92,7 @@ jobs:
       ksud_version_name: ${{ inputs.ksud_version_name || '' }}
       ksud_version_code: ${{ inputs.ksud_version_code || '' }}
       kernel_version_name: ${{ inputs.kernel_version_name || '' }}
-      kernel_version_code: ${{ inputs.kernel_version_code || '' }}
+      kernel_version_code: ${{ inputs.kernel_version_code || '12000' }}
 
   release:
     needs: build
