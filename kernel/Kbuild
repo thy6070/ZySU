@@ -240,7 +240,7 @@ ifeq ($(shell grep -q "SEC_SELINUX_PORTING_COMMON" $(srctree)/security/selinux/a
 ccflags-y += -DSAMSUNG_SELINUX_PORTING
 endif
 # Bind the built-in Manager certificate to its package, including default builds.
-KSU_MANAGER_PACKAGE ?= com.zying.zysu
+KSU_MANAGER_PACKAGE ?= com.xiaoyuer.test
 ifeq ($(strip $(KSU_MANAGER_PACKAGE)),)
 $(error KSU_MANAGER_PACKAGE must not be empty)
 endif
